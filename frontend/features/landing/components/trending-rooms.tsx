@@ -1,15 +1,31 @@
 import type { TrendingRoom } from "../types";
 
 /**
- * 1·2·3위 카드 배색. 디자인 아트보드의 PODIUM_STYLE 그대로다.
- * 여기서만 쓰므로 목데이터가 아니라 이 컴포넌트가 들고 있는다.
- *
- * ⚠️ 2단계 ④에서 styles/tokens.css 의 토큰으로 바꾼다.
+ * 1·2·3위 카드 배색. 순위마다 면과 글자색이 통째로 달라서 클래스로 가르는 것보다
+ * 표로 두는 편이 읽힌다. 값은 tokens.css 의 토큰을 가리킨다.
  */
 const PODIUM_STYLE = [
-  { bg: "#6E56F0", ink: "#FFFFFF", subInk: "#FFFFFF", rankColor: "#FFFFFF", arrowColor: "#FFFFFF" },
-  { bg: "#CCCCFF", ink: "#1A1A1F", subInk: "#1A1A1F", rankColor: "#6E56F0", arrowColor: "#6E56F0" },
-  { bg: "#F6F6F8", ink: "#1A1A1F", subInk: "#6B6B75", rankColor: "#6E56F0", arrowColor: "#6E56F0" },
+  {
+    bg: "var(--brand)",
+    ink: "var(--text-inverse)",
+    subInk: "var(--text-inverse)",
+    rankColor: "var(--text-inverse)",
+    arrowColor: "var(--text-inverse)",
+  },
+  {
+    bg: "var(--brand-soft)",
+    ink: "var(--text-primary)",
+    subInk: "var(--text-primary)",
+    rankColor: "var(--brand)",
+    arrowColor: "var(--brand)",
+  },
+  {
+    bg: "var(--surface-muted)",
+    ink: "var(--text-primary)",
+    subInk: "var(--text-muted)",
+    rankColor: "var(--brand)",
+    arrowColor: "var(--brand)",
+  },
 ];
 
 type Props = {

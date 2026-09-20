@@ -58,7 +58,7 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
 
       <div className="hd-card" style={{ marginTop: 32, textAlign: "center" }}>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <Logo size={56} background="#CCCCFF" foreground="#1A1A1F" />
+          <Logo size={56} background="var(--brand-soft)" foreground="var(--text-primary)" />
         </div>
         <div className="hd-t-h2" style={{ marginTop: 16 }}>
           {connected ? "연결된 지갑" : "지갑을 연결하면"}

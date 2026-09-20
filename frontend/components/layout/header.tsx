@@ -27,7 +27,7 @@ export default function Header() {
   return (
     <header className="hd-header">
       <Link href="/" className="hd-brand" aria-label="Hodlit 홈">
-        <Logo size={32} background="#6E56F0" foreground="#FFFFFF" />
+        <Logo size={32} background="var(--brand)" foreground="var(--text-inverse)" />
         <span className="hd-brand-name">Hodlit</span>
       </Link>
 

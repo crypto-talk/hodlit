@@ -4,6 +4,7 @@
  */
 type Props = {
   size: number;
+  /** CSS 색 값. 토큰을 쓴다 — `var(--brand)` 처럼. */
   background: string;
   foreground: string;
 };
