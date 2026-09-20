@@ -78,6 +78,46 @@
   --radius-sm: var(--corner-sm);
   --radius-md: var(--corner-md);
   --radius-lg: var(--corner-lg);
+
+  /*
+   * 셸이 접히는 폭. 이 아래로는 사이드바가 숨고 FAB 이 나온다.
+   * Tailwind 기본 단계(md 768 · lg 1024)에 맞는 값이 없어 따로 둔다.
+   */
+  --breakpoint-shell: 900px;
+
+  --animate-blink: hd-blink 5s infinite;
+  --animate-marquee: hd-marquee 32s linear infinite;
+  --animate-fade-in: hd-fade-in 0.4s ease both;
+}
+
+/* 위 --animate-* 가 가리키는 키프레임. 이름은 hd- 접두사를 유지한다. */
+@keyframes hd-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes hd-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes hd-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /*

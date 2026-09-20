@@ -78,7 +78,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   }, [connectWallet, requireLogin]);
 
   return (
-    <div className="hd">
+    <div className="hd min-h-screen">
       <Header />
 
       {/*
@@ -87,10 +87,10 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
        */}
       <Marquee items={marqueeItems()} />
 
-      <div className="hd-body">
+      <div className="flex items-start gap-8 px-6 pt-8 pb-12">
         <Sidebar rooms={rooms} wallets={visibleWallets} onConnectWallet={onConnectWallet} />
 
-        <div className="hd-main">
+        <div className="flex min-w-0 flex-1 flex-col gap-12">
           {notice ? (
             <p role="alert" className="text-sm" style={{ color: "var(--hd-down)" }}>
               {notice}

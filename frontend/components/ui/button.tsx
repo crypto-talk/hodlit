@@ -3,32 +3,32 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { Slot } from "radix-ui";
 
+/*
+ * ⚠️ shadcn/ui 원본에서 클래스 문자열만 아트보드 값으로 바꿨다. 구조(cva · asChild ·
+ * data-slot)는 원본 그대로라 upstream 변경을 따라갈 때 읽어 볼 수 있다.
+ *
+ * 색·크기·반경은 styles/tokens.css 의 토큰을 가리킨다. 값은 여기에 적지 않는다.
+ * 원본의 focus-visible 링은 남겼다 — 예전 .hd-btn 에는 없던 것이고, 키보드로
+ * 다닐 때만 보인다.
+ */
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-sm border text-sm font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-default disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20",
-        outline: "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        /** 기본. 흰 면에 옅은 테두리, hover 에 테두리만 진해진다. */
+        secondary: "border-border-subtle bg-surface text-text-primary hover:border-text-muted",
+        /** 강조. 브랜드 면. */
+        primary: "border-transparent bg-brand text-text-inverse hover:bg-brand-hover",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+        default: "px-4 py-2.5",
+        /** 떠 있는 글쓰기 버튼. 손가락으로 누르는 크기다. */
+        fab: "px-6 py-4",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "secondary",
       size: "default",
     },
   },
@@ -36,7 +36,7 @@ const buttonVariants = cva(
 
 function Button({
   className,
-  variant = "default",
+  variant = "secondary",
   size = "default",
   asChild = false,
   ...props

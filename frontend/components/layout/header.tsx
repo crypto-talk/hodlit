@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/session";
 import Logo from "./logo";
 
@@ -25,52 +26,64 @@ export default function Header() {
   const loginHref = `/login?next=${encodeURIComponent(next)}`;
 
   return (
-    <header className="hd-header">
-      <Link href="/" className="hd-brand" aria-label="Hodlit 홈">
+    <header className="flex items-center gap-4 border-b border-border-subtle bg-surface px-6 py-4">
+      <Link
+        href="/"
+        className="flex flex-none items-center gap-2 text-text-primary"
+        aria-label="Hodlit 홈"
+      >
         <Logo size={32} background="var(--brand)" foreground="var(--text-inverse)" />
-        <span className="hd-brand-name">Hodlit</span>
+        <span className="text-h2 font-semibold tracking-[-0.01em]">Hodlit</span>
       </Link>
 
-      <button type="button" className="hd-search" disabled title="검색은 준비 중입니다">
-        <span className="hd-search-icon" />
+      <button
+        type="button"
+        className="flex h-9 min-w-0 flex-1 cursor-not-allowed items-center gap-2 rounded-sm border border-border-subtle bg-canvas px-4 text-left text-sm text-text-muted"
+        disabled
+        title="검색은 준비 중입니다"
+      >
+        <span className="size-3 flex-none rounded-full border-2 border-text-muted" />
         <span className="truncate">코인 · 지갑 · 글 검색</span>
       </button>
 
-      <div className="hd-header-actions">
+      <div className="flex flex-none items-center gap-2">
         {member ? (
           <>
-            <span className="hd-nick truncate">{member.nickname}</span>
-            <button
-              type="button"
-              className="hd-btn hd-btn-primary hd-only-desktop"
-              disabled
-              title="글쓰기 화면은 아직 준비 중입니다"
-            >
-              글쓰기
-            </button>
-            <button type="button" className="hd-btn" onClick={logout}>
+            <span className="max-w-35 truncate text-sm font-semibold text-text-primary">
+              {member.nickname}
+            </span>
+            <WriteButton />
+            <Button type="button" onClick={logout}>
               로그아웃
-            </button>
+            </Button>
           </>
         ) : (
           <>
-            <Link href={loginHref} className="hd-btn">
-              로그인
-            </Link>
-            <button
-              type="button"
-              className="hd-btn hd-btn-primary hd-only-desktop"
-              disabled
-              title="글쓰기 화면은 아직 준비 중입니다"
-            >
-              글쓰기
-            </button>
-            <Link href="/signup" className="hd-btn">
-              시작하기
-            </Link>
+            <Button asChild>
+              <Link href={loginHref}>로그인</Link>
+            </Button>
+            <WriteButton />
+            <Button asChild>
+              <Link href="/signup">시작하기</Link>
+            </Button>
           </>
         )}
       </div>
     </header>
+  );
+}
+
+/** 좁은 화면에서는 FAB 이 같은 자리를 맡으므로 숨긴다. */
+function WriteButton() {
+  return (
+    <Button
+      type="button"
+      variant="primary"
+      className="max-shell:hidden"
+      disabled
+      title="글쓰기 화면은 아직 준비 중입니다"
+    >
+      글쓰기
+    </Button>
   );
 }

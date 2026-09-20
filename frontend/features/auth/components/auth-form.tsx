@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/session";
 
 export type AuthMode = "login" | "signup";
@@ -103,14 +104,9 @@ export default function AuthForm({ mode, next }: Props) {
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
           required
         />
-        <button
-          type="submit"
-          className="hd-btn hd-btn-primary hd-btn-block"
-          style={{ marginTop: 8 }}
-          disabled={pending}
-        >
+        <Button type="submit" variant="primary" className="mt-2 w-full" disabled={pending}>
           {pending ? "확인 중…" : mode === "signup" ? "계정 만들기" : "로그인"}
-        </button>
+        </Button>
       </form>
 
       {error ? (
@@ -120,7 +116,7 @@ export default function AuthForm({ mode, next }: Props) {
       ) : null}
 
       <div className="hd-auth-foot">
-        <Link href={otherHref} className="text-sm font-semibold">
+        <Link href={otherHref} className="text-sm font-semibold text-brand">
           {mode === "login" ? "계정 만들기" : "이미 계정이 있어요"}
         </Link>
         <Link href={next} className="text-sm text-text-muted">
