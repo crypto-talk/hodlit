@@ -54,13 +54,13 @@ export default function Landing() {
   return (
     <>
       {loadFailed ? (
-        <p role="status" className="hd-t-sm" style={{ color: "var(--hd-down)" }}>
+        <p role="status" className="text-sm" style={{ color: "var(--hd-down)" }}>
           백엔드에서 데이터를 불러오지 못했습니다. API 주소와 CORS 설정을 확인해 주세요.
         </p>
       ) : null}
 
       {notice ? (
-        <p role="status" className="hd-t-sm" style={{ color: "var(--hd-down)" }}>
+        <p role="status" className="text-sm" style={{ color: "var(--hd-down)" }}>
           {notice}
         </p>
       ) : null}

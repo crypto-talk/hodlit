@@ -58,6 +58,23 @@
 
   --font-sans: var(--font-pretendard), system-ui, sans-serif;
 
+  /*
+   * 타이포. `text-sm` 과 `text-xs` 는 Tailwind 기본값을 덮는다. 한 화면에 스케일이
+   * 둘 있으면 안 되기 때문이고, 그게 토큰을 두는 이유다.
+   */
+  --text-display: var(--type-display);
+  --text-display--line-height: var(--type-display-leading);
+  --text-h1: var(--type-h1);
+  --text-h1--line-height: var(--type-h1-leading);
+  --text-h2: var(--type-h2);
+  --text-h2--line-height: var(--type-h2-leading);
+  --text-body: var(--type-body);
+  --text-body--line-height: var(--type-body-leading);
+  --text-sm: var(--type-sm);
+  --text-sm--line-height: var(--type-sm-leading);
+  --text-xs: var(--type-xs);
+  --text-xs--line-height: var(--type-xs-leading);
+
   --radius-sm: var(--corner-sm);
   --radius-md: var(--corner-md);
   --radius-lg: var(--corner-lg);
