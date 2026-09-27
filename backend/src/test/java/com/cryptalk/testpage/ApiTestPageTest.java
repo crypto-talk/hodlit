@@ -23,7 +23,7 @@ class ApiTestPageTest {
 
     @Test
     void servesHubAndTestSubpagesWithoutAuthenticationWhenEnabled() throws Exception {
-        for (String path : new String[] {"/test", "/test/auth", "/test/wallet", "/test/api"}) {
+        for (String path : new String[] {"/test", "/test/auth", "/test/wallet", "/test/social", "/test/api"}) {
             mvc.perform(get(path))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
@@ -31,6 +31,9 @@ class ApiTestPageTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("CrypTalk API Test Console")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("personal_sign")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("connect-walletconnect")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-action=\"create-post\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-action=\"create-comment\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-action=\"next-feed\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("walletconnect-project-id"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/v3/api-docs")));
         }
@@ -58,6 +61,7 @@ class ApiTestPageTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.paths['/test']").doesNotExist())
             .andExpect(jsonPath("$.paths['/test/api']").doesNotExist())
+            .andExpect(jsonPath("$.paths['/test/social']").doesNotExist())
             .andExpect(jsonPath("$.paths['/test/config']").doesNotExist());
     }
 }
