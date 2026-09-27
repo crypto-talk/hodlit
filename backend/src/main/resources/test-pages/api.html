@@ -120,7 +120,7 @@
         </div>
         <div class="hub-grid">
           <a class="hub-link" href="/test/auth" data-route="/test/auth"><strong>인증 테스트</strong><span>회원가입, 로그인, refresh, 로그아웃</span></a>
-          <a class="hub-link" href="/test/wallet" data-route="/test/wallet"><strong>EVM 지갑 테스트</strong><span>MetaMask 서명, 연결, 목록, 해제, ETH 자산</span></a>
+          <a class="hub-link" href="/test/wallet" data-route="/test/wallet"><strong>EVM 지갑 테스트</strong><span>브라우저 지갑 또는 WalletConnect QR·모바일 앱으로 서명 및 연결</span></a>
           <a class="hub-link" href="/test/api" data-route="/test/api"><strong>전체 API Explorer</strong><span>OpenAPI 기반 전체 엔드포인트 직접 실행</span></a>
         </div>
       </section>
@@ -146,14 +146,15 @@
 
         <article class="card" data-page-section="wallet">
           <div class="card-head">
-            <div><h2>EVM 지갑</h2><p>MetaMask 등 injected wallet의 personal_sign을 사용합니다.</p></div>
+            <div><h2>EVM 지갑</h2><p>브라우저 확장이나 WalletConnect 호환 모바일 앱에서 personal_sign으로 소유권을 증명합니다.</p></div>
           </div>
           <div class="actions">
-            <button class="button wallet" data-action="connect-wallet">지갑 서명 및 연결</button>
+            <button class="button wallet" data-action="connect-injected-wallet">브라우저 지갑 연결</button>
+            <button class="button wallet" data-action="connect-walletconnect">WalletConnect QR·모바일 앱 연결</button>
             <button class="button" data-action="load-wallets">연결 목록</button>
             <button class="button" data-action="load-assets">ETH 자산 조회</button>
           </div>
-          <p class="notice">개인키·시드 문구를 입력하지 마세요. 자산 조회에는 ETHEREUM_RPC_URL이 필요합니다.</p>
+          <p class="notice">모바일에서는 지갑 선택 후 설치된 앱으로 이동합니다. 개인키·시드 문구를 입력하지 마세요. 자산 조회에는 ETHEREUM_RPC_URL이 필요합니다.</p>
           <div id="wallet-status" class="status-box">연결된 지갑을 조회할 수 있습니다.</div>
           <div id="wallet-list"></div>
         </article>
@@ -182,7 +183,7 @@
   </main>
 
   <script>
-    const state = { token: null, member: null, spec: null, operations: [] };
+    const state = { token: null, member: null, spec: null, operations: [], walletConnectSdk: null, walletConnectProvider: null, walletConnectProjectId: null, walletConnectConfig: null };
     const methods = ["get", "post", "put", "patch", "delete"];
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -295,15 +296,63 @@
       if (!state.token) throw new Error("먼저 로그인해 주세요.");
     }
 
-    async function connectWallet() {
+    async function loadWalletConnectSdk() {
+      if (!state.walletConnectSdk) {
+        state.walletConnectSdk = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "/test/walletconnect.bundle.js";
+          script.onload = () => window.WalletConnectEthereumProvider
+            ? resolve(window.WalletConnectEthereumProvider)
+            : reject(new Error("WalletConnect SDK를 초기화하지 못했습니다."));
+          script.onerror = () => reject(new Error("WalletConnect SDK를 불러오지 못했습니다."));
+          document.head.append(script);
+        }).catch(error => {
+          state.walletConnectSdk = null;
+          throw error;
+        });
+      }
+      return state.walletConnectSdk;
+    }
+
+    async function walletConnectProvider() {
+      const projectId = await state.walletConnectConfig;
+      if (!/^[a-f0-9]{32}$/i.test(projectId)) {
+        throw new Error("WalletConnect를 사용할 수 없습니다. 관리자에게 문의해 주세요.");
+      }
+      if (!state.walletConnectProvider || state.walletConnectProjectId !== projectId) {
+        const EthereumProvider = await loadWalletConnectSdk();
+        state.walletConnectProvider = await EthereumProvider.init({
+          projectId,
+          optionalChains: [1],
+          showQrModal: true,
+          metadata: {
+            name: "CrypTalk API Test Console",
+            description: "CrypTalk EVM wallet ownership test",
+            url: location.origin,
+            icons: [],
+          },
+        });
+        state.walletConnectProjectId = projectId;
+      }
+      return state.walletConnectProvider;
+    }
+
+    async function connectWallet(kind) {
       requireToken();
-      if (!window.ethereum) throw new Error("MetaMask 등 EVM 지갑 확장 프로그램을 찾을 수 없습니다.");
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      if (kind === "injected" && !window.ethereum) {
+        throw new Error("브라우저 지갑을 찾을 수 없습니다. 모바일 앱은 WalletConnect 버튼을 사용해 주세요.");
+      }
+      $("#wallet-status").textContent = kind === "walletconnect" ? "WalletConnect 지갑 선택 중..." : "브라우저 지갑 선택 중...";
+      const provider = kind === "walletconnect" ? await walletConnectProvider() : window.ethereum;
+      const accounts = kind === "walletconnect"
+        ? await provider.enable()
+        : await provider.request({ method: "eth_requestAccounts" });
       const walletAddress = accounts?.[0];
       if (!walletAddress) throw new Error("선택한 지갑 계정이 없습니다.");
       $("#wallet-status").textContent = `${walletAddress} 연결용 nonce 발급 중...`;
       const nonce = await jsonRequest("/api/v1/me/wallet/nonce", "POST", { walletAddress });
-      const signature = await window.ethereum.request({ method: "personal_sign", params: [nonce.message, walletAddress] });
+      $("#wallet-status").textContent = `${walletAddress} 지갑 앱에서 서명을 승인해 주세요.`;
+      const signature = await provider.request({ method: "personal_sign", params: [nonce.message, walletAddress] });
       const member = await jsonRequest("/api/v1/me/wallet", "POST", { walletAddress, nonceId: nonce.nonceId, signature });
       state.member = member;
       $("#wallet-status").innerHTML = `<strong>연결 성공</strong><br>${escapeHtml(walletAddress)}`;
@@ -544,7 +593,8 @@
         signup: () => authenticate("signup"),
         refresh: refreshSession,
         logout,
-        "connect-wallet": connectWallet,
+        "connect-injected-wallet": () => connectWallet("injected"),
+        "connect-walletconnect": () => connectWallet("walletconnect"),
         "load-wallets": loadWallets,
         "load-assets": loadAssets,
         "reload-spec": loadSpec,
@@ -556,6 +606,13 @@
     window.addEventListener("popstate", () => navigate(location.pathname, false));
     navigate(location.pathname, false);
     run(null, loadSpec);
+    state.walletConnectConfig = fetch("/test/config")
+      .then(response => response.ok ? response.json() : Promise.reject(new Error("테스트 설정을 불러오지 못했습니다.")))
+      .then(config => config.walletConnectProjectId || "")
+      .catch(error => {
+        addLog("CLIENT", "/test/config", 0, error.message);
+        return "";
+      });
   </script>
 </body>
 </html>

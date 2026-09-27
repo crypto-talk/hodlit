@@ -37,6 +37,7 @@ cryptalk:
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
   test-pages:
     enabled: ${CRYPTALK_TEST_PAGES_ENABLED:false}
+    walletconnect-project-id: ${WALLETCONNECT_PROJECT_ID:}
   media:
     storage-path: ${MEDIA_STORAGE_PATH:./uploads}
   market-price:
