@@ -21,7 +21,7 @@ public class ApiTestPageController {
         this.walletConnectProjectId = walletConnectProjectId;
     }
 
-    @GetMapping(value = {"/test", "/test/", "/test/auth", "/test/wallet", "/test/api"},
+    @GetMapping(value = {"/test", "/test/", "/test/auth", "/test/wallet", "/test/social", "/test/api"},
                 produces = MediaType.TEXT_HTML_VALUE)
     ResponseEntity<Resource> apiTestPage() {
         return ResponseEntity.ok()

@@ -99,13 +99,14 @@
   <header>
     <div>
       <h1>CrypTalk API Test Console</h1>
-      <p class="subtitle">현재 OpenAPI 계약 전체와 EVM 지갑 연결을 같은 origin에서 테스트합니다.</p>
+      <p class="subtitle">인증·지갑·소셜 API와 전체 OpenAPI 계약을 같은 origin에서 테스트합니다.</p>
     </div>
     <div class="header-actions">
       <nav aria-label="테스트 페이지">
         <a href="/test" data-route="/test">허브</a>
         <a href="/test/auth" data-route="/test/auth">인증</a>
         <a href="/test/wallet" data-route="/test/wallet">지갑</a>
+        <a href="/test/social" data-route="/test/social">소셜</a>
         <a href="/test/api" data-route="/test/api">전체 API</a>
       </nav>
       <span id="session-pill" class="pill">로그인 안 됨</span>
@@ -121,6 +122,7 @@
         <div class="hub-grid">
           <a class="hub-link" href="/test/auth" data-route="/test/auth"><strong>인증 테스트</strong><span>회원가입, 로그인, refresh, 로그아웃</span></a>
           <a class="hub-link" href="/test/wallet" data-route="/test/wallet"><strong>EVM 지갑 테스트</strong><span>브라우저 지갑 또는 WalletConnect QR·모바일 앱으로 서명 및 연결</span></a>
+          <a class="hub-link" href="/test/social" data-route="/test/social"><strong>소셜 기능 테스트</strong><span>게시글, 피드, 댓글, 반응, 팔로우, 미디어</span></a>
           <a class="hub-link" href="/test/api" data-route="/test/api"><strong>전체 API Explorer</strong><span>OpenAPI 기반 전체 엔드포인트 직접 실행</span></a>
         </div>
       </section>
@@ -160,6 +162,85 @@
         </article>
       </div>
 
+      <section class="grid" data-page-section="social">
+        <article class="card">
+          <div class="card-head"><div><h2>게시글</h2><p>작성하면 게시글 ID가 아래 기능에 자동으로 적용됩니다.</p></div></div>
+          <div class="fields">
+            <label>코인 심볼<input id="social-symbol" value="ETH" maxlength="20"></label>
+            <label>게시글 ID<input id="social-post-id" inputmode="numeric" placeholder="작성 시 자동 입력"></label>
+            <label class="wide">제목<input id="social-title" value="API 테스트 게시글" maxlength="120"></label>
+            <label class="wide">내용<textarea id="social-content" maxlength="5000">API 테스트 내용입니다.</textarea></label>
+            <label class="wide">첨부 미디어 URL (선택)<input id="social-media-url" placeholder="업로드 시 자동 입력"></label>
+            <label>첨부 미디어 유형<select id="social-media-type"><option value="IMAGE">이미지</option><option value="VIDEO">영상</option></select></label>
+          </div>
+          <div class="actions">
+            <button class="button primary" data-action="create-post">작성</button>
+            <button class="button" data-action="get-post">상세</button>
+            <button class="button" data-action="update-post">수정</button>
+            <button class="button" data-action="list-posts">커뮤니티 목록</button>
+            <button class="button danger" data-action="delete-post">삭제</button>
+          </div>
+          <p class="notice">작성·수정·삭제는 인증 화면에서 로그인 후 사용할 수 있습니다. 수정 시 첨부 미디어는 입력한 URL 목록으로 대체됩니다.</p>
+          <pre id="post-result" class="request-result">응답이 여기에 표시됩니다.</pre>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><div><h2>피드</h2><p>처음부터 조회한 뒤 다음 페이지 버튼으로 커서를 이어갑니다.</p></div></div>
+          <div class="fields"><label>페이지 크기 (1–100)<input id="feed-size" type="number" min="1" max="100" value="10"></label></div>
+          <div class="actions">
+            <button class="button primary" data-action="all-feed">전체 피드</button>
+            <button class="button" data-action="following-feed">팔로잉 피드</button>
+            <button class="button" data-action="next-feed" disabled>다음 페이지</button>
+          </div>
+          <div id="feed-status" class="status-box">아직 피드를 조회하지 않았습니다.</div>
+          <pre id="feed-result" class="request-result">응답이 여기에 표시됩니다.</pre>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><div><h2>댓글</h2><p>위 게시글 ID를 사용하며, 작성한 댓글 ID는 자동 입력됩니다.</p></div></div>
+          <div class="fields">
+            <label>댓글 ID<input id="social-comment-id" inputmode="numeric" placeholder="작성 시 자동 입력"></label>
+            <label class="wide">댓글 내용<textarea id="social-comment-content" maxlength="1000">API 테스트 댓글입니다.</textarea></label>
+          </div>
+          <div class="actions">
+            <button class="button" data-action="list-comments">목록</button>
+            <button class="button primary" data-action="create-comment">작성</button>
+            <button class="button" data-action="update-comment">수정</button>
+            <button class="button danger" data-action="delete-comment">삭제</button>
+          </div>
+          <pre id="comment-result" class="request-result">응답이 여기에 표시됩니다.</pre>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><div><h2>게시글 반응</h2><p>위 게시글 ID에 좋아요·북마크·재게시를 적용합니다.</p></div></div>
+          <div class="actions">
+            <button class="button primary" data-action="like-post">좋아요</button><button class="button" data-action="unlike-post">좋아요 취소</button>
+            <button class="button primary" data-action="bookmark-post">북마크</button><button class="button" data-action="unbookmark-post">북마크 취소</button>
+            <button class="button" data-action="list-bookmarks">내 북마크</button>
+            <button class="button primary" data-action="repost-post">재게시</button><button class="button" data-action="unrepost-post">재게시 취소</button>
+          </div>
+          <pre id="reaction-result" class="request-result">응답이 여기에 표시됩니다.</pre>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><div><h2>팔로우</h2><p>다른 회원 ID를 입력해 팔로우 관계를 테스트합니다.</p></div></div>
+          <div class="fields"><label>대상 회원 ID<input id="social-member-id" inputmode="numeric"></label></div>
+          <div class="actions">
+            <button class="button primary" data-action="follow-member">팔로우</button><button class="button" data-action="unfollow-member">팔로우 취소</button>
+            <button class="button" data-action="follow-stats">통계</button><button class="button" data-action="followers">팔로워</button><button class="button" data-action="following">팔로잉</button>
+          </div>
+          <pre id="follow-result" class="request-result">응답이 여기에 표시됩니다.</pre>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><div><h2>미디어</h2><p>업로드한 URL과 유형은 게시글 작성 칸에 자동 입력됩니다.</p></div></div>
+          <div class="fields"><label class="wide">이미지 또는 영상<input id="social-media-file" type="file" accept="image/*,video/*"></label><label class="wide">삭제할 파일 이름<input id="social-media-name" placeholder="업로드 시 자동 입력"></label></div>
+          <div class="actions"><button class="button primary" data-action="upload-media">업로드</button><button class="button danger" data-action="delete-media">미연결 파일 삭제</button></div>
+          <p class="notice">게시글에 연결한 파일은 이 버튼으로 삭제할 수 없습니다.</p>
+          <pre id="media-result" class="request-result">응답이 여기에 표시됩니다.</pre>
+        </article>
+      </section>
+
       <section class="card explorer" data-page-section="api">
         <div class="card-head">
           <div><h2>전체 API</h2><p>OpenAPI JSON에서 엔드포인트와 요청 필드를 자동 생성합니다.</p></div>
@@ -183,7 +264,7 @@
   </main>
 
   <script>
-    const state = { token: null, member: null, spec: null, operations: [], walletConnectSdk: null, walletConnectProvider: null, walletConnectProjectId: null, walletConnectConfig: null };
+    const state = { token: null, member: null, spec: null, operations: [], walletConnectSdk: null, walletConnectProvider: null, walletConnectProjectId: null, walletConnectConfig: null, feedMode: null, feedCursor: null };
     const methods = ["get", "post", "put", "patch", "delete"];
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -264,11 +345,11 @@
     }
 
     function navigate(path, push = true) {
-      const routes = { "/test": "hub", "/test/": "hub", "/test/auth": "auth", "/test/wallet": "wallet", "/test/api": "api" };
+      const routes = { "/test": "hub", "/test/": "hub", "/test/auth": "auth", "/test/wallet": "wallet", "/test/social": "social", "/test/api": "api" };
       const page = routes[path] || "hub";
       $$('[data-page-section]').forEach(section => section.classList.toggle("hidden", section.dataset.pageSection !== page));
-      $(".grid").classList.toggle("hidden", page !== "auth" && page !== "wallet");
-      $(".grid").classList.toggle("single", page === "auth" || page === "wallet");
+      $(".workspace > .grid").classList.toggle("hidden", page !== "auth" && page !== "wallet");
+      $(".workspace > .grid").classList.toggle("single", page === "auth" || page === "wallet");
       $$('[data-route]').forEach(link => link.classList.toggle("active", routes[link.dataset.route] === page));
       if (push && location.pathname !== path) history.pushState({}, "", path);
       document.title = `CrypTalk ${page === "hub" ? "API Test Console" : `${page.toUpperCase()} Test`}`;
@@ -386,6 +467,145 @@
       requireToken();
       const assets = await request("/api/v1/me/assets");
       $("#wallet-status").textContent = JSON.stringify(assets, null, 2);
+    }
+
+    function positiveId(selector, label) {
+      const value = $(selector).value.trim();
+      if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error(`${label}에 양의 정수를 입력하세요.`);
+      return value;
+    }
+
+    function socialPostId() { return positiveId("#social-post-id", "게시글 ID"); }
+    function socialCommentId() { return positiveId("#social-comment-id", "댓글 ID"); }
+    function socialMemberId() { return positiveId("#social-member-id", "회원 ID"); }
+
+    function postBody(create) {
+      const title = $("#social-title").value.trim();
+      const content = $("#social-content").value.trim();
+      if (!title || !content) throw new Error("제목과 내용을 입력하세요.");
+      const body = { title, content };
+      if (create) {
+        const coinSymbol = $("#social-symbol").value.trim().toUpperCase();
+        if (!coinSymbol) throw new Error("코인 심볼을 입력하세요.");
+        body.coinSymbol = coinSymbol;
+      }
+      const url = $("#social-media-url").value.trim();
+      if (url) body.media = [{ type: $("#social-media-type").value, url }];
+      return body;
+    }
+
+    function commentBody() {
+      const content = $("#social-comment-content").value.trim();
+      if (!content) throw new Error("댓글 내용을 입력하세요.");
+      return { content };
+    }
+
+    async function socialRequest(resultSelector, path, options = {}) {
+      const result = $(resultSelector);
+      result.textContent = "요청 중...";
+      try {
+        const data = await request(path, options);
+        result.textContent = data === "" ? "204 No Content" : typeof data === "string" ? data : JSON.stringify(data, null, 2);
+        return data;
+      } catch (error) {
+        result.textContent = `오류: ${error.message}`;
+        throw error;
+      }
+    }
+
+    async function socialJson(result, path, method, body) {
+      return socialRequest(result, path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    }
+
+    async function createPost() {
+      requireToken();
+      const post = await socialJson("#post-result", "/api/v1/posts", "POST", postBody(true));
+      $("#social-post-id").value = post.id;
+    }
+
+    async function updatePost() {
+      requireToken();
+      await socialJson("#post-result", `/api/v1/posts/${socialPostId()}`, "PUT", postBody(false));
+    }
+
+    async function deletePost() {
+      requireToken();
+      const id = socialPostId();
+      if (!confirm(`게시글 #${id}을 삭제할까요? 연결된 미디어도 삭제됩니다.`)) return;
+      await socialRequest("#post-result", `/api/v1/posts/${id}`, { method: "DELETE" });
+      $("#social-post-id").value = "";
+      $("#social-comment-id").value = "";
+    }
+
+    async function listPosts() {
+      const symbol = $("#social-symbol").value.trim().toUpperCase();
+      if (!symbol) throw new Error("코인 심볼을 입력하세요.");
+      await socialRequest("#post-result", `/api/v1/communities/${encodeURIComponent(symbol)}/posts?size=30`);
+    }
+
+    async function loadFeed(mode, next = false) {
+      if (mode === "following") requireToken();
+      const size = Number($("#feed-size").value);
+      if (!Number.isInteger(size) || size < 1 || size > 100) throw new Error("페이지 크기는 1부터 100까지 입력하세요.");
+      if (next && (!state.feedCursor || state.feedMode !== mode)) throw new Error("먼저 피드를 조회하세요.");
+      const query = new URLSearchParams({ size: String(size) });
+      if (next) query.set("cursor", state.feedCursor);
+      const data = await socialRequest("#feed-result", `/api/v1/feed${mode === "following" ? "/following" : ""}?${query}`);
+      state.feedMode = mode;
+      state.feedCursor = data.hasMore ? data.nextCursor : null;
+      $("[data-action='next-feed']").disabled = !state.feedCursor;
+      $("#feed-status").textContent = `${mode === "following" ? "팔로잉" : "전체"} 피드 · ${data.items?.length ?? 0}건 · ${state.feedCursor ? "다음 페이지 있음" : "마지막 페이지"}`;
+    }
+
+    async function createComment() {
+      requireToken();
+      const comment = await socialJson("#comment-result", `/api/v1/posts/${socialPostId()}/comments`, "POST", commentBody());
+      $("#social-comment-id").value = comment.id;
+    }
+
+    async function updateComment() {
+      requireToken();
+      await socialJson("#comment-result", `/api/v1/comments/${socialCommentId()}`, "PATCH", commentBody());
+    }
+
+    async function deleteComment() {
+      requireToken();
+      const id = socialCommentId();
+      if (!confirm(`댓글 #${id}을 삭제할까요?`)) return;
+      await socialRequest("#comment-result", `/api/v1/comments/${id}`, { method: "DELETE" });
+      $("#social-comment-id").value = "";
+    }
+
+    async function postReaction(suffix, method) {
+      requireToken();
+      await socialRequest("#reaction-result", `/api/v1/posts/${socialPostId()}/${suffix}`, { method });
+    }
+
+    async function memberSocial(suffix, method = "GET") {
+      if (method !== "GET") requireToken();
+      await socialRequest("#follow-result", `/api/v1/members/${socialMemberId()}/${suffix}`, { method });
+    }
+
+    async function uploadMedia() {
+      requireToken();
+      const file = $("#social-media-file").files[0];
+      if (!file) throw new Error("업로드할 파일을 선택하세요.");
+      const body = new FormData();
+      body.append("file", file);
+      const media = await socialRequest("#media-result", "/api/v1/media", { method: "POST", body });
+      $("#social-media-url").value = media.url;
+      $("#social-media-type").value = media.mediaType;
+      $("#social-media-name").value = media.url.split("/").pop();
+    }
+
+    async function deleteMedia() {
+      requireToken();
+      const name = $("#social-media-name").value.trim();
+      if (!/^[a-zA-Z0-9._-]+$/.test(name)) throw new Error("유효한 파일 이름을 입력하세요.");
+      if (!confirm(`미연결 파일 ${name}을 삭제할까요?`)) return;
+      await socialRequest("#media-result", `/api/v1/media/${encodeURIComponent(name)}`, { method: "DELETE" });
+      if ($("#social-media-url").value.endsWith(`/${name}`)) $("#social-media-url").value = "";
+      $("#social-media-name").value = "";
     }
 
     function resolveSchema(schema) {
@@ -576,7 +796,7 @@
       catch (error) {
         addLog("CLIENT", "테스트 페이지", 0, error.message);
         alert(error.message);
-      } finally { if (button) button.disabled = false; }
+      } finally { if (button) button.disabled = button.dataset.action === "next-feed" ? !state.feedCursor : false; }
     }
 
     document.addEventListener("click", event => {
@@ -597,6 +817,32 @@
         "connect-walletconnect": () => connectWallet("walletconnect"),
         "load-wallets": loadWallets,
         "load-assets": loadAssets,
+        "create-post": createPost,
+        "get-post": () => socialRequest("#post-result", `/api/v1/posts/${socialPostId()}`),
+        "update-post": updatePost,
+        "list-posts": listPosts,
+        "delete-post": deletePost,
+        "all-feed": () => loadFeed("all"),
+        "following-feed": () => loadFeed("following"),
+        "next-feed": () => loadFeed(state.feedMode, true),
+        "list-comments": () => socialRequest("#comment-result", `/api/v1/posts/${socialPostId()}/comments`),
+        "create-comment": createComment,
+        "update-comment": updateComment,
+        "delete-comment": deleteComment,
+        "like-post": () => postReaction("likes", "POST"),
+        "unlike-post": () => postReaction("likes", "DELETE"),
+        "bookmark-post": () => postReaction("bookmarks", "POST"),
+        "unbookmark-post": () => postReaction("bookmarks", "DELETE"),
+        "list-bookmarks": () => { requireToken(); return socialRequest("#reaction-result", "/api/v1/me/bookmarks"); },
+        "repost-post": () => postReaction("reposts", "POST"),
+        "unrepost-post": () => postReaction("reposts", "DELETE"),
+        "follow-member": () => memberSocial("follow", "POST"),
+        "unfollow-member": () => memberSocial("follow", "DELETE"),
+        "follow-stats": () => memberSocial("social"),
+        followers: () => memberSocial("followers"),
+        following: () => memberSocial("following"),
+        "upload-media": uploadMedia,
+        "delete-media": deleteMedia,
         "reload-spec": loadSpec,
         "clear-logs": () => $("#logs").replaceChildren(element("div", "status-box", "로그를 비웠습니다.")),
       };
