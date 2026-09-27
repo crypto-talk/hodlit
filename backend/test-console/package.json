@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "cryptalk-api-test-console-walletconnect",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "esbuild walletconnect-entry.js --bundle --minify --legal-comments=linked --format=iife --platform=browser --target=es2020 --outfile=../src/main/resources/test-pages/walletconnect.bundle.js"
+  },
+  "dependencies": {
+    "@walletconnect/ethereum-provider": "2.25.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

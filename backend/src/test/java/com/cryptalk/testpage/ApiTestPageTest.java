@@ -13,7 +13,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties = "cryptalk.test-pages.enabled=true")
+@SpringBootTest(properties = {
+    "cryptalk.test-pages.enabled=true",
+    "cryptalk.test-pages.walletconnect-project-id=0123456789abcdef0123456789abcdef"
+})
 @AutoConfigureMockMvc
 class ApiTestPageTest {
     @Autowired MockMvc mvc;
@@ -27,8 +30,25 @@ class ApiTestPageTest {
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("CrypTalk API Test Console")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("personal_sign")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("connect-walletconnect")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/v3/api-docs")));
         }
+    }
+
+    @Test
+    void servesWalletConnectBundleAndProjectConfiguration() throws Exception {
+        mvc.perform(get("/test/walletconnect.bundle.js"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith("text/javascript"))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("WalletConnectEthereumProvider")));
+
+        mvc.perform(get("/test/walletconnect.bundle.js.LEGAL.txt"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith("text/plain"));
+
+        mvc.perform(get("/test/config"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.walletConnectProjectId").value("0123456789abcdef0123456789abcdef"));
     }
 
     @Test
@@ -36,6 +56,7 @@ class ApiTestPageTest {
         mvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.paths['/test']").doesNotExist())
-            .andExpect(jsonPath("$.paths['/test/api']").doesNotExist());
+            .andExpect(jsonPath("$.paths['/test/api']").doesNotExist())
+            .andExpect(jsonPath("$.paths['/test/config']").doesNotExist());
     }
 }

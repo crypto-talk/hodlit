@@ -21,3 +21,7 @@ gradlew text eol=lf
 # 자동 생성 파일은 GitHub PR에서 접어 둔다. 로컬 diff는 그대로 볼 수 있다.
 pnpm-lock.yaml linguist-generated
 frontend/lib/api-schema.ts linguist-generated
+backend/test-console/package-lock.json linguist-generated
+# Generated SDK contains whitespace inside JavaScript template literals.
+backend/src/main/resources/test-pages/walletconnect.bundle.js linguist-generated -whitespace
+backend/src/main/resources/test-pages/walletconnect.bundle.js.LEGAL.txt linguist-generated -whitespace

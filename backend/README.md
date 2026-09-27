@@ -10,7 +10,7 @@ Java 24와 Spring Boot 3.5.16으로 구현한 CrypTalk API입니다.
 
 ## API 테스트 페이지
 
-현재 OpenAPI 문서에 등록된 모든 API와 MetaMask 지갑 연결 흐름을 브라우저에서 직접
+현재 OpenAPI 문서에 등록된 모든 API와 EVM 지갑 연결 흐름을 브라우저에서 직접
 시험하려면 테스트 페이지를 명시적으로 활성화합니다.
 
 ```bash
@@ -19,9 +19,16 @@ CRYPTALK_TEST_PAGES_ENABLED=true ./gradlew bootRun
 
 실행 후 http://localhost:8080/test 에 접속합니다. 허브에서 `/test/auth`, `/test/wallet`,
 `/test/api` 하위 페이지로 이동할 수 있습니다. 페이지는 백엔드와 같은 origin에서 동작하며
-회원가입·로그인, JSON 및 multipart 요청, MetaMask `personal_sign`, 연결 지갑과 자산 조회를
+회원가입·로그인, JSON 및 multipart 요청, 브라우저 지갑 또는 WalletConnect를 통한
+`personal_sign`, 연결 지갑과 자산 조회를
 지원합니다. 페이지 내 이동은 새로고침 없이 처리되어 access token을 브라우저 메모리에만
 보관합니다. 테스트 페이지는 기본적으로 비활성화되며 운영 환경에서는 활성화하지 마세요.
+
+WalletConnect QR 또는 모바일 지갑 앱을 사용하려면 [Reown Dashboard](https://dashboard.reown.com/)에서
+Project ID를 발급하고 `WALLETCONNECT_PROJECT_ID`에 설정하세요. 대시보드의 허용 Origin에는
+테스트 페이지의 Origin(예: `https://cryptalk-api.hojun.xyz`)을 경로 없이 등록합니다. 서버에
+ID를 설정하지 않았다면 테스트 페이지의 입력란에 일시적으로 입력할 수 있습니다. 기존 브라우저
+지갑 연결에는 Project ID가 필요하지 않습니다.
 
 기본 설정은 로컬 개발용입니다. 운영 환경에서는 `DB_*`, `JWT_SECRET`,
 `ETHEREUM_RPC_URL`, `CORS_ALLOWED_ORIGINS`를 반드시 설정하세요. 코인 가격은 기본적으로
