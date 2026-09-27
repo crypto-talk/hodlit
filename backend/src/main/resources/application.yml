@@ -33,6 +33,11 @@ cryptalk:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   asset:
     ethereum-rpc-url: ${ETHEREUM_RPC_URL:}
+  exchange:
+    encryption-key: ${EXCHANGE_CREDENTIAL_ENCRYPTION_KEY:}
+    upbit-base-url: https://api.upbit.com
+    bithumb-base-url: https://api.bithumb.com
+    coinone-base-url: https://api.coinone.co.kr
   auth:
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
   test-pages:

@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/007-expand-coin-catalog.sql
   - include:
       file: db/changelog/008-evm-holder-foundation.sql
+  - include:
+      file: db/changelog/009-exchange-connections.sql
