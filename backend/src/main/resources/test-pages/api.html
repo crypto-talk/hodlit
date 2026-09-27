@@ -107,6 +107,7 @@
         <a href="/test/auth" data-route="/test/auth">인증</a>
         <a href="/test/wallet" data-route="/test/wallet">지갑</a>
         <a href="/test/social" data-route="/test/social">소셜</a>
+        <a href="/test/exchanges" data-route="/test/exchanges">거래소 자산</a>
         <a href="/test/api" data-route="/test/api">전체 API</a>
       </nav>
       <span id="session-pill" class="pill">로그인 안 됨</span>
@@ -123,6 +124,7 @@
           <a class="hub-link" href="/test/auth" data-route="/test/auth"><strong>인증 테스트</strong><span>회원가입, 로그인, refresh, 로그아웃</span></a>
           <a class="hub-link" href="/test/wallet" data-route="/test/wallet"><strong>EVM 지갑 테스트</strong><span>브라우저 지갑 또는 WalletConnect QR·모바일 앱으로 서명 및 연결</span></a>
           <a class="hub-link" href="/test/social" data-route="/test/social"><strong>소셜 기능 테스트</strong><span>게시글, 피드, 댓글, 반응, 팔로우, 미디어</span></a>
+          <a class="hub-link" href="/test/exchanges" data-route="/test/exchanges"><strong>거래소 자산 테스트</strong><span>업비트·빗썸·코인원 키 연결과 잔고 조회</span></a>
           <a class="hub-link" href="/test/api" data-route="/test/api"><strong>전체 API Explorer</strong><span>OpenAPI 기반 전체 엔드포인트 직접 실행</span></a>
         </div>
       </section>
@@ -241,6 +243,23 @@
         </article>
       </section>
 
+      <section class="card explorer" data-page-section="exchanges">
+        <div class="card-head"><div><h2>거래소 자산</h2><p>업비트·빗썸·코인원 API 키를 연결하고 현재 잔고를 조회합니다.</p></div></div>
+        <p class="notice">반드시 자산조회/잔고조회 전용 키를 발급하고 서버의 공개 IP를 허용하세요. 이 화면은 추가 주문·출금 권한 유무를 검증하지 못합니다. 키는 성공적으로 잔고를 조회한 후 암호화 저장되며 응답에는 표시되지 않습니다.</p>
+        <div class="fields">
+          <label>거래소<select id="exchange-name"><option value="upbit">업비트</option><option value="bithumb">빗썸</option><option value="coinone">코인원</option></select></label>
+          <label>Access Key / Access Token<input id="exchange-access-key" autocomplete="off" spellcheck="false"></label>
+          <label class="wide">Secret Key<input id="exchange-secret-key" type="password" autocomplete="off" spellcheck="false"></label>
+        </div>
+        <div class="actions">
+          <button class="button primary" data-action="connect-exchange">키 연결</button>
+          <button class="button" data-action="list-exchanges">연결 목록</button>
+          <button class="button" data-action="exchange-assets">잔고 조회</button>
+          <button class="button danger" data-action="disconnect-exchange">연결 해제</button>
+        </div>
+        <pre id="exchange-result" class="request-result">응답이 여기에 표시됩니다.</pre>
+      </section>
+
       <section class="card explorer" data-page-section="api">
         <div class="card-head">
           <div><h2>전체 API</h2><p>OpenAPI JSON에서 엔드포인트와 요청 필드를 자동 생성합니다.</p></div>
@@ -345,7 +364,7 @@
     }
 
     function navigate(path, push = true) {
-      const routes = { "/test": "hub", "/test/": "hub", "/test/auth": "auth", "/test/wallet": "wallet", "/test/social": "social", "/test/api": "api" };
+      const routes = { "/test": "hub", "/test/": "hub", "/test/auth": "auth", "/test/wallet": "wallet", "/test/social": "social", "/test/exchanges": "exchanges", "/test/api": "api" };
       const page = routes[path] || "hub";
       $$('[data-page-section]').forEach(section => section.classList.toggle("hidden", section.dataset.pageSection !== page));
       $(".workspace > .grid").classList.toggle("hidden", page !== "auth" && page !== "wallet");
@@ -608,6 +627,28 @@
       $("#social-media-name").value = "";
     }
 
+    function selectedExchange() { return $("#exchange-name").value; }
+
+    async function connectExchange() {
+      requireToken();
+      const accessKey = $("#exchange-access-key").value.trim();
+      const secretKey = $("#exchange-secret-key").value.trim();
+      if (!accessKey || !secretKey) throw new Error("Access Key와 Secret Key를 입력하세요.");
+      try {
+        await socialJson("#exchange-result", `/api/v1/me/exchanges/${selectedExchange()}`, "POST", { accessKey, secretKey });
+      } finally {
+        $("#exchange-access-key").value = "";
+        $("#exchange-secret-key").value = "";
+      }
+    }
+
+    async function disconnectExchange() {
+      requireToken();
+      const exchange = selectedExchange();
+      if (!confirm(`${exchange.toUpperCase()} API 키 연결을 해제할까요?`)) return;
+      await socialRequest("#exchange-result", `/api/v1/me/exchanges/${exchange}`, { method: "DELETE" });
+    }
+
     function resolveSchema(schema) {
       if (!schema?.$ref) return schema || {};
       const parts = schema.$ref.replace(/^#\//, "").split("/");
@@ -843,6 +884,10 @@
         following: () => memberSocial("following"),
         "upload-media": uploadMedia,
         "delete-media": deleteMedia,
+        "connect-exchange": connectExchange,
+        "list-exchanges": () => { requireToken(); return socialRequest("#exchange-result", "/api/v1/me/exchanges"); },
+        "exchange-assets": () => { requireToken(); return socialRequest("#exchange-result", `/api/v1/me/exchanges/${selectedExchange()}/assets`); },
+        "disconnect-exchange": disconnectExchange,
         "reload-spec": loadSpec,
         "clear-logs": () => $("#logs").replaceChildren(element("div", "status-box", "로그를 비웠습니다.")),
       };
