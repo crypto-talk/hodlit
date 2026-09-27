@@ -31,6 +31,7 @@ class ApiTestPageTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("CrypTalk API Test Console")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("personal_sign")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("connect-walletconnect")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("walletconnect-project-id"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/v3/api-docs")));
         }
     }

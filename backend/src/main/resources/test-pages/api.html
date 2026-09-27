@@ -148,11 +148,6 @@
           <div class="card-head">
             <div><h2>EVM 지갑</h2><p>브라우저 확장이나 WalletConnect 호환 모바일 앱에서 personal_sign으로 소유권을 증명합니다.</p></div>
           </div>
-          <div class="fields">
-            <label class="wide">WalletConnect Project ID
-              <input id="walletconnect-project-id" autocomplete="off" spellcheck="false" maxlength="32" placeholder="서버에 설정된 ID가 없으면 여기에 입력하세요">
-            </label>
-          </div>
           <div class="actions">
             <button class="button wallet" data-action="connect-injected-wallet">브라우저 지갑 연결</button>
             <button class="button wallet" data-action="connect-walletconnect">WalletConnect QR·모바일 앱 연결</button>
@@ -188,7 +183,7 @@
   </main>
 
   <script>
-    const state = { token: null, member: null, spec: null, operations: [], walletConnectSdk: null, walletConnectProvider: null, walletConnectProjectId: null };
+    const state = { token: null, member: null, spec: null, operations: [], walletConnectSdk: null, walletConnectProvider: null, walletConnectProjectId: null, walletConnectConfig: null };
     const methods = ["get", "post", "put", "patch", "delete"];
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -320,9 +315,9 @@
     }
 
     async function walletConnectProvider() {
-      const projectId = $("#walletconnect-project-id").value.trim();
+      const projectId = await state.walletConnectConfig;
       if (!/^[a-f0-9]{32}$/i.test(projectId)) {
-        throw new Error("Reown Project ID 32자리 값을 입력해 주세요.");
+        throw new Error("WalletConnect를 사용할 수 없습니다. 관리자에게 문의해 주세요.");
       }
       if (!state.walletConnectProvider || state.walletConnectProjectId !== projectId) {
         const EthereumProvider = await loadWalletConnectSdk();
@@ -611,10 +606,13 @@
     window.addEventListener("popstate", () => navigate(location.pathname, false));
     navigate(location.pathname, false);
     run(null, loadSpec);
-    fetch("/test/config")
+    state.walletConnectConfig = fetch("/test/config")
       .then(response => response.ok ? response.json() : Promise.reject(new Error("테스트 설정을 불러오지 못했습니다.")))
-      .then(config => { $("#walletconnect-project-id").value = config.walletConnectProjectId || ""; })
-      .catch(error => addLog("CLIENT", "/test/config", 0, error.message));
+      .then(config => config.walletConnectProjectId || "")
+      .catch(error => {
+        addLog("CLIENT", "/test/config", 0, error.message);
+        return "";
+      });
   </script>
 </body>
 </html>
