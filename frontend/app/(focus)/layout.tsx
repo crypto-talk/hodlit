@@ -10,7 +10,7 @@ import Header from "@/components/layout/header";
  */
 export default function FocusLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="hd">
+    <div className="hd min-h-screen">
       <Header />
       <main className="hd-auth">{children}</main>
     </div>

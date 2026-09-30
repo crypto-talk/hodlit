@@ -1,6 +1,6 @@
 /**
- * 호들잇 마크 — 눈 두 개와 입. 5초에 한 번 깜빡입니다.
- * 크기만 다르고 모양은 같아서 한 컴포넌트로 씁니다.
+ * 호들잇 마크 — 눈 두 개와 입. 5초에 한 번 깜빡인다.
+ * 크기만 다르고 모양은 같아서 한 컴포넌트로 쓴다.
  */
 type Props = {
   size: number;
@@ -17,21 +17,22 @@ export default function Logo({ size, background, foreground }: Props) {
 
   return (
     <div
-      className="hd-logo"
-      style={{
-        width: size,
-        height: size,
-        background,
-        gap: Math.round(size * 0.1),
-      }}
+      className="flex flex-none flex-col items-center justify-center rounded-sm"
+      style={{ width: size, height: size, background, gap: Math.round(size * 0.1) }}
       aria-hidden="true"
     >
-      <div className="hd-logo-eyes" style={{ gap }}>
-        <div className="hd-logo-eye" style={{ width: eye, height: eye, background: foreground }} />
-        <div className="hd-logo-eye" style={{ width: eye, height: eye, background: foreground }} />
+      <div className="flex" style={{ gap }}>
+        <div
+          className="animate-blink rounded-full motion-reduce:animate-none"
+          style={{ width: eye, height: eye, background: foreground }}
+        />
+        <div
+          className="animate-blink rounded-full motion-reduce:animate-none"
+          style={{ width: eye, height: eye, background: foreground }}
+        />
       </div>
       <div
-        className="hd-logo-mouth"
+        className="rounded-b-full"
         style={{ width: mouthWidth, height: mouthHeight, background: foreground }}
       />
     </div>

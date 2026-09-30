@@ -46,7 +46,7 @@ export default function TrendingRooms({ rooms }: Props) {
           i
         </span>
         <div style={{ flex: 1 }} />
-        <a href="#" className="text-sm font-semibold hd-only-mobile">
+        <a href="#" className="hidden text-sm font-semibold text-brand max-shell:block">
           전체 방
         </a>
       </div>

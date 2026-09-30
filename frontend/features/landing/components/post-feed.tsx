@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import type { FeedPost } from "../types";
 import TierBadge from "./tier-badge";
 
@@ -85,9 +86,9 @@ export default function PostFeed({ posts }: Props) {
         {visible.length === 0 ? <div className="hd-empty">아직 인증된 글이 없습니다.</div> : null}
       </div>
 
-      <button type="button" className="hd-btn hd-btn-block" style={{ marginTop: 16, padding: 16 }}>
+      <Button type="button" className="mt-4 w-full p-4">
         더 보기
-      </button>
+      </Button>
     </section>
   );
 }
