@@ -202,6 +202,9 @@ becomes the spec.
 - Preserve unrelated user changes. Never stash, reset, or delete them to make a task easier.
 - Never commit `.env*` files, tokens, or API credentials.
 - Use Conventional Commit subjects: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`.
+- Write the Korean subject as a **noun phrase**, not a sentence: `refactor: 타이포 스케일 토큰화`,
+  not `refactor: 타이포 스케일을 토큰으로 올린다`. The body is ordinary prose and ends in `~다`.
+  The subject names what changed; the body says why.
 - **Do not add AI attribution to commits or pull requests.** No `Co-Authored-By:` for an
   assistant, no session links, no "generated with" footers. The commit author is the person
   who ran the task. This applies to every agent working in this repository.

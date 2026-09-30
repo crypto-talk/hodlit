@@ -15,7 +15,7 @@ export default function HotPosts({ posts }: Props) {
   return (
     <section>
       <div className="hd-section-head">
-        <h2 className="hd-t-h2">오늘의 핫글</h2>
+        <h2 className="text-h2 font-semibold">오늘의 핫글</h2>
         <span
           className="hd-info"
           title="임시로 댓글 수 기준입니다. 집계 기준은 백엔드와 합의 전입니다"
@@ -49,17 +49,17 @@ export default function HotPosts({ posts }: Props) {
         {visible.map((post) => (
           <a key={post.rank} href="#" className="hd-hot-row">
             <span
-              className="hd-t-sm hd-strong hd-muted hd-num"
+              className="text-sm font-semibold text-text-muted tabular-nums"
               style={{ width: 24, textAlign: "center", flex: "0 0 auto" }}
             >
               {post.rank}
             </span>
             <span className="hd-chip">{post.symbol}</span>
             <TierBadge tier={post.tier} />
-            <span className="hd-t-body hd-ellipsis" style={{ flex: "1 1 240px", minWidth: 0 }}>
+            <span className="text-body truncate" style={{ flex: "1 1 240px", minWidth: 0 }}>
               {post.title}
             </span>
-            <span className="hd-t-xs hd-muted hd-num">{post.meta}</span>
+            <span className="text-xs text-text-muted tabular-nums">{post.meta}</span>
           </a>
         ))}
         {visible.length === 0 ? <div className="hd-empty">아직 인증 핫글이 없습니다.</div> : null}

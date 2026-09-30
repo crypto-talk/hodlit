@@ -1,6 +1,12 @@
 /*
  * 디자인 토큰 단일 원본 (D-1).
  *
+ * 값의 출처는 Claude Design 캔버스 아트보드(Hodlit 랜딩)다.
+ *
+ * ⚠️ 이 파일은 화면이 없던 1단계에 만들어져서 랜딩 목업과 값이 어긋나 있었다.
+ * `--brand` 가 파랑(#3563e9)인데 배지 토큰만 아트보드 보라(#6e56f0)라, 한 파일
+ * 안에서도 갈라져 있었다. 아트보드 쪽으로 맞췄다. 색을 바꾸려면 여기만 고친다.
+ *
  * 규칙
  *   - 값은 여기에만 둔다. 컴포넌트는 Tailwind 클래스로만 쓴다.
  *   - 이름은 의미 기반이다. `--purple` 이 아니라 `--text-primary`.
@@ -12,30 +18,37 @@
 
 :root {
   /* 면 */
-  --canvas: #f6f7f9;
+  --canvas: #f6f6f8;
   --surface: #ffffff;
-  --surface-muted: #f5f6f8;
+  --surface-muted: #f6f6f8;
+  /* 아트보드에 없다. 반투명 헤더가 필요해지면 쓴다. */
   --surface-raised: rgba(255, 255, 255, 0.96);
 
   /* 글자 */
-  --text-primary: #131921;
-  --text-muted: #718096;
+  --text-primary: #1a1a1f;
+  --text-muted: #6b6b75;
+  /* 아트보드는 회색이 두 단계뿐이다. 이건 404 화면에서만 쓰는 보조값이다. */
   --text-subtle: #9099a7;
   --text-inverse: #ffffff;
 
   /* 선 */
-  --border-subtle: #e8ebf0;
+  --border-subtle: #e6e6eb;
+  /* 아트보드에 없다. hover 테두리는 --text-muted 를 쓴다. */
   --border-strong: #dfe3e8;
 
   /* 브랜드 강조. shadcn 의 --accent(은은한 hover 배경)와 구분해 brand 로 둔다. */
-  --brand: #3563e9;
-  --brand-hover: #254ec5;
-  --brand-soft: #eef3ff;
+  --brand: #6e56f0;
+  --brand-hover: #5c46d8;
+  /* 연보라. 배지와 2위 카드가 쓴다. */
+  --brand-soft: #ccccff;
+  /* rgb() 의 알파 표기에 넣으려고 채널만 따로 둔다. FAB 그림자가 쓴다. */
+  --brand-channels: 110 86 240;
 
-  /* 상태 */
-  --success: #1a9b69;
+  /* 상태. 시세 등락에 쓴다. */
+  --success: #15803d;
+  /* 아트보드에 없다. */
   --success-soft: #effbf6;
-  --danger: #ff5c65;
+  --danger: #dc2626;
 
   /*
    * 방 강조색. `GET /api/v1/coins` 의 accentColor 가 런타임 값이라
@@ -44,18 +57,42 @@
    */
   --room-accent: var(--brand);
 
-  /* 배지. 쓰는 곳은 features/badge/ 뿐이다 (구조 규칙 3). */
-  --badge-wallet-bg: #6e56f0;
-  --badge-wallet-text: #ffffff;
-  --badge-exchange-bg: #ccccff;
-  --badge-exchange-text: #1a1a1f;
-  --badge-none-text: #6b6b75;
-  --badge-none-border: #e6e6eb;
+  /*
+   * 배지. 값을 다시 적지 않고 위 토큰을 가리킨다. 배지 색만 따로 가야 할 일이
+   * 생기면 그때 값을 넣는다.
+   */
+  --badge-wallet-bg: var(--brand);
+  --badge-wallet-text: var(--text-inverse);
+  --badge-exchange-bg: var(--brand-soft);
+  --badge-exchange-text: var(--text-primary);
+  --badge-none-text: var(--text-muted);
+  --badge-none-border: var(--border-subtle);
 
-  /* 반경. Tailwind 의 --radius-* 키와 이름이 겹치지 않도록 --corner-* 로 둔다. */
+  /*
+   * 타이포 스케일. 아트보드가 쓰는 여섯 단계가 전부다.
+   * 굵기는 스케일에 묶지 않는다 — 같은 크기로 400 과 600 을 둘 다 쓴다.
+   * `app/globals.css` 가 이걸 Tailwind 의 `text-h2` `text-body` 로 노출한다.
+   */
+  --type-display: 3rem; /* 48px */
+  --type-display-leading: 1.3;
+  --type-h1: 1.5rem; /* 24px */
+  --type-h1-leading: 1.3;
+  --type-h2: 1.25rem; /* 20px */
+  --type-h2-leading: 1.3;
+  --type-body: 0.9375rem; /* 15px */
+  --type-body-leading: 1.55;
+  --type-sm: 0.8125rem; /* 13px */
+  --type-sm-leading: 1.5;
+  --type-xs: 0.75rem; /* 12px */
+  --type-xs-leading: 1.4;
+
+  /*
+   * 반경. Tailwind 의 --radius-* 키와 이름이 겹치지 않도록 --corner-* 로 둔다.
+   * 아트보드는 6px 과 12px 두 단계만 쓴다. md 는 그 사이를 메우는 값이다.
+   */
   --corner-sm: 0.375rem;
   --corner-md: 0.625rem;
-  --corner-lg: 0.875rem;
+  --corner-lg: 0.75rem;
 
   /*
    * shadcn/ui 프리미티브가 참조하는 이름. 값은 위 토큰을 가리키기만 한다.

@@ -15,9 +15,9 @@ export default function Marquee({ items }: Props) {
     <div className="hd-marquee-group" aria-hidden={hidden || undefined}>
       {items.map((item, index) => (
         <div key={index}>
-          {item.lead ? <span className="hd-strong">{item.lead}</span> : null}
+          {item.lead ? <span className="font-semibold">{item.lead}</span> : null}
           {item.text}
-          {item.value ? <span className="hd-strong hd-num">{item.value}</span> : null}
+          {item.value ? <span className="font-semibold tabular-nums">{item.value}</span> : null}
         </div>
       ))}
     </div>

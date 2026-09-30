@@ -63,8 +63,8 @@ export default function AuthForm({ mode, next }: Props) {
 
   return (
     <section className="hd-auth-card">
-      <h1 className="hd-t-h2">{mode === "signup" ? "시작하기" : "로그인"}</h1>
-      <p className="hd-t-sm hd-muted" style={{ marginTop: 8 }}>
+      <h1 className="text-h2 font-semibold">{mode === "signup" ? "시작하기" : "로그인"}</h1>
+      <p className="text-sm text-text-muted" style={{ marginTop: 8 }}>
         연결 안 해도 읽고 쓸 수 있습니다. 지갑은 나중에 붙여도 됩니다.
       </p>
 
@@ -120,10 +120,10 @@ export default function AuthForm({ mode, next }: Props) {
       ) : null}
 
       <div className="hd-auth-foot">
-        <Link href={otherHref} className="hd-t-sm hd-strong">
+        <Link href={otherHref} className="text-sm font-semibold">
           {mode === "login" ? "계정 만들기" : "이미 계정이 있어요"}
         </Link>
-        <Link href={next} className="hd-t-sm hd-muted">
+        <Link href={next} className="text-sm text-text-muted">
           돌아가기
         </Link>
       </div>

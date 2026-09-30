@@ -20,7 +20,7 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
   return (
     <div className="hd-sidebar">
       <div className="hd-label">내 코인</div>
-      <div className="hd-card hd-t-sm hd-muted" style={{ marginTop: 8 }}>
+      <div className="hd-card text-sm text-text-muted" style={{ marginTop: 8 }}>
         {connected
           ? "보유 중인 코인의 방이 여기 고정됩니다"
           : "지갑을 연결하면 보유 중인 코인의 방이 여기 고정됩니다"}
@@ -30,7 +30,7 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
         <div className="hd-label" style={{ flex: 1 }}>
           전체 방
         </div>
-        <div className="hd-t-xs hd-muted">24h</div>
+        <div className="text-xs text-text-muted">24h</div>
       </div>
 
       <div style={{ marginTop: 8, display: "flex", flexDirection: "column" }}>
@@ -40,14 +40,14 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
             href="#"
             className={`hd-room${room.current ? " hd-room-current" : ""}`}
           >
-            <span className="hd-t-sm hd-strong" style={{ flex: "0 0 auto" }}>
+            <span className="text-sm font-semibold" style={{ flex: "0 0 auto" }}>
               {room.symbol}
             </span>
-            <span className="hd-t-sm hd-muted hd-ellipsis" style={{ flex: 1, minWidth: 0 }}>
+            <span className="text-sm text-text-muted truncate" style={{ flex: 1, minWidth: 0 }}>
               {room.name}
             </span>
             <span
-              className="hd-t-sm hd-num"
+              className="text-sm tabular-nums"
               style={{ flex: "0 0 auto", color: changeColor(room.change) }}
             >
               {room.change}
@@ -58,9 +58,9 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
 
       <div className="hd-card" style={{ marginTop: 32, textAlign: "center" }}>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <Logo size={56} background="#CCCCFF" foreground="#1A1A1F" />
+          <Logo size={56} background="var(--brand-soft)" foreground="var(--text-primary)" />
         </div>
-        <div className="hd-t-h2" style={{ marginTop: 16 }}>
+        <div className="text-h2 font-semibold" style={{ marginTop: 16 }}>
           {connected ? "연결된 지갑" : "지갑을 연결하면"}
         </div>
 
@@ -70,13 +70,13 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
               <div key={wallet.id} className="hd-cta-item" style={{ alignItems: "baseline" }}>
                 {/* 주소는 앞뒤만 나온다. 축약은 features/wallet 에서 한다. */}
                 <span
-                  className="hd-t-sm hd-num hd-ellipsis"
+                  className="text-sm tabular-nums truncate"
                   style={{ flex: 1, minWidth: 0 }}
                   title="연결된 지갑 주소"
                 >
                   {wallet.shortAddress}
                 </span>
-                <span className="hd-t-xs hd-muted" style={{ flex: "0 0 auto" }}>
+                <span className="text-xs text-text-muted" style={{ flex: "0 0 auto" }}>
                   {wallet.connectedOn}
                 </span>
               </div>
@@ -91,7 +91,7 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
             ].map((line) => (
               <div key={line} className="hd-cta-item">
                 <span className="hd-dot" />
-                <span className="hd-t-sm hd-muted">{line}</span>
+                <span className="text-sm text-text-muted">{line}</span>
               </div>
             ))}
           </div>
@@ -105,7 +105,7 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
         >
           {connected ? "지갑 추가" : "지갑 연결"}
         </button>
-        <div className="hd-t-xs hd-muted" style={{ marginTop: 8 }}>
+        <div className="text-xs text-text-muted" style={{ marginTop: 8 }}>
           {connected
             ? "지갑에서 다른 계정을 고르면 추가됩니다"
             : "연결 안 해도 읽고 쓸 수 있습니다"}

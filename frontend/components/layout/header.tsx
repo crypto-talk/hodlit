@@ -27,19 +27,19 @@ export default function Header() {
   return (
     <header className="hd-header">
       <Link href="/" className="hd-brand" aria-label="Hodlit 홈">
-        <Logo size={32} background="#6E56F0" foreground="#FFFFFF" />
+        <Logo size={32} background="var(--brand)" foreground="var(--text-inverse)" />
         <span className="hd-brand-name">Hodlit</span>
       </Link>
 
       <button type="button" className="hd-search" disabled title="검색은 준비 중입니다">
         <span className="hd-search-icon" />
-        <span className="hd-ellipsis">코인 · 지갑 · 글 검색</span>
+        <span className="truncate">코인 · 지갑 · 글 검색</span>
       </button>
 
       <div className="hd-header-actions">
         {member ? (
           <>
-            <span className="hd-nick hd-ellipsis">{member.nickname}</span>
+            <span className="hd-nick truncate">{member.nickname}</span>
             <button
               type="button"
               className="hd-btn hd-btn-primary hd-only-desktop"

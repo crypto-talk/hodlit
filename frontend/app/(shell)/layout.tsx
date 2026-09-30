@@ -92,7 +92,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
         <div className="hd-main">
           {notice ? (
-            <p role="alert" className="hd-t-sm" style={{ color: "var(--hd-down)" }}>
+            <p role="alert" className="text-sm" style={{ color: "var(--hd-down)" }}>
               {notice}
             </p>
           ) : null}
