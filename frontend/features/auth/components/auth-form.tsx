@@ -63,17 +63,17 @@ export default function AuthForm({ mode, next }: Props) {
       : `/login?next=${encodeURIComponent(next)}`;
 
   return (
-    <section className="hd-auth-card">
+    <section className="w-full max-w-90 rounded-lg bg-surface p-6">
       <h1 className="text-h2 font-semibold">{mode === "signup" ? "시작하기" : "로그인"}</h1>
-      <p className="text-sm text-text-muted" style={{ marginTop: 8 }}>
+      <p className="mt-2 text-sm text-text-muted">
         연결 안 해도 읽고 쓸 수 있습니다. 지갑은 나중에 붙여도 됩니다.
       </p>
 
-      <form className="hd-form" onSubmit={submit}>
+      <form className="mt-4 flex flex-col gap-2" onSubmit={submit}>
         {mode === "signup" ? (
           <input
             ref={firstFieldRef}
-            className="hd-field"
+            className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
             name="nickname"
             aria-label="닉네임"
             placeholder="닉네임"
@@ -85,7 +85,7 @@ export default function AuthForm({ mode, next }: Props) {
         {/* 백엔드 계약이 email → loginId 로 바뀌었다. type 도 text 다. */}
         <input
           ref={mode === "login" ? firstFieldRef : undefined}
-          className="hd-field"
+          className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
           name="loginId"
           type="text"
           aria-label="아이디"
@@ -94,7 +94,7 @@ export default function AuthForm({ mode, next }: Props) {
           required
         />
         <input
-          className="hd-field"
+          className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
           name="password"
           type="password"
           aria-label="비밀번호"
@@ -110,12 +110,12 @@ export default function AuthForm({ mode, next }: Props) {
       </form>
 
       {error ? (
-        <p role="alert" className="hd-error">
+        <p role="alert" className="mt-2 text-sm text-danger">
           {error}
         </p>
       ) : null}
 
-      <div className="hd-auth-foot">
+      <div className="mt-4 flex justify-between gap-4">
         <Link href={otherHref} className="text-sm font-semibold text-brand">
           {mode === "login" ? "계정 만들기" : "이미 계정이 있어요"}
         </Link>

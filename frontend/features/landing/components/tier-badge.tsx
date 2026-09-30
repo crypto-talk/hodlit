@@ -38,7 +38,7 @@ export default function TierBadge({ tier }: { tier: Tier }) {
   const style = BADGE[tier];
   return (
     <span
-      className="hd-badge"
+      className="flex-none rounded-sm border border-transparent px-2 py-0.5 text-xs font-semibold"
       style={{ background: style.bg, color: style.color, borderColor: style.border }}
     >
       {style.label}

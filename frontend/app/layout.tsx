@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 import { pretendard } from "./fonts";
 import { Providers } from "./providers";
 import "./globals.css";
-import "@/styles/hd.css";
 
 export const viewport: Viewport = {
   width: "device-width",

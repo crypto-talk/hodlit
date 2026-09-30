@@ -56,7 +56,13 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --font-sans: var(--font-pretendard), system-ui, sans-serif;
+  /*
+   * Pretendard 는 셀프호스팅이라 보통 바로 뜬다. 뒤의 목록은 폰트를 못 읽었을
+   * 때의 대체다 — 삭제된 .hd 규칙이 들고 있던 것을 그대로 옮겼다.
+   */
+  --font-sans:
+    var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 
   /*
    * 타이포. `text-sm` 과 `text-xs` 는 Tailwind 기본값을 덮는다. 한 화면에 스케일이
