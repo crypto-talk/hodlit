@@ -25,7 +25,7 @@ API Key, Secret Key, Authorization 헤더, 잔고, 거래소 응답 본문 전�
 | `GET` | `/{exchange}/assets` | 실시간 잔고 조회 |
 | `DELETE` | `/{exchange}` | 키 연결 해제 |
 
-`exchange`는 `upbit`, `bithumb`, `coinone` 중 하나입니다(대소문자 무관). 잔고 응답은 `{exchange, balances, fetchedAt}`이며 각 잔고는 `{currency, available, locked, total}`입니다. `total = available + locked`이고 금액 평가나 원화 환산은 하지 않습니다. 조회 실패 시 기존에 저장된 키를 노출하지 않고 오류만 반환합니다. 연결·목록·잔고 응답은 `Cache-Control: no-store`를 사용합니다.
+`exchange`는 `upbit`, `bithumb`, `coinone` 중 하나입니다(대소문자 무관). 잔고 응답은 `{exchange, balances, fetchedAt}`이며 각 잔고는 `{currency, available, locked, total}`입니다. `currency`는 1~20자의 영숫자 통화 코드이며 대문자로 정규화합니다. `P`처럼 한 글자인 코드도 허용합니다. `total = available + locked`이고 금액 평가나 원화 환산은 하지 않습니다. 조회 실패 시 기존에 저장된 키를 노출하지 않고 오류만 반환합니다. 연결·목록·잔고 응답은 `Cache-Control: no-store`를 사용합니다.
 
 거래소별 조회는 업비트 `GET /v1/accounts`, 빗썸 `GET /v1/accounts`, 코인원 `POST /v2.1/account/balance/all`을 사용합니다. 코인원의 조회 엔드포인트는 HTTP 메서드가 `POST`이지만 주문을 생성하지 않습니다.
 
