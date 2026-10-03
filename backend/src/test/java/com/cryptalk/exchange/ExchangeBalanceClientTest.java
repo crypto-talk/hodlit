@@ -2,6 +2,10 @@ package com.cryptalk.exchange;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.cryptalk.common.ApiException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,12 +19,21 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.http.HttpStatus;
 
+@ExtendWith(OutputCaptureExtension.class)
 class ExchangeBalanceClientTest {
     private HttpServer server;
     private ExchangeBalanceClient client;
     private final ObjectMapper json = new ObjectMapper();
     private final AtomicReference<String> authorization = new AtomicReference<>();
+    private int accountStatus = 200;
+    private String accountResponse = "[{\"currency\":\"BTC\",\"balance\":\"1.25\",\"locked\":\"0.75\"}]";
     private final AtomicReference<String> coinonePayload = new AtomicReference<>();
     private final AtomicReference<String> coinoneSignature = new AtomicReference<>();
     private final AtomicReference<String> coinoneBody = new AtomicReference<>();
@@ -30,9 +43,9 @@ class ExchangeBalanceClientTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/v1/accounts", exchange -> {
             authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
-            byte[] response = "[{\"currency\":\"BTC\",\"balance\":\"1.25\",\"locked\":\"0.75\"}]".getBytes(StandardCharsets.UTF_8);
+            byte[] response = accountResponse.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, response.length);
+            exchange.sendResponseHeaders(accountStatus, response.length);
             try (var output = exchange.getResponseBody()) { output.write(response); }
         });
         server.createContext("/v2.1/account/balance/all", exchange -> {
@@ -69,6 +82,52 @@ class ExchangeBalanceClientTest {
         assertTrue(payload.hasNonNull("nonce"));
         assertEquals(coinonePayload.get(), coinoneBody.get());
         assertEquals(java.util.HexFormat.of().formatHex(sign("HmacSHA512", coinonePayload.get())), coinoneSignature.get());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {400, 401, 403, 429, 500})
+    void logsOnlySafeBithumbFailureDetails(int status, CapturedOutput output) {
+        accountStatus = status;
+        accountResponse = "{\"error\":{\"name\":\"ip_address_not_allowed\",\"message\":\"private-access private-secret private-balance\"}}";
+
+        ApiException failure = assertThrows(ApiException.class,
+            () -> client.balances(Exchange.BITHUMB, "private-access", "private-secret"));
+
+        assertEquals(status == 401 || status == 403 ? HttpStatus.BAD_REQUEST : HttpStatus.BAD_GATEWAY,
+            failure.status());
+        assertTrue(output.getAll().contains("exchange=BITHUMB, status=" + status + ", errorCode=ip_address_not_allowed"));
+        assertFalse(output.getAll().contains("private-access"));
+        assertFalse(output.getAll().contains("private-secret"));
+        assertFalse(output.getAll().contains("private-balance"));
+        assertFalse(output.getAll().contains(authorization.get()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "{\"error\":{\"name\":\"private-secret\\nforged-log\",\"message\":\"private-balance\"}}",
+        "<html>private-secret private-balance</html>",
+        "null",
+        "{}"
+    })
+    void doesNotLogUnknownCodesOrMalformedBodies(String body, CapturedOutput output) {
+        accountStatus = 502;
+        accountResponse = body;
+        assertThrows(ApiException.class,
+            () -> client.balances(Exchange.BITHUMB, "private-access", "private-secret"));
+        assertTrue(output.getAll().contains("exchange=BITHUMB, status=502, errorCode=unknown"));
+        assertFalse(output.getAll().contains("private-secret"));
+        assertFalse(output.getAll().contains("private-balance"));
+        assertFalse(output.getAll().contains("forged-log"));
+    }
+
+    @Test
+    void logsTransportFailureWithoutExceptionDetails(CapturedOutput output) {
+        server.stop(0);
+        assertThrows(ApiException.class,
+            () -> client.balances(Exchange.BITHUMB, "private-access", "private-secret"));
+        assertTrue(output.getAll().contains("exchange=BITHUMB, status=unavailable, errorCode=transport_error"));
+        assertFalse(output.getAll().contains("private-access"));
+        assertFalse(output.getAll().contains("private-secret"));
     }
 
     private void assertJwt(String algorithm, boolean timestamp) throws Exception {

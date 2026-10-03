@@ -10,6 +10,12 @@ API Key는 입력 시 잔고 조회를 먼저 호출해 동작을 확인한 뒤 
 
 **권한 검증 한계:** 잔고 조회 성공은 해당 권한이 있음을 보여줄 뿐, 주문·출금 등 다른 권한이 없음을 증명하지 않습니다. 반드시 자산조회/잔고조회 권한만 부여한 별도 키를 발급하세요. 이 API는 주문·출금 API를 호출하지 않습니다.
 
+## 장애 진단
+
+거래소 HTTP 오류는 WARN 로그에 거래소 이름(`exchange`), 거래소 HTTP 상태(`status`), 허용 목록에 포함된 오류 코드(`errorCode`)만 기록합니다. 예: `exchange=BITHUMB, status=403, errorCode=ip_address_not_allowed`. 알 수 없는 코드나 JSON이 아닌 응답은 `errorCode=unknown`으로 표시하며, 네트워크/전송 오류는 `status=unavailable, errorCode=transport_error`로 표시합니다. 코인원의 HTTP 200 실패 응답은 `exchange=COINONE, status=200, errorCode=unknown`으로 표시합니다.
+
+API Key, Secret Key, Authorization 헤더, 잔고, 거래소 응답 본문 전체 및 예외 메시지는 기록하지 않습니다. API 오류 응답과 상태 코드는 변경하지 않습니다. 로그가 없다는 사실만으로 요청 미도달을 판단하지 마세요. 성공 및 모든 응답 형식 오류를 로깅하는 것은 아닙니다.
+
 ## 엔드포인트
 
 | 메서드 | 경로 | 동작 |
