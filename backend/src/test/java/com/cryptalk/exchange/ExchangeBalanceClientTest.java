@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -34,6 +35,7 @@ class ExchangeBalanceClientTest {
     private final AtomicReference<String> authorization = new AtomicReference<>();
     private int accountStatus = 200;
     private String accountResponse = "[{\"currency\":\"BTC\",\"balance\":\"1.25\",\"locked\":\"0.75\"}]";
+    private String coinoneResponse = "{\"result\":\"success\",\"error_code\":\"0\",\"balances\":[{\"currency\":\"eth\",\"available\":\"2\",\"limit\":\"0.5\"}]}";
     private final AtomicReference<String> coinonePayload = new AtomicReference<>();
     private final AtomicReference<String> coinoneSignature = new AtomicReference<>();
     private final AtomicReference<String> coinoneBody = new AtomicReference<>();
@@ -52,7 +54,7 @@ class ExchangeBalanceClientTest {
             coinonePayload.set(exchange.getRequestHeaders().getFirst("X-COINONE-PAYLOAD"));
             coinoneSignature.set(exchange.getRequestHeaders().getFirst("X-COINONE-SIGNATURE"));
             coinoneBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            byte[] response = "{\"result\":\"success\",\"error_code\":\"0\",\"balances\":[{\"currency\":\"eth\",\"available\":\"2\",\"limit\":\"0.5\"}]}".getBytes(StandardCharsets.UTF_8);
+            byte[] response = coinoneResponse.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, response.length);
             try (var output = exchange.getResponseBody()) { output.write(response); }
@@ -82,6 +84,45 @@ class ExchangeBalanceClientTest {
         assertTrue(payload.hasNonNull("nonce"));
         assertEquals(coinonePayload.get(), coinoneBody.get());
         assertEquals(java.util.HexFormat.of().formatHex(sign("HmacSHA512", coinonePayload.get())), coinoneSignature.get());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"P", "p", "1", "ABCDEFGHIJKLMNOPQRST"})
+    void acceptsValidCurrencyCodesAcrossExchanges(String currency) throws Exception {
+        setCurrencyResponses(json.writeValueAsString(currency));
+
+        for (Exchange exchange : Exchange.values()) {
+            var balances = client.balances(exchange, "access", "secret");
+            assertEquals(2, balances.size());
+            var balance = balances.get(0);
+            assertEquals(currency.toUpperCase(java.util.Locale.ROOT), balance.currency());
+            assertEquals("1.25", balance.available().toPlainString());
+            assertEquals("0.75", balance.locked().toPlainString());
+            assertEquals("2.00", balance.total().toPlainString());
+            assertEquals("BTC", balances.get(1).currency());
+        }
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"\"\"", "null", "\"A-B\"", "\"P P\"", "\"한\"", "\"ABCDEFGHIJKLMNOPQRSTU\""})
+    void stillRejectsInvalidCurrencyCodesAcrossExchanges(String currencyJson) {
+        setCurrencyResponses(currencyJson);
+
+        for (Exchange exchange : Exchange.values()) {
+            ApiException failure = assertThrows(ApiException.class,
+                () -> client.balances(exchange, "access", "secret"));
+            assertEquals(HttpStatus.BAD_GATEWAY, failure.status());
+        }
+    }
+
+    private void setCurrencyResponses(String currencyJson) {
+        String field = currencyJson == null ? "" : "\"currency\":" + currencyJson + ",";
+        accountResponse = "[{" + field + "\"balance\":\"1.25\",\"locked\":\"0.75\"},"
+            + "{\"currency\":\"BTC\",\"balance\":\"0\",\"locked\":\"0\"}]";
+        coinoneResponse = "{\"result\":\"success\",\"error_code\":\"0\",\"balances\":[{"
+            + field + "\"available\":\"1.25\",\"limit\":\"0.75\"},"
+            + "{\"currency\":\"btc\",\"available\":\"0\",\"limit\":\"0\"}]}";
     }
 
     @ParameterizedTest

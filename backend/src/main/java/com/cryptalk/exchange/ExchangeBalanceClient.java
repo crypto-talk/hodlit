@@ -146,7 +146,7 @@ public class ExchangeBalanceClient {
         List<Balance> balances = new ArrayList<>();
         for (JsonNode item : accounts) {
             String currency = item.path("currency").asText("");
-            if (!currency.matches("[A-Za-z0-9]{2,20}"))
+            if (!currency.matches("[A-Za-z0-9]{1,20}"))
                 throw new ApiException(HttpStatus.BAD_GATEWAY, "거래소 잔고 응답 형식이 올바르지 않습니다.");
             BigDecimal available = decimal(item.path("balance"));
             BigDecimal locked = decimal(item.path("locked"));
@@ -160,7 +160,7 @@ public class ExchangeBalanceClient {
         List<Balance> balances = new ArrayList<>();
         for (JsonNode item : values) {
             String currency = item.path("currency").asText("");
-            if (!currency.matches("[A-Za-z0-9]{2,20}"))
+            if (!currency.matches("[A-Za-z0-9]{1,20}"))
                 throw new ApiException(HttpStatus.BAD_GATEWAY, "코인원 잔고 응답 형식이 올바르지 않습니다.");
             BigDecimal available = decimal(item.path("available"));
             BigDecimal locked = decimal(item.path("limit"));
