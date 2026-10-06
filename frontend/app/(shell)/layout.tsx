@@ -92,10 +92,19 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
        */}
       <Marquee items={marqueeItems()} />
 
-      <div className="flex items-start gap-8 px-6 pt-8 pb-12">
+      {/*
+       * 세 칸: 사이드바(240) · 본문(최대 720) · 오른쪽 빈 칸(240).
+       *
+       * 본문이 화면 끝까지 늘어나면 한 줄이 너무 길어 읽기 힘들다. 본문 폭을 막고
+       * 오른쪽은 비워 둔다 — 나중에 광고·보조 정보가 들어갈 자리다. 화면이 좁아지면
+       * 오른쪽 칸이 먼저 줄어 0 이 되고, 그다음 본문이 줄어든다. 오른쪽 칸의
+       * flex-shrink 를 1000 으로 둔 것이 그 순서를 만든다(줄어드는 양이 shrink × basis 비율).
+       * 900px 미만에서는 사이드바와 함께 숨는다.
+       */}
+      <div className="mx-auto flex max-w-[1320px] items-start gap-8 px-6 pt-8 pb-12">
         <Sidebar rooms={sidebarRooms} wallets={visibleWallets} onConnectWallet={onConnectWallet} />
 
-        <div className="flex min-w-0 flex-1 flex-col gap-12">
+        <div className="flex min-w-0 flex-[0_1_720px] flex-col gap-12 max-shell:flex-1">
           {notice ? (
             <p role="alert" className="text-sm text-danger">
               {notice}
@@ -104,6 +113,9 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
           {children}
         </div>
+
+        {/* 오른쪽 빈 칸. 광고 자리. 지금은 아무것도 그리지 않는다. */}
+        <aside aria-hidden className="min-w-0 flex-[0_1000_240px] max-shell:hidden" />
       </div>
 
       <Footer />
