@@ -68,8 +68,10 @@ lib/query.ts  lib/format/  lib/utils.ts (cn)  lib/config.ts (env, single read po
 lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3). Was
                         `features/badge` — pure functions every feature needs, so it moved
                         down to lib/ when the post detail screen became its second user
-lib/routes.ts           screen URLs (post detail)
+lib/routes.ts           screen URLs (room, post, write) + `safeSymbol()` + `roomSymbolOf()`
+lib/post-summary.ts     PostResponse -> list card view model, shared by landing and room board
 components/holder/      tier-badge.tsx — the shape of the 인증 badge; wording from lib
+components/post/        post-card.tsx — the list card used by the landing feed and the room board
 styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
 styles/fonts/           Pretendard subset woff2, 400/600/700/800/900
 components.json         shadcn/ui config; `shadcn add` writes into components/ui/
@@ -218,6 +220,18 @@ had no posts, so every list screen could only be checked empty; writing first fi
    Not built yet: comments, like/bookmark/repost, edit/delete.
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
+3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header
+   (`GET /communities/{symbol}`), price box (`GET /market/prices/{symbol}?currency=KRW`, polled
+   every minute with a countdown), news and vote boxes marked "준비 중", and the 전체/인증 tabs
+   as `?tab=verified`. The post list is the latest `ROOM_POST_LIMIT` (50) posts only — the room
+   endpoint has no cursor, so there is no "더 보기"; the 인증 tab filters inside those 50.
+   No price chart: there is no price-history API. `postCount` from the backend stops at 100
+   (it counts the latest 100), so the header says "100개 이상" at that value.
+   The landing's post card and its mapper moved down to `components/post/post-card.tsx` and
+   `lib/post-summary.ts` because the room board draws the same card.
+   The sidebar room names, the post detail room chip, and the header/FAB 글쓰기 now point at the
+   room; inside a room 글쓰기 goes to `/write?symbol=<room>`. `safeSymbol()` moved from
+   `features/post/limits.ts` to `lib/routes.ts`.
 
 Mock data is fine for layout, but keep G-5's rule: where the backend has no number, show
 "준비 중" or a fixed label rather than a plausible fake. A screen full of invented numbers
@@ -244,6 +258,11 @@ becomes the spec.
 - **Do not add AI attribution to commits or pull requests.** No `Co-Authored-By:` for an
   assistant, no session links, no "generated with" footers. The commit author is the person
   who ran the task. This applies to every agent working in this repository.
+- **The committer must be the person too, not the agent.** Both author and committer are
+  `gjtjdwl <panggoon6@gmail.com>`. `git am`, `rebase` and `cherry-pick` rewrite the committer
+  to the local git identity, and a cloud session's default identity is `Claude`, which GitHub
+  then shows as "gjtjdwl and claude committed". Set `user.name` / `user.email` (or pass
+  `-c user.name=... -c user.email=...`) before any of those.
 
 ## Never minify or collapse source
 

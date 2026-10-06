@@ -9,6 +9,7 @@
  */
 
 import type { Tier } from "@/lib/holder-snapshot/types";
+import type { PostSummary } from "@/lib/post-summary";
 
 export type MarqueeItem = {
   lead?: string;
@@ -45,23 +46,7 @@ export type HotPost = {
   meta: string;
 };
 
-export type FeedPost = {
-  id: number;
-  /** 글 상세 주소. */
-  href: string;
-  /** 보유 인증을 지원하는 코인의 글인지. false 면 인증 배지를 그리지 않는다. */
-  verifiable: boolean;
-  symbol: string;
-  tier: Tier;
-  /** 수량 구간. **서버가 완성해서 주는 문자열**이다. 프론트가 계산하지 않는다. */
-  range: string;
-  time: string;
-  title: string;
-  preview: string;
-  nick: string;
-  /** 보유 기간 문구. lib/holder-snapshot/label.ts 가 만든다. 인덱서 전까지 항상 `보유 기간 미확인`. */
-  hold: string;
-  comments: number;
-  /** ⚠️ 조회수 API 가 없다. null 이면 화면에서 자리를 뺀다. */
-  views: number | null;
-};
+/**
+ * 전체 글 한 줄. 방 게시판과 같은 카드라 모양은 `lib/post-summary.ts` 에 있다.
+ */
+export type FeedPost = PostSummary;

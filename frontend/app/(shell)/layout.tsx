@@ -1,15 +1,18 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Fab from "@/components/layout/fab";
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
+import WalletCard from "@/components/layout/wallet-card";
 import type { SidebarRoom } from "@/components/layout/types";
 import { marqueeItems } from "@/features/landing/api";
 import Marquee from "@/features/landing/components/marquee";
 import { loadRooms } from "@/features/room/api";
 import { loadWallets, type ConnectedWallet } from "@/features/wallet/api";
+import { roomSymbolOf, writeHref } from "@/lib/routes";
 import { useRequireLogin, useSession } from "@/lib/session";
 
 /**
@@ -27,6 +30,8 @@ import { useRequireLogin, useSession } from "@/lib/session";
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   const { member, connectWallet } = useSession();
   const requireLogin = useRequireLogin();
+  // 방 게시판·글 상세 안이면 그 방. 사이드바 표시와 FAB 글쓰기가 쓴다.
+  const currentRoom = roomSymbolOf(usePathname());
 
   const [rooms, setRooms] = useState<SidebarRoom[]>([]);
   const [wallets, setWallets] = useState<ConnectedWallet[]>([]);
@@ -64,6 +69,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   }, [member]);
 
   const visibleWallets = member ? wallets : [];
+  const sidebarRooms = rooms.map((room) => ({ ...room, current: room.symbol === currentRoom }));
 
   const onConnectWallet = useCallback(async () => {
     // 로그인 전이면 /login 으로 보낸다. 거기서 돌아오면 다시 누르면 된다.
@@ -87,10 +93,19 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
        */}
       <Marquee items={marqueeItems()} />
 
-      <div className="flex items-start gap-8 px-6 pt-8 pb-12">
-        <Sidebar rooms={rooms} wallets={visibleWallets} onConnectWallet={onConnectWallet} />
+      {/*
+       * 세 칸: 사이드바(240) · 본문(최대 720) · 오른쪽 칸(240). 1320px 이상에서 본문이
+       * 화면 정가운데에 온다(양옆 칸 폭이 같다).
+       *
+       * 본문이 화면 끝까지 늘어나면 한 줄이 너무 길어 읽기 힘들어 폭을 막았다.
+       * 오른쪽 칸에는 임시로 지갑 카드를 둔다. 나중에 광고·보조 정보가 들어갈 자리다.
+       * 1320px 미만에서는 오른쪽 칸이 숨고 지갑 카드는 사이드바로 돌아간다.
+       * 900px 미만에서는 사이드바도 숨는다.
+       */}
+      <div className="mx-auto flex max-w-[1320px] items-start gap-8 px-6 pt-8 pb-12">
+        <Sidebar rooms={sidebarRooms} wallets={visibleWallets} onConnectWallet={onConnectWallet} />
 
-        <div className="flex min-w-0 flex-1 flex-col gap-12">
+        <div className="flex min-w-0 flex-[0_1_720px] flex-col gap-12 max-shell:flex-1">
           {notice ? (
             <p role="alert" className="text-sm text-danger">
               {notice}
@@ -99,10 +114,14 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
           {children}
         </div>
+
+        <aside aria-label="내 지갑" className="hidden w-60 flex-none wide:block">
+          <WalletCard wallets={visibleWallets} onConnectWallet={onConnectWallet} />
+        </aside>
       </div>
 
       <Footer />
-      <Fab />
+      <Fab href={writeHref(currentRoom)} />
     </div>
   );
 }

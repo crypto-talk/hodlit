@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { roomHref } from "@/lib/routes";
 import type { TrendingRoom } from "../types";
 
 /**
@@ -63,7 +65,7 @@ export default function TrendingRooms({ rooms }: Props) {
               className="animate-fade-in rounded-lg border border-border-subtle p-4 motion-reduce:animate-none"
               style={{ background: style.bg, animationDelay: `${index * 0.12}s` }}
             >
-              <a href="#" className="block" style={{ color: style.ink }}>
+              <Link href={roomHref(room.symbol)} className="block" style={{ color: style.ink }}>
                 <div
                   className="text-display font-semibold tabular-nums"
                   style={{ color: style.rankColor }}
@@ -90,10 +92,15 @@ export default function TrendingRooms({ rooms }: Props) {
                 <div className="mt-2 text-sm tabular-nums" style={{ color: style.subInk }}>
                   {meta(room)}
                 </div>
-              </a>
-              <a href="#" className="mt-4 block text-sm" style={{ color: style.subInk }}>
+              </Link>
+              {/* 최근 글 제목은 목값이라 갈 글이 없다. 방으로 보낸다. */}
+              <Link
+                href={roomHref(room.symbol)}
+                className="mt-4 block text-sm"
+                style={{ color: style.subInk }}
+              >
                 {room.latest}
-              </a>
+              </Link>
             </div>
           );
         })}
@@ -102,7 +109,7 @@ export default function TrendingRooms({ rooms }: Props) {
       <div className="mt-6 flex flex-col">
         {rest.map((room) => (
           <div key={room.symbol} className="border-t border-border-subtle py-4">
-            <a href="#" className="flex items-baseline gap-4 text-inherit">
+            <Link href={roomHref(room.symbol)} className="flex items-baseline gap-4 text-inherit">
               <span className="w-6 flex-none text-sm text-text-muted tabular-nums">
                 {room.rank}
               </span>
@@ -114,10 +121,10 @@ export default function TrendingRooms({ rooms }: Props) {
               ) : null}
               <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{room.name}</span>
               <span className="flex-none text-sm text-text-muted tabular-nums">{meta(room)}</span>
-            </a>
-            <a href="#" className="mt-2 ml-10 block text-sm text-text-muted">
+            </Link>
+            <Link href={roomHref(room.symbol)} className="mt-2 ml-10 block text-sm text-text-muted">
               {room.latest}
-            </a>
+            </Link>
           </div>
         ))}
       </div>

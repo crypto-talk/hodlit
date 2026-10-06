@@ -1,17 +1,8 @@
 import type { components } from "@/lib/api-schema";
-import { markdownToPlainText } from "@/lib/format/plain-text";
-import { formatRelativeTime } from "@/lib/format/time";
 import { http } from "@/lib/http";
-import { postHref } from "@/lib/routes";
+import { type IdentifiedPost, toPostSummary } from "@/lib/post-summary";
 import { MARQUEE, TRENDING, VOTES } from "./mock";
 import type { FeedPost, HotPost, MarqueeItem, TrendingRoom, VoteRow } from "./types";
-
-import {
-  UNSUPPORTED_LABEL,
-  holdingPeriodLabel,
-  isVerifiable,
-  tierOf,
-} from "@/lib/holder-snapshot/label";
 
 /**
  * 랜딩이 가져오는 데이터 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -25,21 +16,16 @@ import {
  */
 
 type Schemas = components["schemas"];
-type PostResponse = Schemas["PostResponse"];
 type FeedItemResponse = Schemas["FeedItemResponse"];
 type FeedPageResponse = Schemas["FeedPageResponse"];
 
-/** id 가 확인된 글. 목록 key 로 쓰므로 여기서 보장한다. */
-type IdentifiedPost = PostResponse & { id: number };
-
 const FEED_SIZE = 20;
 const HOT_LIMIT = 5;
-const PREVIEW_LENGTH = 120;
 
 /** 전체 글과 핫글. 둘 다 같은 피드 한 번으로 만든다. */
 export async function loadFeed(): Promise<{ posts: FeedPost[]; hot: HotPost[] }> {
   const page = await http<FeedPageResponse>(`/api/v1/feed?size=${FEED_SIZE}`);
-  const posts = uniquePosts(page.items ?? []).map(toFeedPost);
+  const posts = uniquePosts(page.items ?? []).map(toPostSummary);
   return { posts, hot: toHotPosts(posts) };
 }
 
@@ -82,30 +68,6 @@ function uniquePosts(items: FeedItemResponse[]): IdentifiedPost[] {
   return posts;
 }
 
-function toFeedPost(post: IdentifiedPost): FeedPost {
-  const snapshot = post.holderSnapshot;
-  const verifiable = isVerifiable(snapshot?.verificationAvailability);
-
-  return {
-    id: post.id,
-    href: postHref(post.coinSymbol ?? "", post.id),
-    verifiable,
-    symbol: post.coinSymbol ?? "",
-    tier: tierOf(snapshot?.verificationLevel, post.verifiedHolder),
-    // 서버가 완성해서 주는 문자열이다. 여기서 수량으로 다시 계산하지 않는다.
-    range: snapshot?.quantityBand ?? "",
-    time: formatRelativeTime(post.createdAt),
-    title: post.title ?? "(제목 없음)",
-    preview: toPreview(post.content),
-    nick: post.author?.nickname ?? "알 수 없음",
-    // 인증을 지원하지 않는 코인이면 "보유 기간 미확인" 대신 그 사실을 말한다.
-    hold: verifiable ? holdingPeriodLabel(snapshot?.holdingMonths) : UNSUPPORTED_LABEL,
-    comments: post.comments ?? 0,
-    // 조회수 API 가 없다. 숫자를 지어내지 않고 화면에서 자리를 뺀다(G-5).
-    views: null,
-  };
-}
-
 /**
  * 핫글.
  *
@@ -126,14 +88,4 @@ function toHotPosts(posts: FeedPost[]): HotPost[] {
       title: post.title,
       meta: `댓글 ${post.comments}`,
     }));
-}
-
-/**
- * 본문 미리보기. 본문 포맷(E-2)이 정해지기 전이라 지금은 평문으로 다룬다.
- * 리치텍스트 JSON 으로 바뀌면 여기부터 고친다.
- */
-/** 본문은 Markdown 이다. 기호를 걷어낸 평문을 자른다. */
-function toPreview(content: string | undefined): string {
-  const text = markdownToPlainText(content ?? "");
-  return text.length > PREVIEW_LENGTH ? `${text.slice(0, PREVIEW_LENGTH)}…` : text;
 }

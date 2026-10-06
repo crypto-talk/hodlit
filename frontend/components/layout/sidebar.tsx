@@ -1,5 +1,6 @@
-import { Button } from "@/components/ui/button";
-import Logo from "./logo";
+import Link from "next/link";
+import { roomHref } from "@/lib/routes";
+import WalletCard from "./wallet-card";
 import type { SidebarRoom, SidebarWallet } from "./types";
 
 type Props = {
@@ -38,9 +39,10 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
 
       <div className="mt-2 flex flex-col">
         {rooms.map((room) => (
-          <a
+          <Link
             key={room.symbol}
-            href="#"
+            href={roomHref(room.symbol)}
+            aria-current={room.current ? "page" : undefined}
             className={`flex items-baseline gap-2 border-l-2 p-2 hover:bg-surface ${
               room.current ? "border-l-brand" : "border-l-transparent"
             }`}
@@ -53,62 +55,16 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
             >
               {room.change}
             </span>
-          </a>
+          </Link>
         ))}
       </div>
 
-      <div className={`${CARD} mt-8 text-center`}>
-        <div className="flex justify-center">
-          <Logo size={56} background="var(--brand-soft)" foreground="var(--text-primary)" />
-        </div>
-        <div className="mt-4 text-h2 font-semibold">
-          {connected ? "연결된 지갑" : "지갑을 연결하면"}
-        </div>
-
-        {connected ? (
-          <div className="mt-2 flex flex-col gap-2 text-left">
-            {wallets.map((wallet) => (
-              <div key={wallet.id} className="flex items-baseline gap-2">
-                {/* 주소는 앞뒤만 나온다. 축약은 features/wallet 에서 한다. */}
-                <span
-                  className="min-w-0 flex-1 truncate text-sm tabular-nums"
-                  title="연결된 지갑 주소"
-                >
-                  {wallet.shortAddress}
-                </span>
-                <span className="flex-none text-xs text-text-muted">{wallet.connectedOn}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-2 flex flex-col gap-2 text-left">
-            {[
-              "글에 보유 배지가 붙습니다",
-              "보유 기간이 기록으로 쌓입니다",
-              "내 코인 방이 고정됩니다",
-            ].map((line) => (
-              <div key={line} className="flex items-start gap-2">
-                <span className="mt-2 size-1.5 flex-none rounded-full bg-brand" />
-                <span className="text-sm text-text-muted">{line}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <Button
-          type="button"
-          variant={connected ? "secondary" : "primary"}
-          className="mt-4 w-full"
-          onClick={onConnectWallet}
-        >
-          {connected ? "지갑 추가" : "지갑 연결"}
-        </Button>
-        <div className="mt-2 text-xs text-text-muted">
-          {connected
-            ? "지갑에서 다른 계정을 고르면 추가됩니다"
-            : "연결 안 해도 읽고 쓸 수 있습니다"}
-        </div>
-      </div>
+      {/* 넓은 화면(≥1320px)에서는 오른쪽 칸으로 옮겨 가고 여기서는 숨는다. */}
+      <WalletCard
+        wallets={wallets}
+        onConnectWallet={onConnectWallet}
+        className="mt-8 wide:hidden"
+      />
 
       <div className="mt-6 flex flex-col gap-2">
         <a href="#" className="text-xs text-text-muted">

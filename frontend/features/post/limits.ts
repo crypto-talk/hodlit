@@ -40,15 +40,6 @@ export function youtubeVideoId(url: string): string | null {
   return YOUTUBE_PATTERN.exec(url.trim())?.[1] ?? null;
 }
 
-/** 방 심볼로 받아들일 모양. `?symbol=` 을 그대로 믿지 않으려고 둔다. */
-const SYMBOL_PATTERN = /^[A-Z0-9]{1,10}$/;
-
-export function safeSymbol(value: string | undefined): string | null {
-  if (!value) return null;
-  const upper = value.toUpperCase();
-  return SYMBOL_PATTERN.test(upper) ? upper : null;
-}
-
 /**
  * 발행 전에 화면에서 거르는 것.
  *

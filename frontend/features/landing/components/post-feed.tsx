@@ -1,20 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import PostCard from "@/components/post/post-card";
 import { Button } from "@/components/ui/button";
 import type { FeedPost } from "../types";
-import TierBadge from "@/components/holder/tier-badge";
 
 type Props = {
   posts: FeedPost[];
 };
-
-// 조회수 API가 없습니다. 값이 없으면 숫자를 지어내지 않고 자리를 뺍니다(G-5).
-const stats = (post: FeedPost) =>
-  post.views === null
-    ? `댓글 ${post.comments}`
-    : `댓글 ${post.comments} · 조회 ${post.views.toLocaleString("en-US")}`;
 
 export default function PostFeed({ posts }: Props) {
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -55,43 +48,7 @@ export default function PostFeed({ posts }: Props) {
 
       <div className="mt-4 flex flex-col gap-2">
         {visible.map((post) => (
-          <article key={post.id} className="rounded-lg border border-border-subtle bg-surface p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="flex-none rounded-sm border border-border-subtle bg-canvas px-2 py-0.5 text-xs font-semibold text-text-muted">
-                {post.symbol}
-              </span>
-              {post.verifiable ? <TierBadge tier={post.tier} /> : null}
-              {post.range ? (
-                <span className="flex-none rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
-                  {post.range}
-                </span>
-              ) : null}
-              <span className="flex-1" />
-              <span className="text-xs text-text-muted">{post.time}</span>
-            </div>
-
-            <Link
-              href={post.href}
-              className="mt-4 block text-h2 font-semibold text-text-primary hover:text-brand"
-            >
-              {post.title}
-            </Link>
-            <p className="mt-2 text-body text-text-muted">{post.preview}</p>
-
-            <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border-subtle pt-4">
-              <a href="#" className="text-sm font-semibold">
-                {post.nick}
-              </a>
-              {/* 인덱서가 붙기 전까지 서버 holdingMonths가 null이라 항상 '보유 기간 미확인'입니다. */}
-              <span
-                className={`text-sm ${post.tier === "wallet" ? "text-text-primary" : "text-text-muted"}`}
-              >
-                {post.hold || "보유 기록 없음"}
-              </span>
-              <span className="flex-1" />
-              <span className="text-xs text-text-muted tabular-nums">{stats(post)}</span>
-            </div>
-          </article>
+          <PostCard key={post.id} post={post} />
         ))}
         {visible.length === 0 ? (
           <div className="px-4 py-12 text-center text-text-muted">아직 인증된 글이 없습니다.</div>

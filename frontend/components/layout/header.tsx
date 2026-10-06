@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { roomSymbolOf, writeHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import Logo from "./logo";
 
@@ -24,6 +25,8 @@ export default function Header() {
   // 자기 자신으로 돌아오지 않도록 홈을 넣는다.
   const next = pathname === "/login" || pathname === "/signup" ? "/" : pathname;
   const loginHref = `/login?next=${encodeURIComponent(next)}`;
+  // 방 게시판·글 상세에서 누르면 그 방이 미리 골라진다.
+  const write = writeHref(roomSymbolOf(pathname));
 
   return (
     <header className="flex items-center gap-4 border-b border-border-subtle bg-surface px-6 py-4">
@@ -52,7 +55,7 @@ export default function Header() {
             <span className="max-w-35 truncate text-sm font-semibold text-text-primary">
               {member.nickname}
             </span>
-            <WriteButton />
+            <WriteButton href={write} />
             <Button type="button" onClick={logout}>
               로그아웃
             </Button>
@@ -62,7 +65,7 @@ export default function Header() {
             <Button asChild>
               <Link href={loginHref}>로그인</Link>
             </Button>
-            <WriteButton />
+            <WriteButton href={write} />
             <Button asChild>
               <Link href="/signup">시작하기</Link>
             </Button>
@@ -79,10 +82,10 @@ export default function Header() {
  * 로그인 전이어도 링크는 그대로 둔다. `/write` 가 로그인 화면으로 보내고,
  * 로그인 뒤에는 `?next=` 로 글쓰기에 돌아온다.
  */
-function WriteButton() {
+function WriteButton({ href }: { href: string }) {
   return (
     <Button asChild variant="primary" className="max-shell:hidden">
-      <Link href="/write">글쓰기</Link>
+      <Link href={href}>글쓰기</Link>
     </Button>
   );
 }
