@@ -258,6 +258,11 @@ becomes the spec.
 - **Do not add AI attribution to commits or pull requests.** No `Co-Authored-By:` for an
   assistant, no session links, no "generated with" footers. The commit author is the person
   who ran the task. This applies to every agent working in this repository.
+- **The committer must be the person too, not the agent.** Both author and committer are
+  `gjtjdwl <panggoon6@gmail.com>`. `git am`, `rebase` and `cherry-pick` rewrite the committer
+  to the local git identity, and a cloud session's default identity is `Claude`, which GitHub
+  then shows as "gjtjdwl and claude committed". Set `user.name` / `user.email` (or pass
+  `-c user.name=... -c user.email=...`) before any of those.
 
 ## Never minify or collapse source
 
