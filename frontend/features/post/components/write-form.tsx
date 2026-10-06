@@ -200,6 +200,12 @@ function publishErrorMessage(error: Error): string {
   if (error instanceof ApiError) {
     if (error.status === 401) return "로그인이 만료됐습니다. 다시 로그인해 주세요.";
     if (error.status === 404) return "이 방을 찾을 수 없습니다. 다른 방을 골라 주세요.";
+    // 보유 인증 방에서 지갑 잔액 조회가 실패하면 서버가 503 을 준다(HODL-42).
+    // 서버 문구("EVM 지갑 잔액을 모두 확인하지 못했습니다")는 사용자가 뭘 해야 할지
+    // 알려주지 않는다. 쓴 글은 화면에 그대로 남아 있으니 다시 시도하면 된다.
+    if (error.status === 503) {
+      return "지갑 보유량을 확인하지 못해 발행하지 못했습니다. 쓴 글은 그대로 있으니 잠시 후 다시 발행해 주세요.";
+    }
     return error.message;
   }
   return "발행하지 못했습니다. 네트워크 상태를 확인해 주세요.";
