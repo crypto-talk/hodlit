@@ -196,6 +196,10 @@ Content-Type: application/json
 ```
 
 `holderSnapshot`은 발행할 때 한 번 생성하며 이후 수정하거나 지갑을 해제해도 바뀌지 않습니다.
+글·댓글 작성 시 잔액을 다시 조회하지 않고 DB에 저장된 해당 코인의 자산 스냅샷을 사용합니다.
+잔액 인증은 작성자 표시용이며 작성 권한의 조건이 아닙니다. 저장된 스냅샷이 없으면 미인증으로
+작성할 수 있고, RPC가 미설정이거나 장애가 발생해도 글·댓글 작성은 막히지 않습니다.
+이전에 저장된 인증 스냅샷이 있으면 마지막으로 확인한 정보를 사용합니다.
 Ethereum mainnet ETH는 `SUPPORTED`, 설정이 덜 된 ERC-20은 `NOT_CONFIGURED`, BTC·SOL 같은
 비EVM 자산은 `NOT_SUPPORTED`입니다. 비EVM 자산은 단순 미인증과 구분하기 위해
 `verificationLevel=null`을 반환합니다.
@@ -255,6 +259,8 @@ DELETE도 이미 취소된 상태에서 안전하게 반복할 수 있습니다.
 
 `GET /me/assets`는 연결된 모든 EVM 지갑의 Ethereum mainnet ETH 잔액을 합산합니다. 지갑 하나라도
 조회에 실패하면 불완전한 합계를 저장하지 않고 `503 Service Unavailable`을 반환합니다.
+실패한 갱신은 기존 스냅샷을 덮어쓰지 않습니다. 이 API의 잔액 갱신 실패는 글·댓글 작성 권한과
+무관하며, 글·댓글 발행 경로에서는 RPC 잔액 조회를 호출하지 않습니다.
 
 ```json
 {
