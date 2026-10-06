@@ -19,13 +19,27 @@ export type PublishedPost = {
 };
 
 /**
- * 글쓰기 1단계 입력값.
+ * 업로드가 끝난 이미지.
  *
- * 이미지·차트·유튜브는 아직 없다. 본문 포맷(E-2) 결정은 에디터에만 걸리고,
- * 백엔드 `content` 는 어느 쪽이든 5000자 문자열이다.
+ * `url` 은 백엔드가 준 상대 경로(`/api/v1/media/<uuid>.jpg`)다. 발행할 때는
+ * 이 값을 그대로 보낸다. 서버가 이 경로로 업로드 기록을 찾아 글에 묶는다.
+ */
+export type UploadedImage = {
+  url: string;
+};
+
+/**
+ * 글쓰기 입력값.
+ *
+ * 차트는 아직 없다. 본문 포맷(E-2) 결정은 에디터에만 걸리고, 백엔드
+ * `content` 는 어느 쪽이든 5000자 문자열이다.
  */
 export type PostDraft = {
   coinSymbol: string;
   title: string;
   content: string;
+  /** 업로드가 끝난 이미지만. 올린 순서가 글의 순서다. */
+  images: UploadedImage[];
+  /** 비어 있으면 보내지 않는다. */
+  youtubeUrl: string;
 };

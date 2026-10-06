@@ -1,7 +1,8 @@
 import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
+import { config } from "@/lib/config";
 import { http } from "@/lib/http";
-import type { PostDraft, PublishedPost, WriteRoom } from "./types";
+import type { PostDraft, PublishedPost, UploadedImage, WriteRoom } from "./types";
 
 /**
  * 글 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -15,6 +16,9 @@ type Schemas = components["schemas"];
 type CoinResponse = Schemas["CoinResponse"];
 type PostResponse = Schemas["PostResponse"];
 type CreatePostRequest = Schemas["CreatePostRequest"];
+type StoredMedia = Schemas["StoredMedia"];
+
+const MEDIA_PREFIX = "/api/v1/media/";
 
 /**
  * 글을 쓸 수 있는 방 목록.
@@ -43,10 +47,13 @@ export async function loadWriteRooms(): Promise<WriteRoom[]> {
  * 맞춘 것이다.
  */
 export async function publishPost(draft: PostDraft): Promise<PublishedPost> {
+  const youtubeUrl = draft.youtubeUrl.trim();
   const body: CreatePostRequest = {
     coinSymbol: draft.coinSymbol,
     title: draft.title.trim(),
     content: draft.content.trim(),
+    media: draft.images.map((image) => ({ type: "IMAGE", url: image.url })),
+    ...(youtubeUrl ? { youtubeUrl } : {}),
   };
 
   const post = await http<PostResponse>("/api/v1/posts", {
@@ -59,6 +66,42 @@ export async function publishPost(draft: PostDraft): Promise<PublishedPost> {
   }
 
   return { id: post.id, coinSymbol: post.coinSymbol ?? draft.coinSymbol };
+}
+
+/**
+ * 이미지 한 장 업로드. 발행 전에 먼저 올려 두고, 발행할 때 url 만 보낸다.
+ *
+ * 올렸지만 발행하지 않은 파일은 서버에 남는다. 지울 때는 `discardImage` 를 부르고,
+ * 창을 닫아 버린 경우는 서버가 정리해야 한다(백엔드 논의 항목).
+ */
+export async function uploadImage(file: File): Promise<UploadedImage> {
+  const form = new FormData();
+  form.append("file", file);
+
+  const stored = await http<StoredMedia>("/api/v1/media", { method: "POST", body: form });
+
+  if (!stored?.url?.startsWith(MEDIA_PREFIX)) {
+    throw new Error("업로드는 됐지만 응답에 파일 주소가 없습니다.");
+  }
+  return { url: stored.url };
+}
+
+/**
+ * 발행 전에 뺀 이미지를 서버에서도 지운다.
+ *
+ * 실패해도 글쓰기를 막을 이유가 없어서 에러를 삼킨다. 서버에 파일 하나가
+ * 남을 뿐이고, 글에 묶이지 않은 파일은 다른 글에도 쓸 수 없다.
+ */
+export async function discardImage(image: UploadedImage): Promise<void> {
+  const fileName = image.url.slice(MEDIA_PREFIX.length);
+  await http<void>(`${MEDIA_PREFIX}${encodeURIComponent(fileName)}`, { method: "DELETE" }).catch(
+    () => undefined,
+  );
+}
+
+/** 백엔드가 주는 상대 경로를 화면에서 열 수 있는 주소로 바꾼다. */
+export function mediaSrc(url: string): string {
+  return url.startsWith("/") ? `${config.apiUrl}${url}` : url;
 }
 
 function hasSymbol<T extends { symbol?: string }>(value: T): value is T & { symbol: string } {

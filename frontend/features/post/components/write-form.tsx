@@ -6,8 +6,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
 import { useSession } from "@/lib/session";
-import { publishPost, loadWriteRooms } from "../api";
+import { loadWriteRooms, publishPost } from "../api";
+import { useImageUploads } from "../hooks/use-image-uploads";
 import { CONTENT_MAX, TITLE_MAX, draftProblem } from "../limits";
+import ImageAttachments from "./image-attachments";
+import YoutubeField from "./youtube-field";
 
 type Props = {
   /** `?symbol=` 로 들어온 방. 페이지가 모양을 검사해서 넘겨준다. */
@@ -18,14 +21,14 @@ const FIELD =
   "w-full rounded-sm border border-border-subtle bg-canvas px-3 text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand";
 
 /**
- * 글쓰기 1단계 — 방 선택 + 제목 + 본문(textarea) + 발행.
+ * 글쓰기 — 방 선택 + 제목 + 본문(textarea) + 이미지 + 유튜브 링크 + 발행.
  *
  * 본문 포맷(E-2)은 아직 정하지 않았다. 그 결정은 에디터에만 걸리고 백엔드
  * `content` 는 어느 쪽이든 5000자 문자열이라, textarea 로 시작하면 나중에
  * 리치텍스트로 가도 버리는 것이 이 textarea 하나뿐이다.
  *
  * 와이어프레임(`크립톡_글쓰기_와이어프레임_v2`)에서 아직 없는 것
- *   - 툴바 · 이미지 · 동영상 · 차트 블록
+ *   - 툴바 · 차트 블록, 본문 중간에 첨부 끼워 넣기 (리치텍스트 에디터와 함께)
  *   - "이 글에 붙을 정보" 미리보기 (`/me/assets` + badge 문구)
  *   - 임시저장 · 미리보기
  */
@@ -36,6 +39,8 @@ export default function WriteForm({ initialSymbol }: Props) {
   const [pickedSymbol, setCoinSymbol] = useState(initialSymbol ?? "");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const images = useImageUploads();
   const [problem, setProblem] = useState("");
 
   // 글쓰기는 로그인이 필요하다(POST /posts). 세션 복원이 끝난 뒤에만 판단한다.
@@ -65,7 +70,7 @@ export default function WriteForm({ initialSymbol }: Props) {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const draft = { coinSymbol, title, content };
+    const draft = { coinSymbol, title, content, youtubeUrl, images: images.uploaded };
     const found = draftProblem(draft);
     setProblem(found ?? "");
     if (found) return;
@@ -75,6 +80,8 @@ export default function WriteForm({ initialSymbol }: Props) {
   const selectedName = rooms.data?.find((room) => room.symbol === coinSymbol)?.name;
   const errorMessage = problem || (publish.error ? publishErrorMessage(publish.error) : "");
   const pending = publish.isPending || publish.isSuccess;
+  // 업로드 중에도 글은 계속 쓸 수 있다. 발행만 잠근다.
+  const publishLocked = pending || loggedOut || images.uploading;
 
   return (
     <form className="w-full max-w-180" onSubmit={submit} noValidate>
@@ -84,8 +91,8 @@ export default function WriteForm({ initialSymbol }: Props) {
         <Button type="button" onClick={() => router.back()}>
           나가기
         </Button>
-        <Button type="submit" variant="primary" disabled={pending || loggedOut}>
-          {pending ? "발행 중…" : "발행"}
+        <Button type="submit" variant="primary" disabled={publishLocked}>
+          {pending ? "발행 중…" : images.uploading ? "업로드 중…" : "발행"}
         </Button>
       </div>
 
@@ -135,6 +142,17 @@ export default function WriteForm({ initialSymbol }: Props) {
         onChange={(event) => setContent(event.target.value)}
       />
       <Counter length={content.length} max={CONTENT_MAX} />
+
+      <ImageAttachments
+        items={images.items}
+        notice={images.notice}
+        full={images.full}
+        disabled={pending}
+        onAdd={images.add}
+        onRemove={images.remove}
+      />
+
+      <YoutubeField value={youtubeUrl} onChange={setYoutubeUrl} disabled={pending} />
 
       {errorMessage ? (
         <p role="alert" className="mt-4 text-sm text-danger">

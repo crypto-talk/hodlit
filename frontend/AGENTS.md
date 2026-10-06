@@ -192,8 +192,14 @@ had no posts, so every list screen could only be checked empty; writing first fi
    thing thrown away if the format becomes rich text. Length limits in
    `features/post/limits.ts` mirror the backend `@Size` values. `?symbol=` preselects a room.
    After publishing it goes to `/` because the post detail screen does not exist yet.
-   Not built yet: toolbar, image/video/chart blocks, the "이 글에 붙을 정보" preview,
-   draft saving, preview.
+   Images: picked or dropped files upload immediately to `POST /media` (images only — video
+   is a YouTube link, not an upload), publish stays locked while any upload is running, and
+   the "첨부한 이미지는 인증으로 인정되지 않습니다" notice shows once an image is attached.
+   An image removed before publishing is deleted with `DELETE /media/{file}`; files left
+   behind when the tab is closed are the backend's to clean up. One YouTube link, checked
+   with the same pattern as `PostService.YOUTUBE`, previewed by its thumbnail only.
+   Not built yet: toolbar, chart blocks, placing attachments inside the body, the
+   "이 글에 붙을 정보" preview, draft saving, preview.
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 
