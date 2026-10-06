@@ -17,6 +17,7 @@ import {
   Strikethrough,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MarkdownInput } from "../markdown-input";
 import { RICH_TEXT_CLASS } from "../rich-text-class";
 
 type Props = {
@@ -55,6 +56,7 @@ export default function BodyEditor({ onChange, disabled }: Props) {
         },
       }),
       Markdown,
+      MarkdownInput,
       Placeholder.configure({ placeholder: "본문" }),
     ],
     editorProps: {
