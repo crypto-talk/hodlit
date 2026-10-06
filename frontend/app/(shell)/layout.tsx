@@ -78,7 +78,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   }, [connectWallet, requireLogin]);
 
   return (
-    <div className="hd min-h-screen">
+    <div className="min-h-screen">
       <Header />
 
       {/*
@@ -92,7 +92,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
         <div className="flex min-w-0 flex-1 flex-col gap-12">
           {notice ? (
-            <p role="alert" className="text-sm" style={{ color: "var(--hd-down)" }}>
+            <p role="alert" className="text-sm text-danger">
               {notice}
             </p>
           ) : null}

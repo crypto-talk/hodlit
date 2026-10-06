@@ -14,22 +14,22 @@ export default function HotPosts({ posts }: Props) {
 
   return (
     <section>
-      <div className="hd-section-head">
+      <div className="flex items-center gap-2">
         <h2 className="text-h2 font-semibold">오늘의 핫글</h2>
         <span
-          className="hd-info"
+          className="flex size-4 flex-none cursor-help items-center justify-center rounded-full border border-border-subtle text-xs text-text-muted"
           title="임시로 댓글 수 기준입니다. 집계 기준은 백엔드와 합의 전입니다"
         >
           i
         </span>
       </div>
 
-      <div className="hd-tabs" role="tablist">
+      <div className="mt-4 flex gap-6 border-b border-border-subtle" role="tablist">
         <button
           type="button"
           role="tab"
           aria-selected={!verifiedOnly}
-          className={`hd-tab${verifiedOnly ? "" : " hd-tab-on"}`}
+          className={`cursor-pointer border-b-2 border-transparent py-2 text-body font-semibold text-text-muted${verifiedOnly ? "" : " border-b-brand text-text-primary"}`}
           onClick={() => setVerifiedOnly(false)}
         >
           핫글
@@ -38,31 +38,34 @@ export default function HotPosts({ posts }: Props) {
           type="button"
           role="tab"
           aria-selected={verifiedOnly}
-          className={`hd-tab${verifiedOnly ? " hd-tab-on" : ""}`}
+          className={`cursor-pointer border-b-2 border-transparent py-2 text-body font-semibold text-text-muted${verifiedOnly ? " border-b-brand text-text-primary" : ""}`}
           onClick={() => setVerifiedOnly(true)}
         >
           인증 핫글
         </button>
       </div>
 
-      <div className="hd-hot-list">
+      <div className="mt-4 flex flex-col gap-2">
         {visible.map((post) => (
-          <a key={post.rank} href="#" className="hd-hot-row">
-            <span
-              className="text-sm font-semibold text-text-muted tabular-nums"
-              style={{ width: 24, textAlign: "center", flex: "0 0 auto" }}
-            >
+          <a
+            key={post.rank}
+            href="#"
+            className="flex flex-wrap items-center gap-2 rounded-lg border border-border-subtle bg-surface p-4 text-text-primary hover:border-text-muted"
+          >
+            <span className="w-6 flex-none text-center text-sm font-semibold text-text-muted tabular-nums">
               {post.rank}
             </span>
-            <span className="hd-chip">{post.symbol}</span>
-            <TierBadge tier={post.tier} />
-            <span className="text-body truncate" style={{ flex: "1 1 240px", minWidth: 0 }}>
-              {post.title}
+            <span className="flex-none rounded-sm border border-border-subtle bg-canvas px-2 py-0.5 text-xs font-semibold text-text-muted">
+              {post.symbol}
             </span>
+            <TierBadge tier={post.tier} />
+            <span className="min-w-0 flex-1 basis-60 truncate text-body">{post.title}</span>
             <span className="text-xs text-text-muted tabular-nums">{post.meta}</span>
           </a>
         ))}
-        {visible.length === 0 ? <div className="hd-empty">아직 인증 핫글이 없습니다.</div> : null}
+        {visible.length === 0 ? (
+          <div className="px-4 py-12 text-center text-text-muted">아직 인증 핫글이 없습니다.</div>
+        ) : null}
       </div>
     </section>
   );

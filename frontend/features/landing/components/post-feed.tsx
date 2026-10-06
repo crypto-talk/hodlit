@@ -20,20 +20,23 @@ export default function PostFeed({ posts }: Props) {
   const visible = verifiedOnly ? posts.filter((post) => post.tier !== "none") : posts;
 
   return (
-    <section className="hd-feed">
-      <div className="hd-section-head">
+    <section>
+      <div className="flex items-center gap-2">
         <h2 className="text-h2 font-semibold">전체 글</h2>
-        <span className="hd-info" title="활동 피드를 최신순으로 보여줍니다">
+        <span
+          className="flex size-4 flex-none cursor-help items-center justify-center rounded-full border border-border-subtle text-xs text-text-muted"
+          title="활동 피드를 최신순으로 보여줍니다"
+        >
           i
         </span>
       </div>
 
-      <div className="hd-tabs" role="tablist">
+      <div className="mt-4 flex gap-6 border-b border-border-subtle" role="tablist">
         <button
           type="button"
           role="tab"
           aria-selected={!verifiedOnly}
-          className={`hd-tab${verifiedOnly ? "" : " hd-tab-on"}`}
+          className={`cursor-pointer border-b-2 border-transparent py-2 text-body font-semibold text-text-muted${verifiedOnly ? "" : " border-b-brand text-text-primary"}`}
           onClick={() => setVerifiedOnly(false)}
         >
           전체
@@ -42,48 +45,56 @@ export default function PostFeed({ posts }: Props) {
           type="button"
           role="tab"
           aria-selected={verifiedOnly}
-          className={`hd-tab${verifiedOnly ? " hd-tab-on" : ""}`}
+          className={`cursor-pointer border-b-2 border-transparent py-2 text-body font-semibold text-text-muted${verifiedOnly ? " border-b-brand text-text-primary" : ""}`}
           onClick={() => setVerifiedOnly(true)}
         >
           인증
         </button>
       </div>
 
-      <div className="hd-post-list">
+      <div className="mt-4 flex flex-col gap-2">
         {visible.map((post) => (
-          <article key={post.id} className="hd-post">
-            <div className="hd-post-head">
-              <span className="hd-chip">{post.symbol}</span>
+          <article key={post.id} className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex-none rounded-sm border border-border-subtle bg-canvas px-2 py-0.5 text-xs font-semibold text-text-muted">
+                {post.symbol}
+              </span>
               <TierBadge tier={post.tier} />
-              {post.range ? <span className="hd-range">{post.range}</span> : null}
-              <span style={{ flex: 1 }} />
+              {post.range ? (
+                <span className="flex-none rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
+                  {post.range}
+                </span>
+              ) : null}
+              <span className="flex-1" />
               <span className="text-xs text-text-muted">{post.time}</span>
             </div>
 
-            <a href="#" className="hd-post-title">
+            <a
+              href="#"
+              className="mt-4 block text-h2 font-semibold text-text-primary hover:text-brand"
+            >
               {post.title}
             </a>
-            <p className="text-body text-text-muted" style={{ marginTop: 8 }}>
-              {post.preview}
-            </p>
+            <p className="mt-2 text-body text-text-muted">{post.preview}</p>
 
-            <div className="hd-post-foot">
+            <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border-subtle pt-4">
               <a href="#" className="text-sm font-semibold">
                 {post.nick}
               </a>
               {/* 인덱서가 붙기 전까지 서버 holdingMonths가 null이라 항상 '보유 기간 미확인'입니다. */}
               <span
-                className="text-sm"
-                style={{ color: post.tier === "wallet" ? "var(--hd-ink)" : "var(--hd-sub)" }}
+                className={`text-sm ${post.tier === "wallet" ? "text-text-primary" : "text-text-muted"}`}
               >
                 {post.hold || "보유 기록 없음"}
               </span>
-              <span style={{ flex: 1 }} />
+              <span className="flex-1" />
               <span className="text-xs text-text-muted tabular-nums">{stats(post)}</span>
             </div>
           </article>
         ))}
-        {visible.length === 0 ? <div className="hd-empty">아직 인증된 글이 없습니다.</div> : null}
+        {visible.length === 0 ? (
+          <div className="px-4 py-12 text-center text-text-muted">아직 인증된 글이 없습니다.</div>
+        ) : null}
       </div>
 
       <Button type="button" className="mt-4 w-full p-4">

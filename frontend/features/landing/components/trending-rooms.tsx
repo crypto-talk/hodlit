@@ -40,41 +40,37 @@ export default function TrendingRooms({ rooms }: Props) {
 
   return (
     <section>
-      <div className="hd-section-head">
+      <div className="flex items-center gap-2">
         <h2 className="text-h1 font-semibold">지금 뜨는 방</h2>
-        <span className="hd-info" title="글·댓글 수 기준이며 시세와 무관합니다">
+        <span
+          className="flex size-4 flex-none cursor-help items-center justify-center rounded-full border border-border-subtle text-xs text-text-muted"
+          title="글·댓글 수 기준이며 시세와 무관합니다"
+        >
           i
         </span>
-        <div style={{ flex: 1 }} />
+        <div className="flex-1" />
         <a href="#" className="hidden text-sm font-semibold text-brand max-shell:block">
           전체 방
         </a>
       </div>
 
-      <div className="hd-podium">
+      <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
         {podium.map((room, index) => {
           const style = PODIUM_STYLE[index];
           return (
             <div
               key={room.symbol}
-              className="hd-podium-card"
+              className="animate-fade-in rounded-lg border border-border-subtle p-4 motion-reduce:animate-none"
               style={{ background: style.bg, animationDelay: `${index * 0.12}s` }}
             >
-              <a href="#" style={{ display: "block", color: style.ink }}>
+              <a href="#" className="block" style={{ color: style.ink }}>
                 <div
                   className="text-display font-semibold tabular-nums"
                   style={{ color: style.rankColor }}
                 >
                   {room.rank}
                 </div>
-                <div
-                  style={{
-                    marginTop: 8,
-                    display: "flex",
-                    alignItems: "baseline",
-                    gap: 8,
-                  }}
-                >
+                <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-h1 font-semibold" style={{ color: style.ink }}>
                     {room.symbol}
                   </span>
@@ -91,15 +87,11 @@ export default function TrendingRooms({ rooms }: Props) {
                     </span>
                   ) : null}
                 </div>
-                <div className="text-sm tabular-nums" style={{ marginTop: 8, color: style.subInk }}>
+                <div className="mt-2 text-sm tabular-nums" style={{ color: style.subInk }}>
                   {meta(room)}
                 </div>
               </a>
-              <a
-                href="#"
-                className="text-sm"
-                style={{ display: "block", marginTop: 16, color: style.subInk }}
-              >
+              <a href="#" className="mt-4 block text-sm" style={{ color: style.subInk }}>
                 {room.latest}
               </a>
             </div>
@@ -107,36 +99,23 @@ export default function TrendingRooms({ rooms }: Props) {
         })}
       </div>
 
-      <div className="hd-rest">
+      <div className="mt-6 flex flex-col">
         {rest.map((room) => (
-          <div key={room.symbol} className="hd-rest-row">
-            <a href="#" className="hd-rest-line">
-              <span
-                className="text-sm text-text-muted tabular-nums"
-                style={{ width: 24, flex: "0 0 auto" }}
-              >
+          <div key={room.symbol} className="border-t border-border-subtle py-4">
+            <a href="#" className="flex items-baseline gap-4 text-inherit">
+              <span className="w-6 flex-none text-sm text-text-muted tabular-nums">
                 {room.rank}
               </span>
-              <span className="text-body font-semibold" style={{ flex: "0 0 auto" }}>
-                {room.symbol}
-              </span>
+              <span className="flex-none text-body font-semibold">{room.symbol}</span>
               {room.hot ? (
-                <span
-                  className="text-body"
-                  style={{ color: "var(--hd-purple)", flex: "0 0 auto" }}
-                  aria-label="상승 중"
-                >
+                <span className="flex-none text-body text-brand" aria-label="상승 중">
                   ▲
                 </span>
               ) : null}
-              <span className="text-sm text-text-muted truncate" style={{ flex: 1, minWidth: 0 }}>
-                {room.name}
-              </span>
-              <span className="text-sm text-text-muted tabular-nums" style={{ flex: "0 0 auto" }}>
-                {meta(room)}
-              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{room.name}</span>
+              <span className="flex-none text-sm text-text-muted tabular-nums">{meta(room)}</span>
             </a>
-            <a href="#" className="hd-rest-latest">
+            <a href="#" className="mt-2 ml-10 block text-sm text-text-muted">
               {room.latest}
             </a>
           </div>

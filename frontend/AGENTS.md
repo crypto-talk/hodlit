@@ -76,7 +76,8 @@ tests/e2e/              Playwright: login.spec.ts, publish-post.spec.ts (run loc
 `app/_components/*` and `lib/mock/landing.ts` are gone: step 2 moved the shell into
 `components/layout/`, the landing sections into `features/landing/components/`, the room list
 into `features/room/`, the auth form into `features/auth/components/`, and the landing
-stylesheet to `styles/hd.css` (imported once by `app/layout.tsx`). `lib/api.ts` is the last
+stylesheet to `styles/hd.css`, which step 2 ② then converted to Tailwind and deleted.
+`lib/api.ts` is the last
 pre-restructure file. It now calls `lib/http.ts` instead of holding its own token and retry
 logic, but it is still scheduled to disappear. (`lib/AuthApi.ts` was a second, unused copy of
 the same auth calls and a second token store; it was deleted when `lib/auth-token.ts` landed.)
@@ -132,9 +133,6 @@ Deliberately not done yet, do not treat these as oversights:
   `dailyVotes()`) so that structure rule 2 holds and only those functions change when the
   APIs land. Rooms come from `features/room/api.ts`; the feed and hot posts from
   `features/landing/api.ts`.
-- `app/globals.css` still carries the pre-restructure landing rules below the `@theme` block.
-  Those ~96 classes are dead: nothing uses them, because every screen renders with the `hd-*`
-  classes from `styles/hd.css`. The block is deleted in step 2 ②; it needs no untangling.
 - `lib/http.ts` carries the bearer token and refreshes once on 401, but it still does not
   forward cookies from a server component: that waits for `access` to move to a cookie (B-3).
   Until then server components fetch public data only. It also does not branch on the error
@@ -154,8 +152,14 @@ go up first.
    The shell is rendered by `app/(shell)/layout.tsx`, which also owns the room list and the
    connected wallets — every screen in step 3 gets them for free. The bottom tab (<900px)
    is not built yet; the fab covers that width for now.
-2. ⬜ Convert `styles/hd.css` to tokens and Tailwind classes, and delete the dead block in
-   `app/globals.css`. Everything still renders with the `hd-*` classes.
+2. ✅ `styles/hd.css` is gone. Screen styles now live in exactly two places: the tokens in
+   `styles/tokens.css` (colors, type scale, radii, the 900px breakpoint, animations — exposed
+   as Tailwind utilities by the `@theme` block in `app/globals.css`) and Tailwind classes on
+   the components. The dead block at the bottom of `app/globals.css` is deleted too.
+   Inline `style` is left only for runtime values: the podium's per-rank palette, vote bar
+   widths, a room's change colour, the logo's size.
+   Buttons are `components/ui/button.tsx` — the shadcn primitive with its class strings
+   matched to the artboard. Nine call sites shared one class bundle before; they drift.
 3. ✅ `AuthDialog` is now `/login?next=` and `/signup` (A-5). `?next=` is read on the server
    and passed down, so no `<Suspense>` boundary is needed, and `features/auth/safe-next.ts`
    rejects anything that is not a same-site path — an unchecked `next` is an open redirect.
