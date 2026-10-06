@@ -208,6 +208,16 @@ had no posts, so every list screen could only be checked empty; writing first fi
    renders the same way as the editor.
    Not built yet: chart blocks (needs a place to store the frozen price data — backend),
    images inside the body, the "이 글에 붙을 정보" preview, draft saving, preview.
+2. ✅ Post detail `/subhodl/[symbol]/[postId]`, first pass (`features/post/components/
+   post-detail.tsx`): title, author, Markdown body, images, YouTube embed
+   (youtube-nocookie), the price captured at publish time. The body is rendered by Tiptap in
+   read-only mode (`post-body.tsx`) rather than a separate Markdown renderer — same schema and
+   same styles as the editor, and anything outside the schema (raw HTML) is not rendered.
+   Landing titles and the publish redirect now link here through `lib/routes.ts`.
+   ⚠️ The holder snapshot block (badge, amount band, holding period) is NOT shown yet: its
+   wording must come from `features/badge` (rule 3) and `features/post` cannot import it
+   (rule 1). This is the second such import — decide whether `features/badge` moves to `lib/`.
+   Not built yet: comments, like/bookmark/repost, edit/delete.
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 

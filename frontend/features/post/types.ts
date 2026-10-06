@@ -43,3 +43,28 @@ export type PostDraft = {
   /** 비어 있으면 보내지 않는다. */
   youtubeUrl: string;
 };
+
+/**
+ * 글 상세 뷰 모델.
+ *
+ * ⚠️ 보유 스냅샷(배지·수량 구간·보유 기간)은 아직 싣지 않는다. 그 문구는
+ * `features/badge` 에서만 만들어야 하는데(구조 규칙 3), features 끼리 참조할 수
+ * 없다(구조 규칙 1). badge 를 lib 로 내릴지 정한 뒤에 붙인다.
+ */
+export type PostDetail = {
+  id: number;
+  coinSymbol: string;
+  title: string;
+  /** Markdown. 예전 글은 평문이고, 평문도 그대로 유효한 Markdown 이다. */
+  content: string;
+  authorNickname: string;
+  createdAt: string;
+  /** 수정된 적이 있으면 true. 스냅샷은 그대로고 본문만 바뀐다. */
+  edited: boolean;
+  images: { id: string; src: string }[];
+  youtubeVideoId: string | null;
+  /** 작성 시점 가격. 서버가 발행 순간 찍은 값이다. */
+  price: { value: number; currency: string } | null;
+  likes: number;
+  comments: number;
+};

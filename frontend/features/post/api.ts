@@ -2,7 +2,7 @@ import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { config } from "@/lib/config";
 import { http } from "@/lib/http";
-import type { PostDraft, PublishedPost, UploadedImage, WriteRoom } from "./types";
+import type { PostDetail, PostDraft, PublishedPost, UploadedImage, WriteRoom } from "./types";
 
 /**
  * 글 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -102,6 +102,43 @@ export async function discardImage(image: UploadedImage): Promise<void> {
 /** 백엔드가 주는 상대 경로를 화면에서 열 수 있는 주소로 바꾼다. */
 export function mediaSrc(url: string): string {
   return url.startsWith("/") ? `${config.apiUrl}${url}` : url;
+}
+
+/**
+ * 글 상세. 공개 API 라 로그인 없이도 열린다.
+ *
+ * 404 는 `ApiError.status` 로 화면이 구분한다.
+ */
+export async function loadPost(postId: number): Promise<PostDetail> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}`);
+
+  const createdAt = post.createdAt ?? "";
+  const price = post.priceSnapshot;
+
+  return {
+    id: post.id ?? postId,
+    coinSymbol: post.coinSymbol ?? "",
+    title: post.title ?? "(제목 없음)",
+    content: post.content ?? "",
+    authorNickname: post.author?.nickname ?? "알 수 없음",
+    createdAt,
+    // 서버는 발행 때도 updatedAt 을 채운다. 몇 초 차이는 수정으로 보지 않는다.
+    edited:
+      !!post.updatedAt &&
+      !!createdAt &&
+      new Date(post.updatedAt).getTime() - new Date(createdAt).getTime() > 60_000,
+    images: (post.media ?? [])
+      .filter((media) => media.type === "IMAGE" && media.url)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((media) => ({ id: String(media.id ?? media.url), src: mediaSrc(media.url ?? "") })),
+    youtubeVideoId: post.youtube?.videoId ?? null,
+    price:
+      typeof price?.price === "number" && price.currency
+        ? { value: price.price, currency: price.currency }
+        : null,
+    likes: post.likes ?? 0,
+    comments: post.comments ?? 0,
+  };
 }
 
 function hasSymbol<T extends { symbol?: string }>(value: T): value is T & { symbol: string } {

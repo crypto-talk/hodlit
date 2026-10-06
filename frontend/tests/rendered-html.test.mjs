@@ -94,6 +94,12 @@ test("server-renders the Hodlit application", async (t) => {
     assert.doesNotMatch(html, /전체 방/);
   });
 
+  await t.test("글 상세 주소 검사", async () => {
+    // 글 id 가 숫자가 아니면 백엔드에 묻지 않고 바로 404 다.
+    const response = await fetch(`${origin}/subhodl/BTC/abc`, { headers: { accept: "text/html" } });
+    assert.equal(response.status, 404);
+  });
+
   await t.test("오픈 리다이렉트 방어", async () => {
     // `?next=` 가 외부 주소면 폼은 홈으로 돌아가야 한다(features/auth/safe-next.ts).
     const response = await fetch(`${origin}/login?next=https%3A%2F%2Fevil.example`, {

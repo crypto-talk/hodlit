@@ -37,6 +37,7 @@ export type VoteRow = {
 
 export type HotPost = {
   rank: number;
+  href: string;
   symbol: string;
   tier: Tier;
   title: string;
@@ -45,6 +46,8 @@ export type HotPost = {
 
 export type FeedPost = {
   id: number;
+  /** 글 상세 주소. */
+  href: string;
   symbol: string;
   tier: Tier;
   /** 수량 구간. **서버가 완성해서 주는 문자열**이다. 프론트가 계산하지 않는다. */

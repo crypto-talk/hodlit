@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { FeedPost } from "../types";
@@ -69,12 +70,12 @@ export default function PostFeed({ posts }: Props) {
               <span className="text-xs text-text-muted">{post.time}</span>
             </div>
 
-            <a
-              href="#"
+            <Link
+              href={post.href}
               className="mt-4 block text-h2 font-semibold text-text-primary hover:text-brand"
             >
               {post.title}
-            </a>
+            </Link>
             <p className="mt-2 text-body text-text-muted">{post.preview}</p>
 
             <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border-subtle pt-4">

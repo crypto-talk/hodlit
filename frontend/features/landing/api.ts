@@ -2,6 +2,7 @@ import type { components } from "@/lib/api-schema";
 import { markdownToPlainText } from "@/lib/format/plain-text";
 import { formatRelativeTime } from "@/lib/format/time";
 import { http } from "@/lib/http";
+import { postHref } from "@/lib/routes";
 import { MARQUEE, TRENDING, VOTES } from "./mock";
 import type { FeedPost, HotPost, MarqueeItem, Tier, TrendingRoom, VoteRow } from "./types";
 
@@ -92,6 +93,7 @@ function toFeedPost(post: IdentifiedPost): FeedPost {
 
   return {
     id: post.id,
+    href: postHref(post.coinSymbol ?? "", post.id),
     symbol: post.coinSymbol ?? "",
     tier: toTier(snapshot?.verificationLevel, post.verifiedHolder),
     // 서버가 완성해서 주는 문자열이다. 여기서 수량으로 다시 계산하지 않는다.
@@ -120,6 +122,7 @@ function toHotPosts(posts: FeedPost[]): HotPost[] {
     .slice(0, HOT_LIMIT)
     .map((post, index) => ({
       rank: index + 1,
+      href: post.href,
       symbol: post.symbol,
       tier: post.tier,
       title: post.title,

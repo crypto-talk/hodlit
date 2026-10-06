@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { HotPost } from "../types";
 import TierBadge from "./tier-badge";
@@ -47,9 +48,9 @@ export default function HotPosts({ posts }: Props) {
 
       <div className="mt-4 flex flex-col gap-2">
         {visible.map((post) => (
-          <a
+          <Link
             key={post.rank}
-            href="#"
+            href={post.href}
             className="flex flex-wrap items-center gap-2 rounded-lg border border-border-subtle bg-surface p-4 text-text-primary hover:border-text-muted"
           >
             <span className="w-6 flex-none text-center text-sm font-semibold text-text-muted tabular-nums">
@@ -61,7 +62,7 @@ export default function HotPosts({ posts }: Props) {
             <TierBadge tier={post.tier} />
             <span className="min-w-0 flex-1 basis-60 truncate text-body">{post.title}</span>
             <span className="text-xs text-text-muted tabular-nums">{post.meta}</span>
-          </a>
+          </Link>
         ))}
         {visible.length === 0 ? (
           <div className="px-4 py-12 text-center text-text-muted">아직 인증 핫글이 없습니다.</div>

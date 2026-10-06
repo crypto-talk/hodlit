@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
+import { postHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { loadWriteRooms, publishPost } from "../api";
 import { useImageUploads } from "../hooks/use-image-uploads";
@@ -60,10 +61,9 @@ export default function WriteForm({ initialSymbol }: Props) {
 
   const publish = useMutation({
     mutationFn: publishPost,
-    onSuccess: () => {
-      // 글 상세(/subhodl/[symbol]/[postId])가 아직 없다. 생기면 그쪽으로 보낸다.
-      // 랜딩은 마운트할 때 피드를 다시 불러오므로 새 글이 바로 보인다.
-      router.push("/");
+    onSuccess: (post) => {
+      // 뒤로가기로 빈 글쓰기 화면에 돌아오지 않도록 replace 한다.
+      router.replace(postHref(post.coinSymbol, post.id));
     },
   });
 
