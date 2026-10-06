@@ -37,7 +37,7 @@ class CrypTalkApplicationTest {
             .andReturn();
         JsonNode document = json.readTree(result.getResponse().getContentAsString());
         Set<String> expectedTags = Set.of("인증", "코인·커뮤니티", "댓글", "실시간 시세", "미디어",
-            "내 정보·자산", "게시글·피드", "팔로우", "지갑 연결", "거래소 자산");
+            "내 정보·자산", "게시글·피드", "팔로우", "지갑 연결", "거래소 자산", "임시저장");
         Set<String> actualTags = new HashSet<>();
         Set<String> httpMethods = Set.of("get", "post", "put", "patch", "delete", "options", "head");
         int operationCount = 0;
@@ -52,7 +52,7 @@ class CrypTalkApplicationTest {
             }
         }
 
-        assertEquals(46, operationCount);
+        assertEquals(51, operationCount);
         assertEquals(expectedTags, actualTags);
         assertFalse(actualTags.stream().anyMatch(tag -> tag.endsWith("-controller")));
     }

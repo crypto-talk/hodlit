@@ -82,12 +82,14 @@ public class MediaService {
 
     @Transactional
     public void delete(Long memberId, String fileName) {
-        MediaAsset asset = assets.findById(fileName)
+        MediaAsset asset = assets.lockByFileName(fileName)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "미디어를 찾을 수 없습니다."));
         if (!asset.getMember().getId().equals(memberId))
             throw new ApiException(HttpStatus.FORBIDDEN, "업로드한 사용자만 미디어를 삭제할 수 있습니다.");
         if (asset.getPost() != null)
             throw new ApiException(HttpStatus.CONFLICT, "게시글에 연결된 미디어는 게시글 수정 또는 삭제로 제거해 주세요.");
+        if (asset.getDraftId() != null)
+            throw new ApiException(HttpStatus.CONFLICT, "임시저장에 연결된 미디어는 임시저장 수정 또는 삭제로 해제해 주세요.");
         assets.delete(asset);
         deleteAfterCommit(Set.of(fileName));
     }
@@ -95,7 +97,7 @@ public class MediaService {
     public void claim(Long memberId, Post post, String url, boolean allowLegacyMissing) {
         String fileName = managedFileName(url);
         if (fileName == null) return;
-        MediaAsset asset = assets.findById(fileName).orElse(null);
+        MediaAsset asset = assets.lockByFileName(fileName).orElse(null);
         if (asset == null && allowLegacyMissing) return;
         if (asset == null) throw new ApiException(HttpStatus.BAD_REQUEST, "업로드 기록이 없는 미디어 URL입니다.");
         if (!asset.getMember().getId().equals(memberId))
@@ -112,8 +114,50 @@ public class MediaService {
             if (fileName != null) fileNames.add(fileName);
         }
         if (fileNames.isEmpty()) return;
-        assets.deleteByFileNameIn(fileNames);
+        // Lock before checking protection so draft saves and deletion cannot race.
+        for (String fileName : new java.util.TreeSet<>(fileNames)) {
+            MediaAsset asset = assets.lockByFileName(fileName).orElse(null);
+            if (asset != null && asset.getDraftId() != null) {
+                fileNames.remove(fileName);
+            } else if (asset != null) {
+                // Entity deletion keeps Hibernate's context consistent when the post is deleted next.
+                assets.delete(asset);
+            }
+        }
+        if (fileNames.isEmpty()) return;
         deleteAfterCommit(fileNames);
+    }
+
+    public void replaceDraftMedia(Long memberId, Long draftId, Collection<String> urls) {
+        Set<String> retained = new java.util.TreeSet<>();
+        for (String url : urls) {
+            String fileName = managedFileName(url);
+            if (url.startsWith("/api/v1/media/")) {
+                if (fileName == null)
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "잘못된 업로드 URL입니다.");
+                retained.add(fileName);
+            } else {
+                try {
+                    java.net.URI uri = java.net.URI.create(url);
+                    if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null)
+                        throw new IllegalArgumentException();
+                } catch (IllegalArgumentException exception) {
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "미디어 URL은 업로드 URL 또는 HTTPS URL이어야 합니다.");
+                }
+            }
+        }
+        for (MediaAsset asset : assets.findByDraftIdOrderByFileName(draftId)) {
+            if (!retained.contains(asset.getFileName())) asset.attachDraft(null);
+        }
+        for (String fileName : retained) {
+            MediaAsset asset = assets.lockByFileName(fileName)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "업로드 기록이 없는 미디어 URL입니다."));
+            if (!asset.getMember().getId().equals(memberId))
+                throw new ApiException(HttpStatus.FORBIDDEN, "본인이 업로드한 미디어만 임시저장할 수 있습니다.");
+            if (asset.getPost() != null || (asset.getDraftId() != null && !asset.getDraftId().equals(draftId)))
+                throw new ApiException(HttpStatus.CONFLICT, "이미 다른 글에 연결된 미디어입니다.");
+            asset.attachDraft(draftId);
+        }
     }
 
     public Resource load(String fileName) {

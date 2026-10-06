@@ -17,6 +17,7 @@ public class MediaAsset {
     @Id @Column(name = "file_name", length = 60) private String fileName;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "member_id") private Member member;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "post_id") private Post post;
+    @Column(name = "draft_id") private Long draftId;
     @Column(name = "media_type", nullable = false, length = 20) private String mediaType;
     @Column(name = "content_type", nullable = false, length = 100) private String contentType;
     @Column(name = "size_bytes", nullable = false) private long sizeBytes;
@@ -30,5 +31,7 @@ public class MediaAsset {
     public String getFileName() { return fileName; }
     public Member getMember() { return member; }
     public Post getPost() { return post; }
-    public void attach(Post post) { this.post = post; }
+    public Long getDraftId() { return draftId; }
+    public void attachDraft(Long draftId) { this.draftId = draftId; }
+    public void attach(Post post) { this.post = post; this.draftId = null; }
 }
