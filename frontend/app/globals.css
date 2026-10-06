@@ -91,6 +91,13 @@
    */
   --breakpoint-shell: 900px;
 
+  /*
+   * 오른쪽 칸이 생기는 폭. 사이드바 240 · 본문 720 · 오른쪽 칸 240 과 간격·여백을
+   * 합치면 1312 라 이 위에서만 세 칸이 다 들어간다. 이 아래에서는 오른쪽 칸이 숨고
+   * 지갑 카드가 왼쪽 사이드바로 돌아간다.
+   */
+  --breakpoint-wide: 1320px;
+
   --animate-blink: hd-blink 5s infinite;
   --animate-marquee: hd-marquee 32s linear infinite;
   --animate-fade-in: hd-fade-in 0.4s ease both;
