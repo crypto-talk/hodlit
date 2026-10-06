@@ -39,7 +39,7 @@ public class PostController {
     PostResponse get(@PathVariable Long postId, @AuthenticationPrincipal Jwt jwt) {
         return posts.get(postId, jwt == null ? null : id(jwt));
     }
-    @Operation(summary = "게시글 작성", description = "로그인 회원이 커뮤니티에 게시글을 작성하고 현재 가격 스냅샷을 저장합니다.")
+    @Operation(summary = "게시글 작성", description = "로그인 회원이 커뮤니티에 게시글을 작성하고 현재 가격 스냅샷을 저장합니다. 보유 인증은 DB에 저장된 자산 정보를 사용하며 잔액 조회·인증 여부는 작성 권한과 무관합니다.")
     @PostMapping("/posts") PostResponse create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreatePostRequest request) { return posts.create(id(jwt), request); }
     @Operation(summary = "게시글 수정", description = "작성자 본인의 게시글을 수정합니다.")
     @PutMapping("/posts/{postId}") PostResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable Long postId, @Valid @RequestBody UpdatePostRequest request) { return posts.update(id(jwt), postId, request); }

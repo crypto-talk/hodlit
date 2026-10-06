@@ -56,10 +56,9 @@ public class AssetService {
         return new AssetPortfolioResponse(wallets.findByMemberIdOrderByCreatedAtAsc(memberId).size(), values);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public AssetSnapshot snapshotForPublication(Long memberId, Coin coin) {
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
-        refreshAndList(memberId);
         return snapshots.findByMemberIdAndCoinId(memberId, coin.getId()).orElse(null);
     }
 

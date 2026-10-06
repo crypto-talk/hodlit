@@ -226,6 +226,8 @@ sequenceDiagram
 - KRW 가격은 CoinGecko를 20초 캐시해 조회하며 공급자 장애 시 자산 갱신도 실패한다.
 - 자산 갱신은 현재 `/me/assets` 호출 시 발생한다.
 - 글 작성 직전에 서버가 자산을 강제 재조회하지 않고 마지막 snapshot을 사용한다.
+- 잔액 인증은 작성자 표시용이며 글·댓글 작성 권한과 무관하다. 저장된 snapshot이 없으면 미인증으로 작성한다.
+- RPC 미설정·장애로 `/me/assets` 갱신에 실패해도 기존 snapshot은 보존되며 글·댓글 작성은 가능하다.
 - 향후에는 체인별 balance provider와 가격 provider를 인터페이스로 분리하고 snapshot freshness 정책을 정해야 한다.
 
 ## 9. API 명세
