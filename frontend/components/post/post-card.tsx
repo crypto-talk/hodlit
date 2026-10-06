@@ -1,6 +1,7 @@
 import Link from "next/link";
 import TierBadge from "@/components/holder/tier-badge";
 import type { PostSummary } from "@/lib/post-summary";
+import { roomHref } from "@/lib/routes";
 
 type Props = {
   post: PostSummary;
@@ -28,9 +29,12 @@ export default function PostCard({ post, showRoom = true }: Props) {
     <article className="rounded-lg border border-border-subtle bg-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
         {showRoom ? (
-          <span className="flex-none rounded-sm border border-border-subtle bg-canvas px-2 py-0.5 text-xs font-semibold text-text-muted">
+          <Link
+            href={roomHref(post.symbol)}
+            className="flex-none rounded-sm border border-border-subtle bg-canvas px-2 py-0.5 text-xs font-semibold text-text-muted hover:border-text-muted hover:text-text-primary"
+          >
             {post.symbol}
-          </span>
+          </Link>
         ) : null}
         {post.verifiable ? <TierBadge tier={post.tier} /> : null}
         {post.range ? (
