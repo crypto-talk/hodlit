@@ -59,7 +59,7 @@ export default function HotPosts({ posts }: Props) {
             <span className="flex-none rounded-sm border border-border-subtle bg-canvas px-2 py-0.5 text-xs font-semibold text-text-muted">
               {post.symbol}
             </span>
-            <TierBadge tier={post.tier} />
+            {post.verifiable ? <TierBadge tier={post.tier} /> : null}
             <span className="min-w-0 flex-1 basis-60 truncate text-body">{post.title}</span>
             <span className="text-xs text-text-muted tabular-nums">{post.meta}</span>
           </Link>

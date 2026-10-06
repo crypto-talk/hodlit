@@ -5,6 +5,7 @@ import {
   amountLabel,
   holdingLabel,
   holdingPeriodLabel,
+  isVerifiable,
   tierLabel,
   tierOf,
   verificationLabel,
@@ -99,5 +100,18 @@ describe("tierOf · tierLabel", () => {
     expect(tierLabel("none")).toBe(
       verificationLabel(snapshot({ verificationLevel: "UNVERIFIED" })),
     );
+  });
+});
+
+describe("isVerifiable", () => {
+  it("SUPPORTED 만 지원으로 본다", () => {
+    expect(isVerifiable("SUPPORTED")).toBe(true);
+    expect(isVerifiable("NOT_SUPPORTED")).toBe(false);
+  });
+
+  it("모르는 값이나 빈 값은 미지원으로 떨어뜨린다", () => {
+    expect(isVerifiable("SOMETHING_NEW")).toBe(false);
+    expect(isVerifiable(undefined)).toBe(false);
+    expect(isVerifiable(null)).toBe(false);
   });
 });

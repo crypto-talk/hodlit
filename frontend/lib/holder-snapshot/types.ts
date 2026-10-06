@@ -5,6 +5,19 @@
 export type Tier = "wallet" | "exchange" | "none";
 
 /**
+ * 코인별 보유 인증 지원 여부. 백엔드 `verificationAvailability` 의 값이다.
+ *
+ * ⚠️ 어떤 코인이 지원되는지는 프론트에 목록으로 두지 않는다. 코인 목록
+ * (`GET /coins`)과 글의 스냅샷이 코인마다 이 값을 내려주므로 그걸 따른다.
+ * 프론트에 목록을 두면 백엔드가 BTC 인증을 추가해도 프론트를 고치기 전까지
+ * 계속 미지원으로 보인다.
+ */
+export const VERIFICATION_AVAILABILITY = {
+  SUPPORTED: "SUPPORTED",
+  NOT_SUPPORTED: "NOT_SUPPORTED",
+} as const;
+
+/**
  * 발행 시점에 고정된 보유 정보. 백엔드 `HolderSnapshotResponse` 를 그대로 옮긴 것이다 (C-3).
  *
  * 글·댓글 응답의 `holderSnapshot` 필드로 들어온다. 서버가 발행 시 1회 기록하고

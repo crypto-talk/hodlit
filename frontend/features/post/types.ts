@@ -10,6 +10,8 @@ import type { Tier } from "@/lib/holder-snapshot/types";
 /** 방 선택 드롭다운의 한 줄. */
 export type WriteRoom = {
   symbol: string;
+  /** 보유 인증 지원 여부. 서버의 `verificationAvailability` 를 따른다. */
+  verifiable: boolean;
   /** 한글명. 매핑표에 없으면 백엔드 영문명. */
   name: string;
 };
@@ -51,6 +53,8 @@ export type PostDraft = {
  * `lib/holder-snapshot/label.ts` 가 만든다(구조 규칙 3).
  */
 export type HolderView = {
+  /** 이 코인이 보유 인증을 지원하는지. false 면 배지·기간·구간을 그리지 않는다. */
+  verifiable: boolean;
   tier: Tier;
   /** 서버가 완성한 구간. 미인증이면 null. */
   amount: string | null;

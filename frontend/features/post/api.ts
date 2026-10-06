@@ -1,7 +1,7 @@
 import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { config } from "@/lib/config";
-import { holdingPeriodLabel, tierOf } from "@/lib/holder-snapshot/label";
+import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
 import { http } from "@/lib/http";
 import type { PostDetail, PostDraft, PublishedPost, UploadedImage, WriteRoom } from "./types";
 
@@ -32,6 +32,7 @@ export async function loadWriteRooms(): Promise<WriteRoom[]> {
 
   return coins.filter(hasSymbol).map((coin) => ({
     symbol: coin.symbol,
+    verifiable: isVerifiable(coin.verificationAvailability),
     name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
   }));
 }
@@ -142,6 +143,7 @@ export async function loadPost(postId: number): Promise<PostDetail> {
     comments: post.comments ?? 0,
     holder: snapshot
       ? {
+          verifiable: isVerifiable(snapshot.verificationAvailability),
           tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder),
           // 서버가 완성해서 주는 문자열이다. 여기서 다시 계산하지 않는다.
           amount: snapshot.quantityBand ?? null,

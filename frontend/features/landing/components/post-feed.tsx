@@ -60,7 +60,7 @@ export default function PostFeed({ posts }: Props) {
               <span className="flex-none rounded-sm border border-border-subtle bg-canvas px-2 py-0.5 text-xs font-semibold text-text-muted">
                 {post.symbol}
               </span>
-              <TierBadge tier={post.tier} />
+              {post.verifiable ? <TierBadge tier={post.tier} /> : null}
               {post.range ? (
                 <span className="flex-none rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
                   {post.range}

@@ -6,7 +6,12 @@ import { postHref } from "@/lib/routes";
 import { MARQUEE, TRENDING, VOTES } from "./mock";
 import type { FeedPost, HotPost, MarqueeItem, TrendingRoom, VoteRow } from "./types";
 
-import { holdingPeriodLabel, tierOf } from "@/lib/holder-snapshot/label";
+import {
+  UNSUPPORTED_LABEL,
+  holdingPeriodLabel,
+  isVerifiable,
+  tierOf,
+} from "@/lib/holder-snapshot/label";
 
 /**
  * 랜딩이 가져오는 데이터 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -79,10 +84,12 @@ function uniquePosts(items: FeedItemResponse[]): IdentifiedPost[] {
 
 function toFeedPost(post: IdentifiedPost): FeedPost {
   const snapshot = post.holderSnapshot;
+  const verifiable = isVerifiable(snapshot?.verificationAvailability);
 
   return {
     id: post.id,
     href: postHref(post.coinSymbol ?? "", post.id),
+    verifiable,
     symbol: post.coinSymbol ?? "",
     tier: tierOf(snapshot?.verificationLevel, post.verifiedHolder),
     // 서버가 완성해서 주는 문자열이다. 여기서 수량으로 다시 계산하지 않는다.
@@ -91,7 +98,8 @@ function toFeedPost(post: IdentifiedPost): FeedPost {
     title: post.title ?? "(제목 없음)",
     preview: toPreview(post.content),
     nick: post.author?.nickname ?? "알 수 없음",
-    hold: holdingPeriodLabel(snapshot?.holdingMonths),
+    // 인증을 지원하지 않는 코인이면 "보유 기간 미확인" 대신 그 사실을 말한다.
+    hold: verifiable ? holdingPeriodLabel(snapshot?.holdingMonths) : UNSUPPORTED_LABEL,
     comments: post.comments ?? 0,
     // 조회수 API 가 없다. 숫자를 지어내지 않고 화면에서 자리를 뺀다(G-5).
     views: null,
@@ -112,6 +120,7 @@ function toHotPosts(posts: FeedPost[]): HotPost[] {
     .map((post, index) => ({
       rank: index + 1,
       href: post.href,
+      verifiable: post.verifiable,
       symbol: post.symbol,
       tier: post.tier,
       title: post.title,

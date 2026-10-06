@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import TierBadge from "@/components/holder/tier-badge";
+import { UNSUPPORTED_LABEL } from "@/lib/holder-snapshot/label";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
@@ -72,7 +73,14 @@ export default function PostDetailView({ postId, symbol }: Props) {
       <h1 className="mt-4 text-h1 font-semibold break-words text-text-primary">{data.title}</h1>
       <p className="mt-2 text-sm font-semibold text-text-primary">{data.authorNickname}</p>
 
-      {data.holder ? (
+      {data.holder && !data.holder.verifiable ? (
+        <p className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4 text-sm text-text-muted">
+          <b className="font-semibold text-text-primary">{UNSUPPORTED_LABEL}</b> · {room} 방은 아직
+          보유 인증을 지원하지 않아 이 글에는 보유 정보가 붙지 않습니다.
+        </p>
+      ) : null}
+
+      {data.holder?.verifiable ? (
         <section
           aria-label="작성 시점 보유 정보"
           className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"

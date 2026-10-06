@@ -1,4 +1,4 @@
-import type { HolderSnapshot, Tier } from "./types";
+import { VERIFICATION_AVAILABILITY, type HolderSnapshot, type Tier } from "./types";
 
 /**
  * 보유 정보를 화면 문구로 바꾸는 단일 지점 (구조 규칙 3).
@@ -45,6 +45,27 @@ export function tierOf(
 /** 인증 등급 배지 문구. */
 export function tierLabel(tier: Tier): string {
   return TIER_LABEL[tier];
+}
+
+/**
+ * 이 코인이 보유 인증을 지원하는지. 서버 값이 `SUPPORTED` 일 때만 true 다.
+ * 모르는 값이 오면 지원하지 않는 쪽으로 본다 — 인증이 없는데 있는 것처럼
+ * 보이는 쪽이 더 위험하다.
+ */
+export function isVerifiable(availability: string | null | undefined): boolean {
+  return availability === VERIFICATION_AVAILABILITY.SUPPORTED;
+}
+
+/**
+ * 인증을 지원하지 않는 코인의 글에 붙는 문구.
+ *
+ * `미인증` 을 쓰지 않는 이유: 미인증은 "인증할 수 있는데 안 했다"로 읽힌다.
+ * 지갑을 연결한 사람이 BTC 방에 쓴 글까지 미인증으로 보이면 오해다.
+ */
+export const UNSUPPORTED_LABEL = "인증 미지원 코인";
+
+export function unsupportedNotice(symbol: string): string {
+  return `${symbol} 방은 아직 보유 인증을 지원하지 않습니다. 지갑을 연결해도 보유 정보 없이 발행됩니다.`;
 }
 
 /** 인증 등급 배지 문구. 모르는 값이 오면 가장 약한 등급으로 떨어뜨린다. */

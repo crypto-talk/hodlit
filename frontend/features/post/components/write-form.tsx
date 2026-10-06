@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
 import { postHref } from "@/lib/routes";
+import { unsupportedNotice } from "@/lib/holder-snapshot/label";
 import { useSession } from "@/lib/session";
 import { loadWriteRooms, publishPost } from "../api";
 import { useImageUploads } from "../hooks/use-image-uploads";
@@ -76,7 +77,8 @@ export default function WriteForm({ initialSymbol }: Props) {
     publish.mutate(draft);
   };
 
-  const selectedName = rooms.data?.find((room) => room.symbol === coinSymbol)?.name;
+  const selectedRoom = rooms.data?.find((room) => room.symbol === coinSymbol);
+  const selectedName = selectedRoom?.name;
   const errorMessage = problem || (publish.error ? publishErrorMessage(publish.error) : "");
   const pending = publish.isPending || publish.isSuccess;
   // 업로드 중에도 글은 계속 쓸 수 있다. 발행만 잠근다.
@@ -122,6 +124,12 @@ export default function WriteForm({ initialSymbol }: Props) {
           )}
         </p>
       </div>
+
+      {selectedRoom && !selectedRoom.verifiable ? (
+        <p role="note" className="mt-2 text-sm text-danger">
+          {unsupportedNotice(selectedRoom.symbol)}
+        </p>
+      ) : null}
 
       <input
         className={`${FIELD} mt-6 h-12 text-h2`}
