@@ -112,7 +112,8 @@ export default function WriteForm({ initialSymbol }: Props) {
           ))}
         </select>
         <p className="text-sm text-text-muted">
-          {coinSymbol ? (
+          {/* 방 목록이 오기 전에는 select 가 비어 보이므로 안내도 고른 방을 말하지 않는다. */}
+          {coinSymbol && rooms.data ? (
             <>
               <b className="font-semibold text-text-primary">{coinSymbol}</b>
               {selectedName ? ` (${selectedName})` : ""} 보유량이 발행 시점 기준으로 글에 붙습니다
