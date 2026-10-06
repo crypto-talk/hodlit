@@ -8,8 +8,7 @@
  * `components/layout/types.ts` 의 `SidebarRoom` 을 본다.
  */
 
-/** 인증 등급. 백엔드 `verificationLevel` + `verifiedHolder` 로 정해진다. */
-export type Tier = "wallet" | "exchange" | "none";
+import type { Tier } from "@/lib/holder-snapshot/types";
 
 export type MarqueeItem = {
   lead?: string;
@@ -56,7 +55,7 @@ export type FeedPost = {
   title: string;
   preview: string;
   nick: string;
-  /** 보유 기간 문구. features/badge 가 만든다. 인덱서 전까지 항상 `보유 기간 미확인`. */
+  /** 보유 기간 문구. lib/holder-snapshot/label.ts 가 만든다. 인덱서 전까지 항상 `보유 기간 미확인`. */
   hold: string;
   comments: number;
   /** ⚠️ 조회수 API 가 없다. null 이면 화면에서 자리를 뺀다. */

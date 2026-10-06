@@ -5,7 +5,7 @@ import { Slot } from "radix-ui";
 
 /**
  * 도메인을 모르는 배지 껍데기다.
- * 인증 등급·보유 구간·보유 기간 표기는 여기가 아니라 `features/badge/` 에 있다
+ * 인증 등급·보유 구간·보유 기간 표기는 여기가 아니라 `lib/holder-snapshot/` 에 있다
  * (구조 규칙 3).
  */
 const badgeVariants = cva(

@@ -20,7 +20,7 @@ export function formatKrw(value: number): string {
  * 코인 수량. 코인마다 의미 있는 자릿수가 달라 소수 자릿수를 받는다.
  *
  * ⚠️ 글에 붙는 보유 수량에는 쓰지 않는다. 그쪽은 지갑 특정을 막기 위해
- * `features/badge/` 의 구간 표기만 쓴다.
+ * `lib/holder-snapshot/` 의 구간 표기만 쓴다.
  */
 export function formatQuantity(value: number, fractionDigits = 4): string {
   return new Intl.NumberFormat("ko-KR", {

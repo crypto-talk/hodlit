@@ -1,3 +1,5 @@
+import type { Tier } from "@/lib/holder-snapshot/types";
+
 /**
  * 글쓰기 화면이 쓰는 뷰 모델.
  *
@@ -45,12 +47,17 @@ export type PostDraft = {
 };
 
 /**
- * 글 상세 뷰 모델.
- *
- * ⚠️ 보유 스냅샷(배지·수량 구간·보유 기간)은 아직 싣지 않는다. 그 문구는
- * `features/badge` 에서만 만들어야 하는데(구조 규칙 3), features 끼리 참조할 수
- * 없다(구조 규칙 1). badge 를 lib 로 내릴지 정한 뒤에 붙인다.
+ * 글에 붙은 보유 정보를 화면 문구로 바꾼 것. 문구는 전부
+ * `lib/holder-snapshot/label.ts` 가 만든다(구조 규칙 3).
  */
+export type HolderView = {
+  tier: Tier;
+  /** 서버가 완성한 구간. 미인증이면 null. */
+  amount: string | null;
+  holding: string;
+};
+
+/** 글 상세 뷰 모델. */
 export type PostDetail = {
   id: number;
   coinSymbol: string;
@@ -67,4 +74,6 @@ export type PostDetail = {
   price: { value: number; currency: string } | null;
   likes: number;
   comments: number;
+  /** 발행 시점에 고정된 보유 정보. 응답에 없으면 null. */
+  holder: HolderView | null;
 };

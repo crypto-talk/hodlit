@@ -52,7 +52,7 @@ app/
   (focus)/              header only
     login/  signup/  write/  settings/  settings/wallet/
     subhodl/[symbol]/[postId]/edit/
-features/               one folder per domain: auth wallet room post comment vote badge landing
+features/               one folder per domain: auth wallet room post comment vote landing
   <domain>/components/  hooks/  api.ts  types.ts  mock.ts  (schema.ts optional)
                         unit tests sit next to the source as `*.test.ts`
 components/ui/          shadcn primitives (+ *.stories.tsx)
@@ -65,12 +65,17 @@ lib/auth-token.ts       the only place the access token is read or written; dele
 lib/api-schema.ts       generated from the backend OpenAPI spec by `pnpm gen:api`. Never
                         hand-edited, excluded from ESLint and Prettier
 lib/query.ts  lib/format/  lib/utils.ts (cn)  lib/config.ts (env, single read point)
+lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3). Was
+                        `features/badge` — pure functions every feature needs, so it moved
+                        down to lib/ when the post detail screen became its second user
+lib/routes.ts           screen URLs (post detail)
+components/holder/      tier-badge.tsx — the shape of the 인증 badge; wording from lib
 styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
 styles/fonts/           Pretendard subset woff2, 400/600/700/800/900
 components.json         shadcn/ui config; `shadcn add` writes into components/ui/
 vitest.config.ts        unit test scope: features/**/*.test.ts, lib/**/*.test.ts
 tests/e2e/              Playwright: login.spec.ts, publish-post.spec.ts (run locally)
-.storybook/             Storybook config; stories only for components/ui and features/badge
+.storybook/             Storybook config; stories only for components/ui and components/holder
 ```
 
 `app/_components/*` and `lib/mock/landing.ts` are gone: step 2 moved the shell into
@@ -91,14 +96,9 @@ returns whether it redirected.
 
 1. Imports flow one way: `app/ -> features/ -> components/ | lib/`. `features/*` never import
    each other. Shared code moves down to `components/` or `lib/`. Enforced by ESLint.
-   ⚠️ One known conflict: rule 3 says badge wording is made only in `features/badge/`, which
-   every other feature needs. `features/landing/api.ts` imports it with an explicit
-   `eslint-disable` and a reason, because duplicating the wording is the more dangerous of the
-   two options. This is a signal that `features/badge/` belongs in `lib/` or `components/` —
-   unresolved, ask before adding a second such import.
 2. `features/<domain>/api.ts` is the only data entry point. Mock data lives in `mock.ts` and
    never leaks past `api.ts`. Components receive data through props only.
-3. Badge and holder-snapshot wording exists only in `features/badge/label.ts`. These are the
+3. Badge and holder-snapshot wording exists only in `lib/holder-snapshot/label.ts`. These are the
    wallet de-anonymisation guard, so they must not be reimplemented per screen.
    **The amount band is computed by the backend**, not here: `holderSnapshot.quantityBand`
    arrives as a finished string (`"10~100 ETH"`, or null when unverified) and is passed
@@ -121,7 +121,7 @@ returns whether it redirected.
 ## Restructure state
 
 Step 1 (foundation, no screens) is done: tokens, self-hosted Pretendard, `components/ui/`
-primitives, `features/badge/` with unit tests, `lib/` (config, format, query, http skeleton,
+primitives, the holder-snapshot wording (now `lib/holder-snapshot/`) with unit tests, `lib/` (config, format, query, http skeleton,
 utils), route group boundaries with `error.tsx`, the root `not-found.tsx`, and the ESLint
 import-direction rule.
 
@@ -138,7 +138,7 @@ Deliberately not done yet, do not treat these as oversights:
   Until then server components fetch public data only. It also does not branch on the error
   `code`, because the code list is not agreed yet (C-5) — branch on `ApiError.status`.
 - `components/ui/` is exempt from ESLint so the shadcn copies stay diffable against upstream.
-- Storybook. It goes in now that `components/ui/` and `features/badge/` exist.
+- Storybook. It goes in now that `components/ui/` and `components/holder/` exist.
 - husky, lint-staged and GitHub Actions. They live at the repository root, outside
   `frontend/`, so they need an explicit scope expansion and belong in their own change.
 
@@ -214,9 +214,7 @@ had no posts, so every list screen could only be checked empty; writing first fi
    read-only mode (`post-body.tsx`) rather than a separate Markdown renderer — same schema and
    same styles as the editor, and anything outside the schema (raw HTML) is not rendered.
    Landing titles and the publish redirect now link here through `lib/routes.ts`.
-   ⚠️ The holder snapshot block (badge, amount band, holding period) is NOT shown yet: its
-   wording must come from `features/badge` (rule 3) and `features/post` cannot import it
-   (rule 1). This is the second such import — decide whether `features/badge` moves to `lib/`.
+   The holder snapshot block (tier badge, holding period, amount band) sits under the title.
    Not built yet: comments, like/bookmark/repost, edit/delete.
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.

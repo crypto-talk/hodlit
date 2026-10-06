@@ -5,6 +5,8 @@ import {
   amountLabel,
   holdingLabel,
   holdingPeriodLabel,
+  tierLabel,
+  tierOf,
   verificationLabel,
 } from "./label";
 
@@ -82,5 +84,20 @@ describe("holdingLabel", () => {
 
   it("값이 오면 그대로 쓴다. 여기서 반올림하지 않는다", () => {
     expect(holdingLabel(snapshot({ holdingMonths: 8 }))).toBe("8개월 보유");
+  });
+});
+
+describe("tierOf · tierLabel", () => {
+  it("WALLET 은 지갑연결, 그 밖은 미인증", () => {
+    expect(tierLabel(tierOf("WALLET", true))).toBe("지갑연결");
+    expect(tierLabel(tierOf("UNVERIFIED", false))).toBe("미인증");
+    expect(tierLabel(tierOf(undefined, undefined))).toBe("미인증");
+  });
+
+  it("verificationLabel 과 같은 문구를 쓴다", () => {
+    expect(tierLabel("wallet")).toBe(verificationLabel(snapshot({ verificationLevel: "WALLET" })));
+    expect(tierLabel("none")).toBe(
+      verificationLabel(snapshot({ verificationLevel: "UNVERIFIED" })),
+    );
   });
 });

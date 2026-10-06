@@ -1,7 +1,11 @@
-import type { HolderSnapshot } from "./types";
+import type { HolderSnapshot, Tier } from "./types";
 
 /**
  * 보유 정보를 화면 문구로 바꾸는 단일 지점 (구조 규칙 3).
+ *
+ * 화면 요소가 없는 순수 함수 모음이라 `lib/` 에 있다. 예전 이름은
+ * `features/badge` 였는데, 랜딩·글 상세·게시판·프로필이 모두 써야 해서
+ * features 끼리 참조 금지(구조 규칙 1)와 계속 부딪혔다.
  *
  * ⚠️ 이 규칙들은 지갑 특정 방지 장치다. 정확한 수량이나 매수 시각이 드러나면
  * 온체인에서 지갑 주인을 역추적할 수 있다. 화면마다 각자 만들면 한 군데서 새는
@@ -15,10 +19,33 @@ import type { HolderSnapshot } from "./types";
 
 export const UNKNOWN_HOLDING_LABEL = "보유 기간 미확인";
 
-const VERIFICATION_LABEL: Record<string, string> = {
-  WALLET: "지갑연결",
-  UNVERIFIED: "미인증",
+const TIER_LABEL: Record<Tier, string> = {
+  wallet: "지갑연결",
+  exchange: "거래소연동",
+  none: "미인증",
 };
+
+const VERIFICATION_LABEL: Record<string, string> = {
+  WALLET: TIER_LABEL.wallet,
+  UNVERIFIED: TIER_LABEL.none,
+};
+
+/**
+ * 서버 값 → 인증 등급. 모르는 값이면 가장 약한 등급으로 떨어뜨린다.
+ * 거래소 연동 등급은 백엔드에 아직 없다. WALLET 아니면 전부 미인증이다.
+ */
+export function tierOf(
+  verificationLevel: string | null | undefined,
+  verifiedHolder: boolean | null | undefined,
+): Tier {
+  if (verificationLevel === "WALLET") return "wallet";
+  return verifiedHolder ? "wallet" : "none";
+}
+
+/** 인증 등급 배지 문구. */
+export function tierLabel(tier: Tier): string {
+  return TIER_LABEL[tier];
+}
 
 /** 인증 등급 배지 문구. 모르는 값이 오면 가장 약한 등급으로 떨어뜨린다. */
 export function verificationLabel(snapshot: HolderSnapshot): string {

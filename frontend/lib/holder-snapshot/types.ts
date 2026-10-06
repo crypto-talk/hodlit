@@ -1,4 +1,10 @@
 /**
+ * 인증 등급. 지갑연결 / 거래소연동 / 미인증.
+ * 거래소 등급은 백엔드에 아직 없어서 지금은 `exchange` 가 나오지 않는다.
+ */
+export type Tier = "wallet" | "exchange" | "none";
+
+/**
  * 발행 시점에 고정된 보유 정보. 백엔드 `HolderSnapshotResponse` 를 그대로 옮긴 것이다 (C-3).
  *
  * 글·댓글 응답의 `holderSnapshot` 필드로 들어온다. 서버가 발행 시 1회 기록하고

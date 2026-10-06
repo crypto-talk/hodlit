@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { FeedPost } from "../types";
-import TierBadge from "./tier-badge";
+import TierBadge from "@/components/holder/tier-badge";
 
 type Props = {
   posts: FeedPost[];

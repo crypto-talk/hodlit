@@ -4,20 +4,9 @@ import { formatRelativeTime } from "@/lib/format/time";
 import { http } from "@/lib/http";
 import { postHref } from "@/lib/routes";
 import { MARQUEE, TRENDING, VOTES } from "./mock";
-import type { FeedPost, HotPost, MarqueeItem, Tier, TrendingRoom, VoteRow } from "./types";
+import type { FeedPost, HotPost, MarqueeItem, TrendingRoom, VoteRow } from "./types";
 
-/* eslint-disable no-restricted-imports --
- * 구조 규칙 3은 보유 문구를 features/badge 밖에서 만들지 말라고 하고,
- * 구조 규칙 1은 features 끼리 참조하지 말라고 한다. 둘이 충돌한다.
- *
- * 문구를 여기서 다시 만드는 쪽을 택하지 않았다. 보유 표기는 지갑 특정 방지
- * 장치라 두 곳에서 만들면 한쪽이 새는 순간 전체가 무너진다. 수량 구간이
- * 실제로 그렇게 어긋난 적이 있다.
- *
- * badge 가 lib/ 이나 components/ 로 내려가야 한다는 신호다. 성지 확인 필요.
- */
-import { holdingPeriodLabel } from "@/features/badge/label";
-/* eslint-enable no-restricted-imports */
+import { holdingPeriodLabel, tierOf } from "@/lib/holder-snapshot/label";
 
 /**
  * 랜딩이 가져오는 데이터 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -95,7 +84,7 @@ function toFeedPost(post: IdentifiedPost): FeedPost {
     id: post.id,
     href: postHref(post.coinSymbol ?? "", post.id),
     symbol: post.coinSymbol ?? "",
-    tier: toTier(snapshot?.verificationLevel, post.verifiedHolder),
+    tier: tierOf(snapshot?.verificationLevel, post.verifiedHolder),
     // 서버가 완성해서 주는 문자열이다. 여기서 수량으로 다시 계산하지 않는다.
     range: snapshot?.quantityBand ?? "",
     time: formatRelativeTime(post.createdAt),
@@ -128,12 +117,6 @@ function toHotPosts(posts: FeedPost[]): HotPost[] {
       title: post.title,
       meta: `댓글 ${post.comments}`,
     }));
-}
-
-/** 거래소 연동 등급은 백엔드에 아직 없다. WALLET 아니면 전부 미인증이다. */
-function toTier(verificationLevel: string | undefined, verifiedHolder: boolean | undefined): Tier {
-  if (verificationLevel === "WALLET") return "wallet";
-  return verifiedHolder ? "wallet" : "none";
 }
 
 /**
