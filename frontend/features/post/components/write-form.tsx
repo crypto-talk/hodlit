@@ -9,6 +9,7 @@ import { useSession } from "@/lib/session";
 import { loadWriteRooms, publishPost } from "../api";
 import { useImageUploads } from "../hooks/use-image-uploads";
 import { CONTENT_MAX, TITLE_MAX, draftProblem } from "../limits";
+import BodyEditor from "./body-editor";
 import ImageAttachments from "./image-attachments";
 import YoutubeField from "./youtube-field";
 
@@ -21,14 +22,12 @@ const FIELD =
   "w-full rounded-sm border border-border-subtle bg-canvas px-3 text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand";
 
 /**
- * 글쓰기 — 방 선택 + 제목 + 본문(textarea) + 이미지 + 유튜브 링크 + 발행.
+ * 글쓰기 — 방 선택 + 제목 + 본문(리치텍스트) + 이미지 + 유튜브 링크 + 발행.
  *
- * 본문 포맷(E-2)은 아직 정하지 않았다. 그 결정은 에디터에만 걸리고 백엔드
- * `content` 는 어느 쪽이든 5000자 문자열이라, textarea 로 시작하면 나중에
- * 리치텍스트로 가도 버리는 것이 이 textarea 하나뿐이다.
+ * 본문은 Markdown 문자열로 저장한다(E-2). 이유는 `body-editor.tsx` 참고.
  *
  * 와이어프레임(`크립톡_글쓰기_와이어프레임_v2`)에서 아직 없는 것
- *   - 툴바 · 차트 블록, 본문 중간에 첨부 끼워 넣기 (리치텍스트 에디터와 함께)
+ *   - 차트 블록, 본문 중간에 이미지 끼워 넣기
  *   - "이 글에 붙을 정보" 미리보기 (`/me/assets` + badge 문구)
  *   - 임시저장 · 미리보기
  */
@@ -134,14 +133,7 @@ export default function WriteForm({ initialSymbol }: Props) {
       />
       <Counter length={title.length} max={TITLE_MAX} />
 
-      <textarea
-        className={`${FIELD} mt-2 min-h-105 resize-y py-3 text-body`}
-        aria-label="본문"
-        placeholder="본문"
-        value={content}
-        maxLength={CONTENT_MAX}
-        onChange={(event) => setContent(event.target.value)}
-      />
+      <BodyEditor onChange={setContent} disabled={pending} />
       <Counter length={content.length} max={CONTENT_MAX} />
 
       <ImageAttachments
@@ -178,9 +170,15 @@ export default function WriteForm({ initialSymbol }: Props) {
   );
 }
 
+/**
+ * 본문 글자 수는 서식 기호를 포함한 Markdown 길이다. 백엔드가 그 길이로 5000자를
+ * 센다. 에디터는 입력을 끊지 않으므로 넘으면 빨갛게 보이고 발행에서 막힌다.
+ */
 function Counter({ length, max }: { length: number; max: number }) {
   return (
-    <p className="mt-1 text-right text-xs text-text-subtle tabular-nums">
+    <p
+      className={`mt-1 text-right text-xs tabular-nums ${length > max ? "text-danger" : "text-text-subtle"}`}
+    >
       {length.toLocaleString("ko-KR")} / {max.toLocaleString("ko-KR")}
     </p>
   );

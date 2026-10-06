@@ -85,7 +85,8 @@ test("server-renders the Hodlit application", async (t) => {
 
     const html = await response.text();
     assert.match(html, /제목/);
-    assert.match(html, /본문/);
+    // 본문 에디터(Tiptap)는 클라이언트에서만 그려진다. 서버 HTML 에는 글자 수 칸만 있다.
+    assert.match(html, /5,000/);
     assert.match(html, /발행/);
     // 헤더의 글쓰기가 더 이상 비활성 버튼이 아니라 링크다.
     assert.match(html, /href="\/write"/);

@@ -13,7 +13,7 @@ to a cookie (B-3).
 - Next.js 16 App Router, React 19, TypeScript strict, Tailwind CSS 4.
 - UI primitives: shadcn/ui (copied into `components/ui/`, styled with our tokens). Icons: `lucide-react`.
 - Server state: TanStack Query. Client global state: session, modal, toast only.
-- Editor: Tiptap (rich text, markdown paste, custom chart node). Charts: `lightweight-charts`.
+- Editor: Tiptap, body stored as Markdown (`@tiptap/markdown`). Charts: `lightweight-charts`.
 - Tests: Vitest for unit tests (`pnpm test`), Playwright for e2e. `tests/rendered-html.test.mjs`
   is a separate build-dependent check run by `pnpm run test:html`.
 - Fonts: Pretendard, self-hosted. Static subset woff2 in `styles/fonts/`, loaded by `app/fonts.ts`.
@@ -198,8 +198,16 @@ had no posts, so every list screen could only be checked empty; writing first fi
    An image removed before publishing is deleted with `DELETE /media/{file}`; files left
    behind when the tab is closed are the backend's to clean up. One YouTube link, checked
    with the same pattern as `PostService.YOUTUBE`, previewed by its thumbnail only.
-   Not built yet: toolbar, chart blocks, placing attachments inside the body, the
-   "이 글에 붙을 정보" preview, draft saving, preview.
+   **E-2 settled: the body is stored as Markdown.** The editor is Tiptap (StarterKit +
+   `@tiptap/markdown`) and sends `editor.getMarkdown()` as `content`. Not Tiptap JSON:
+   the backend counts `content` up to 5000 characters and JSON is several times longer;
+   old plain-text posts are already valid Markdown; list previews strip the syntax with
+   `lib/format/plain-text.ts`. Underline is off (Markdown has no syntax for it). The
+   character count is the Markdown length, which is what the backend counts.
+   `features/post/rich-text-class.ts` holds the body styles so the post detail screen
+   renders the same way as the editor.
+   Not built yet: chart blocks (needs a place to store the frozen price data — backend),
+   images inside the body, the "이 글에 붙을 정보" preview, draft saving, preview.
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 

@@ -1,4 +1,5 @@
 import type { components } from "@/lib/api-schema";
+import { markdownToPlainText } from "@/lib/format/plain-text";
 import { formatRelativeTime } from "@/lib/format/time";
 import { http } from "@/lib/http";
 import { MARQUEE, TRENDING, VOTES } from "./mock";
@@ -136,7 +137,8 @@ function toTier(verificationLevel: string | undefined, verifiedHolder: boolean |
  * 본문 미리보기. 본문 포맷(E-2)이 정해지기 전이라 지금은 평문으로 다룬다.
  * 리치텍스트 JSON 으로 바뀌면 여기부터 고친다.
  */
+/** 본문은 Markdown 이다. 기호를 걷어낸 평문을 자른다. */
 function toPreview(content: string | undefined): string {
-  const text = (content ?? "").replace(/\s+/g, " ").trim();
+  const text = markdownToPlainText(content ?? "");
   return text.length > PREVIEW_LENGTH ? `${text.slice(0, PREVIEW_LENGTH)}…` : text;
 }
