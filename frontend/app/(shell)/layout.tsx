@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Fab from "@/components/layout/fab";
 import Footer from "@/components/layout/footer";
@@ -10,6 +11,7 @@ import { marqueeItems } from "@/features/landing/api";
 import Marquee from "@/features/landing/components/marquee";
 import { loadRooms } from "@/features/room/api";
 import { loadWallets, type ConnectedWallet } from "@/features/wallet/api";
+import { roomSymbolOf, writeHref } from "@/lib/routes";
 import { useRequireLogin, useSession } from "@/lib/session";
 
 /**
@@ -27,6 +29,8 @@ import { useRequireLogin, useSession } from "@/lib/session";
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   const { member, connectWallet } = useSession();
   const requireLogin = useRequireLogin();
+  // 방 게시판·글 상세 안이면 그 방. 사이드바 표시와 FAB 글쓰기가 쓴다.
+  const currentRoom = roomSymbolOf(usePathname());
 
   const [rooms, setRooms] = useState<SidebarRoom[]>([]);
   const [wallets, setWallets] = useState<ConnectedWallet[]>([]);
@@ -64,6 +68,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   }, [member]);
 
   const visibleWallets = member ? wallets : [];
+  const sidebarRooms = rooms.map((room) => ({ ...room, current: room.symbol === currentRoom }));
 
   const onConnectWallet = useCallback(async () => {
     // 로그인 전이면 /login 으로 보낸다. 거기서 돌아오면 다시 누르면 된다.
@@ -88,7 +93,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       <Marquee items={marqueeItems()} />
 
       <div className="flex items-start gap-8 px-6 pt-8 pb-12">
-        <Sidebar rooms={rooms} wallets={visibleWallets} onConnectWallet={onConnectWallet} />
+        <Sidebar rooms={sidebarRooms} wallets={visibleWallets} onConnectWallet={onConnectWallet} />
 
         <div className="flex min-w-0 flex-1 flex-col gap-12">
           {notice ? (
@@ -102,7 +107,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       </div>
 
       <Footer />
-      <Fab />
+      <Fab href={writeHref(currentRoom)} />
     </div>
   );
 }

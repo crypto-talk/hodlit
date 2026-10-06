@@ -94,6 +94,27 @@ test("server-renders the Hodlit application", async (t) => {
     assert.doesNotMatch(html, /전체 방/);
   });
 
+  await t.test("방 게시판", async () => {
+    const response = await fetch(`${origin}/subhodl/eth?tab=verified`, {
+      headers: { accept: "text/html" },
+    });
+    assert.equal(response.status, 200);
+
+    const html = await response.text();
+    assert.match(html, /<title>ETH 방 — Hodlit<\/title>/);
+    // 방 안의 헤더 글쓰기는 그 방을 미리 고른다. 내용은 클라이언트에서 그려진다.
+    assert.match(html, /href="\/write\?symbol=ETH"/);
+    assert.match(html, /전체 방/);
+  });
+
+  await t.test("방 게시판 주소 검사", async () => {
+    // 심볼 모양이 아니면 백엔드에 묻지 않고 바로 404 다.
+    const response = await fetch(`${origin}/subhodl/not-a-room`, {
+      headers: { accept: "text/html" },
+    });
+    assert.equal(response.status, 404);
+  });
+
   await t.test("글 상세 주소 검사", async () => {
     // 글 id 가 숫자가 아니면 백엔드에 묻지 않고 바로 404 다.
     const response = await fetch(`${origin}/subhodl/BTC/abc`, { headers: { accept: "text/html" } });

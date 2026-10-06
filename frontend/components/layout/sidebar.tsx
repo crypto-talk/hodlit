@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { roomHref } from "@/lib/routes";
 import Logo from "./logo";
 import type { SidebarRoom, SidebarWallet } from "./types";
 
@@ -38,9 +40,10 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
 
       <div className="mt-2 flex flex-col">
         {rooms.map((room) => (
-          <a
+          <Link
             key={room.symbol}
-            href="#"
+            href={roomHref(room.symbol)}
+            aria-current={room.current ? "page" : undefined}
             className={`flex items-baseline gap-2 border-l-2 p-2 hover:bg-surface ${
               room.current ? "border-l-brand" : "border-l-transparent"
             }`}
@@ -53,7 +56,7 @@ export default function Sidebar({ rooms, wallets, onConnectWallet }: Props) {
             >
               {room.change}
             </span>
-          </a>
+          </Link>
         ))}
       </div>
 

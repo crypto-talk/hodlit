@@ -8,6 +8,7 @@ import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
+import { roomHref } from "@/lib/routes";
 import { loadPost } from "../api";
 import PostBody from "./post-body";
 
@@ -60,7 +61,7 @@ export default function PostDetailView({ postId, symbol }: Props) {
     <article className="rounded-lg border border-border-subtle bg-surface p-6">
       <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
         <Link
-          href={`/subhodl/${encodeURIComponent(room)}`}
+          href={roomHref(room)}
           className="rounded-sm border border-border-subtle bg-canvas px-2 py-0.5 text-xs font-semibold"
         >
           {room} · {coinNameKo(room, room)}
