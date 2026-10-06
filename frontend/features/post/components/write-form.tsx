@@ -1,0 +1,181 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ApiError } from "@/lib/http";
+import { useSession } from "@/lib/session";
+import { publishPost, loadWriteRooms } from "../api";
+import { CONTENT_MAX, TITLE_MAX, draftProblem } from "../limits";
+
+type Props = {
+  /** `?symbol=` 로 들어온 방. 페이지가 모양을 검사해서 넘겨준다. */
+  initialSymbol: string | null;
+};
+
+const FIELD =
+  "w-full rounded-sm border border-border-subtle bg-canvas px-3 text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand";
+
+/**
+ * 글쓰기 1단계 — 방 선택 + 제목 + 본문(textarea) + 발행.
+ *
+ * 본문 포맷(E-2)은 아직 정하지 않았다. 그 결정은 에디터에만 걸리고 백엔드
+ * `content` 는 어느 쪽이든 5000자 문자열이라, textarea 로 시작하면 나중에
+ * 리치텍스트로 가도 버리는 것이 이 textarea 하나뿐이다.
+ *
+ * 와이어프레임(`크립톡_글쓰기_와이어프레임_v2`)에서 아직 없는 것
+ *   - 툴바 · 이미지 · 동영상 · 차트 블록
+ *   - "이 글에 붙을 정보" 미리보기 (`/me/assets` + badge 문구)
+ *   - 임시저장 · 미리보기
+ */
+export default function WriteForm({ initialSymbol }: Props) {
+  const router = useRouter();
+  const { member, restored } = useSession();
+
+  const [pickedSymbol, setCoinSymbol] = useState(initialSymbol ?? "");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [problem, setProblem] = useState("");
+
+  // 글쓰기는 로그인이 필요하다(POST /posts). 세션 복원이 끝난 뒤에만 판단한다.
+  // 끝나기 전에 보내면 로그인한 사람도 로그인 화면을 한 번 거친다.
+  const loggedOut = restored && !member;
+  useEffect(() => {
+    if (!loggedOut) return;
+    const here = initialSymbol ? `/write?symbol=${initialSymbol}` : "/write";
+    router.replace(`/login?next=${encodeURIComponent(here)}`);
+  }, [loggedOut, initialSymbol, router]);
+
+  const rooms = useQuery({ queryKey: ["write-rooms"], queryFn: loadWriteRooms });
+
+  // `?symbol=` 이 목록에 없는 방이면 고르지 않은 것으로 본다. 그대로 두면
+  // select 는 첫 항목을 보여주는데 발행은 다른 값으로 나간다.
+  const unknownSymbol = rooms.data && !rooms.data.some((room) => room.symbol === pickedSymbol);
+  const coinSymbol = unknownSymbol ? "" : pickedSymbol;
+
+  const publish = useMutation({
+    mutationFn: publishPost,
+    onSuccess: () => {
+      // 글 상세(/subhodl/[symbol]/[postId])가 아직 없다. 생기면 그쪽으로 보낸다.
+      // 랜딩은 마운트할 때 피드를 다시 불러오므로 새 글이 바로 보인다.
+      router.push("/");
+    },
+  });
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const draft = { coinSymbol, title, content };
+    const found = draftProblem(draft);
+    setProblem(found ?? "");
+    if (found) return;
+    publish.mutate(draft);
+  };
+
+  const selectedName = rooms.data?.find((room) => room.symbol === coinSymbol)?.name;
+  const errorMessage = problem || (publish.error ? publishErrorMessage(publish.error) : "");
+  const pending = publish.isPending || publish.isSuccess;
+
+  return (
+    <form className="w-full max-w-180" onSubmit={submit} noValidate>
+      <div className="flex items-center gap-4">
+        <h1 className="text-h2 font-semibold">글쓰기</h1>
+        <div className="flex-1" />
+        <Button type="button" onClick={() => router.back()}>
+          나가기
+        </Button>
+        <Button type="submit" variant="primary" disabled={pending || loggedOut}>
+          {pending ? "발행 중…" : "발행"}
+        </Button>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <select
+          className={`${FIELD} h-10 max-w-60 text-sm`}
+          aria-label="방 선택"
+          value={coinSymbol}
+          onChange={(event) => setCoinSymbol(event.target.value)}
+          disabled={!rooms.data}
+        >
+          <option value="">{rooms.isError ? "방 목록을 못 불러왔습니다" : "방을 고르세요"}</option>
+          {rooms.data?.map((room) => (
+            <option key={room.symbol} value={room.symbol}>
+              {room.symbol} · {room.name} 방
+            </option>
+          ))}
+        </select>
+        <p className="text-sm text-text-muted">
+          {coinSymbol ? (
+            <>
+              <b className="font-semibold text-text-primary">{coinSymbol}</b>
+              {selectedName ? ` (${selectedName})` : ""} 보유량이 발행 시점 기준으로 글에 붙습니다
+            </>
+          ) : (
+            "고른 방의 코인 보유량이 글에 붙습니다"
+          )}
+        </p>
+      </div>
+
+      <input
+        className={`${FIELD} mt-6 h-12 text-h2`}
+        aria-label="제목"
+        placeholder="제목"
+        value={title}
+        maxLength={TITLE_MAX}
+        onChange={(event) => setTitle(event.target.value)}
+      />
+      <Counter length={title.length} max={TITLE_MAX} />
+
+      <textarea
+        className={`${FIELD} mt-2 min-h-105 resize-y py-3 text-body`}
+        aria-label="본문"
+        placeholder="본문"
+        value={content}
+        maxLength={CONTENT_MAX}
+        onChange={(event) => setContent(event.target.value)}
+      />
+      <Counter length={content.length} max={CONTENT_MAX} />
+
+      {errorMessage ? (
+        <p role="alert" className="mt-4 text-sm text-danger">
+          {errorMessage}
+        </p>
+      ) : null}
+
+      <div className="mt-6 rounded-sm border border-border-subtle bg-surface p-4 text-sm text-text-muted">
+        <p>
+          보유 정보는 <b className="font-semibold text-text-primary">발행 시점에 확정</b>되며 이후
+          수정해도 바뀌지 않습니다. 수량은 구간으로만 공개되고 지갑 주소는 공개되지 않습니다.
+        </p>
+        <p className="mt-2">지갑을 연결하지 않았다면 미인증으로 발행됩니다.</p>
+      </div>
+
+      <p className="mt-4 text-xs text-text-subtle">
+        게시물은 투자 권유가 아니며, 투자 판단의 책임은 이용자에게 있습니다.
+        <br />
+        리딩방·유료방 홍보는 예고 없이 삭제됩니다.
+      </p>
+    </form>
+  );
+}
+
+function Counter({ length, max }: { length: number; max: number }) {
+  return (
+    <p className="mt-1 text-right text-xs text-text-subtle tabular-nums">
+      {length.toLocaleString("ko-KR")} / {max.toLocaleString("ko-KR")}
+    </p>
+  );
+}
+
+/**
+ * 에러 code 목록은 아직 합의 전이라(C-5) 상태 코드로만 나눈다.
+ * 401 은 http 래퍼가 갱신을 한 번 시도한 뒤에도 실패한 경우다.
+ */
+function publishErrorMessage(error: Error): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return "로그인이 만료됐습니다. 다시 로그인해 주세요.";
+    if (error.status === 404) return "이 방을 찾을 수 없습니다. 다른 방을 골라 주세요.";
+    return error.message;
+  }
+  return "발행하지 못했습니다. 네트워크 상태를 확인해 주세요.";
+}

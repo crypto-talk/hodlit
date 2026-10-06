@@ -13,8 +13,8 @@ import Logo from "./logo";
  * 서버 컴포넌트라 함수 프롭을 내려보낼 수 없다. 로그인 상태는 `useSession()`
  * 에서 직접 읽는다.
  *
- * 글쓰기는 화면 자체가 3단계라 아직 비활성이다. 검색도 백엔드에 `/search` 가
- * 없어 같은 상태다. 눌리는데 아무 일도 안 나는 것보다 눌리지 않는 편이 낫다.
+ * 검색은 백엔드에 `/search` 가 없어 비활성이다. 눌리는데 아무 일도 안 나는
+ * 것보다 눌리지 않는 편이 낫다.
  */
 export default function Header() {
   const { member, logout } = useSession();
@@ -73,17 +73,16 @@ export default function Header() {
   );
 }
 
-/** 좁은 화면에서는 FAB 이 같은 자리를 맡으므로 숨긴다. */
+/**
+ * 좁은 화면에서는 FAB 이 같은 자리를 맡으므로 숨긴다.
+ *
+ * 로그인 전이어도 링크는 그대로 둔다. `/write` 가 로그인 화면으로 보내고,
+ * 로그인 뒤에는 `?next=` 로 글쓰기에 돌아온다.
+ */
 function WriteButton() {
   return (
-    <Button
-      type="button"
-      variant="primary"
-      className="max-shell:hidden"
-      disabled
-      title="글쓰기 화면은 아직 준비 중입니다"
-    >
-      글쓰기
+    <Button asChild variant="primary" className="max-shell:hidden">
+      <Link href="/write">글쓰기</Link>
     </Button>
   );
 }

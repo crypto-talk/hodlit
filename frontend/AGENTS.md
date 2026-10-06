@@ -176,16 +176,26 @@ Known rough edges left by step 2, deliberately:
   server cannot know who is logged in (B-3), and connecting a wallet calls a browser
   extension. When `access` moves to a cookie, the room list can be fetched on the server and
   only the interactive part stays a client component.
-- The 글쓰기 buttons in the header and the fab are disabled with a title, like the search box.
-  The write screen is step 3; a button that goes nowhere is worse than one that says so.
+- ~~The 글쓰기 buttons in the header and the fab are disabled~~ — they link to `/write` since
+  step 3 ①. The search box is still disabled with a title.
 - The marquee is rendered by the shell layout, not the landing, because it is a strip across
   the whole screen group. Its three numbers are still mock (no aggregate API).
 
 ### Step 3 — the remaining four screens
 
-Room board, post detail, profile and settings, then the editor. E-2 (the post body format)
-should be settled before the editor is built; it is the most expensive screen and the one
-that gets thrown away if the format flips.
+The order changed to **write → room board → post detail → profile/settings**. The database
+had no posts, so every list screen could only be checked empty; writing first fills them.
+
+1. ✅ `/write`, minimal: room select + title + plain `textarea` + publish
+   (`features/post/`). E-2 (the body format) is still open, but it only affects the editor —
+   the backend `content` is a 5000-character string either way, so the textarea is the only
+   thing thrown away if the format becomes rich text. Length limits in
+   `features/post/limits.ts` mirror the backend `@Size` values. `?symbol=` preselects a room.
+   After publishing it goes to `/` because the post detail screen does not exist yet.
+   Not built yet: toolbar, image/video/chart blocks, the "이 글에 붙을 정보" preview,
+   draft saving, preview.
+   `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
+   too and features cannot import each other.
 
 Mock data is fine for layout, but keep G-5's rule: where the backend has no number, show
 "준비 중" or a fixed label rather than a plausible fake. A screen full of invented numbers

@@ -77,6 +77,22 @@ test("server-renders the Hodlit application", async (t) => {
     assert.match(html, /이미 계정이 있어요/);
   });
 
+  await t.test("글쓰기 페이지", async () => {
+    const response = await fetch(`${origin}/write?symbol=eth`, {
+      headers: { accept: "text/html" },
+    });
+    assert.equal(response.status, 200);
+
+    const html = await response.text();
+    assert.match(html, /제목/);
+    assert.match(html, /본문/);
+    assert.match(html, /발행/);
+    // 헤더의 글쓰기가 더 이상 비활성 버튼이 아니라 링크다.
+    assert.match(html, /href="\/write"/);
+    // (focus) 화면군에는 사이드바가 없다.
+    assert.doesNotMatch(html, /전체 방/);
+  });
+
   await t.test("오픈 리다이렉트 방어", async () => {
     // `?next=` 가 외부 주소면 폼은 홈으로 돌아가야 한다(features/auth/safe-next.ts).
     const response = await fetch(`${origin}/login?next=https%3A%2F%2Fevil.example`, {

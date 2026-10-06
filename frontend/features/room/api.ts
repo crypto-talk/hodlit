@@ -2,7 +2,7 @@ import type { SidebarRoom } from "@/components/layout/types";
 import type { components } from "@/lib/api-schema";
 import { formatChangeRate } from "@/lib/format/number";
 import { http } from "@/lib/http";
-import { coinNameKo } from "./coin-name-ko";
+import { coinNameKo } from "@/lib/coin-name-ko";
 
 /**
  * 방 목록 (구조 규칙 2: 데이터 진입점은 여기 하나).
