@@ -12,7 +12,7 @@ export const CONTENT_MAX = 5000;
 export const IMAGE_MAX = 8;
 
 /** `MediaService.MAX_BYTES`. 서버 multipart 설정도 25MB 다. */
-export const IMAGE_BYTES_MAX = 25 * 1024 * 1024;
+const IMAGE_BYTES_MAX = 25 * 1024 * 1024;
 
 /**
  * `MediaService.EXTENSIONS` 의 이미지 쪽. 서버는 영상(mp4·webm·mov)도 받지만

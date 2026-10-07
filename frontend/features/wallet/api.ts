@@ -38,7 +38,7 @@ export async function loadWallets(): Promise<ConnectedWallet[]> {
  * 그 사람의 잔액·거래 내역이 전부 열린다. 지갑 특정 방지가 이 제품의 전제라
  * 내 화면에서도 같은 기준을 지킨다.
  */
-export function shortenAddress(address: string | undefined): string {
+function shortenAddress(address: string | undefined): string {
   if (!address) return "";
   return address.length <= 13 ? address : `${address.slice(0, 6)}…${address.slice(-4)}`;
 }

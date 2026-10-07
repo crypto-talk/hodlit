@@ -32,7 +32,7 @@ export const config = {
  * 부르면 빌드가 실패한다. 조용히 localhost 를 때리다 브라우저에서야 알게 되는
  * 것보다 낫다.
  */
-export function assertConfig(): void {
+function assertConfig(): void {
   if (process.env.NODE_ENV === "production") {
     required("NEXT_PUBLIC_API_URL", process.env.NEXT_PUBLIC_API_URL);
   }

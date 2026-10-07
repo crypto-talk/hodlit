@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/session";
 
-export type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup";
 
 type Props = {
   mode: AuthMode;

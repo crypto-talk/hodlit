@@ -102,7 +102,7 @@ export async function discardImage(image: UploadedImage): Promise<void> {
 }
 
 /** 백엔드가 주는 상대 경로를 화면에서 열 수 있는 주소로 바꾼다. */
-export function mediaSrc(url: string): string {
+function mediaSrc(url: string): string {
   return url.startsWith("/") ? `${config.apiUrl}${url}` : url;
 }
 
