@@ -70,7 +70,8 @@ export default function WriteForm({ initialSymbol }: Props) {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const draft = { coinSymbol, title, content, youtubeUrl, images: images.uploaded };
+    const verifiable = rooms.data?.find((room) => room.symbol === coinSymbol)?.verifiable ?? false;
+    const draft = { coinSymbol, title, content, youtubeUrl, images: images.uploaded, verifiable };
     const found = draftProblem(draft);
     setProblem(found ?? "");
     if (found) return;
