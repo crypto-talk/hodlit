@@ -11,7 +11,7 @@
  * 디자인은 한글명을 쓰므로 프론트에서 매핑합니다.
  * 백엔드에 한글명 필드가 생기면 이 표는 지웁니다.
  */
-export const COIN_NAME_KO: Record<string, string> = {
+const COIN_NAME_KO: Record<string, string> = {
   BTC: "비트코인",
   ETH: "이더리움",
   SOL: "솔라나",

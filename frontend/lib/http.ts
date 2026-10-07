@@ -29,7 +29,7 @@ const REFRESH_PATH = "/api/v1/auth/refresh";
 const AUTH_PREFIX = "/api/v1/auth/";
 const DEFAULT_MESSAGE = "요청을 처리하지 못했습니다.";
 
-export type ApiErrorShape = {
+type ApiErrorShape = {
   /** 백엔드와 합의 예정(C-5). 합의 전까지는 `HTTP_<상태코드>` 가 들어간다. */
   code: string;
   message: string;

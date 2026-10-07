@@ -51,7 +51,7 @@ export const MarkdownInput = Extension.create({
  * 기호 하나가 우연히 들어간 평범한 문장(`2*3=6`)까지 해석하지 않도록 줄 단위
  * 블록 문법이나 짝이 맞는 강조·링크만 본다.
  */
-export function looksLikeMarkdown(text: string): boolean {
+function looksLikeMarkdown(text: string): boolean {
   return (
     /^\s{0,3}(#{1,6}\s|>\s|[-*+]\s|\d+[.)]\s|```)/m.test(text) ||
     /(\*\*|__|~~)\S.*?\S?\1/.test(text) ||
