@@ -23,8 +23,10 @@ type Props = {
  * 보유 스냅샷 블록이 이 서비스의 "포인트 하나"다. 발행 순간 기록되고 이후
  * 바뀌지 않는다는 것을 블록 안에서 말한다.
  *
+ * 댓글은 `features/comment` 이고, 상세 페이지(`app/…/post-view.tsx`)가 이 아래에 붙인다.
+ *
  * 아직 없는 것
- *   - 댓글 · 좋아요 · 북마크 · 재게시 버튼
+ *   - 좋아요 · 북마크 · 재게시 버튼
  *   - 수정 · 삭제
  */
 export default function PostDetailView({ postId, symbol }: Props) {

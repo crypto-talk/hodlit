@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import PostDetailView from "@/features/post/components/post-detail";
+import PostView from "./post-view";
 
 export const metadata: Metadata = {
   title: "글 — Hodlit",
@@ -22,5 +22,5 @@ export default async function PostPage({
   const id = Number(postId);
   if (!/^\d+$/.test(postId) || !Number.isSafeInteger(id)) notFound();
 
-  return <PostDetailView postId={id} symbol={decodeURIComponent(symbol).toUpperCase()} />;
+  return <PostView postId={id} symbol={decodeURIComponent(symbol).toUpperCase()} />;
 }

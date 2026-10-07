@@ -2,6 +2,7 @@ import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { config } from "@/lib/config";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
+import { refreshHoldings } from "@/lib/holdings-refresh";
 import { http } from "@/lib/http";
 import type { PostDetail, PostDraft, PublishedPost, UploadedImage, WriteRoom } from "./types";
 
@@ -20,9 +21,6 @@ type CreatePostRequest = Schemas["CreatePostRequest"];
 type StoredMedia = Schemas["StoredMedia"];
 
 const MEDIA_PREFIX = "/api/v1/media/";
-
-/** 보유 기록 갱신을 기다리는 최대 시간. 넘으면 기다리지 않고 발행한다. */
-const HOLDING_REFRESH_TIMEOUT_MS = 8_000;
 
 /**
  * 글을 쓸 수 있는 방 목록.
@@ -47,7 +45,7 @@ export async function loadWriteRooms(): Promise<WriteRoom[]> {
  *   - `assetPrice` · `assetPriceCurrency`: 서버가 무시하고 직접 시세를 조회한다.
  *   - 보유 정보: 서버가 저장해 둔 보유 기록을 글에 복사한다. 프론트가 보내는
  *     값은 없어서 수량을 위조할 수는 없다. 다만 기록이 오래됐을 수 있어서 발행
- *     직전에 `refreshHoldings()` 로 갱신한다(아래 주의 참고).
+ *     직전에 `refreshHoldings()` 로 갱신한다(`lib/holdings-refresh.ts` 참고).
  *
  * 제목·본문은 앞뒤 공백을 잘라 보낸다. 백엔드가 `@NotBlank` 로 거르는 기준과
  * 맞춘 것이다.
@@ -74,33 +72,6 @@ export async function publishPost(draft: PostDraft): Promise<PublishedPost> {
   }
 
   return { id: post.id, coinSymbol: post.coinSymbol ?? draft.coinSymbol };
-}
-
-/**
- * ⚠️ 임시 조치 — 발행 직전에 보유 기록을 갱신한다.
- *
- * 서버는 발행할 때 잔액을 새로 읽지 않고, `GET /me/assets` 가 마지막으로 저장한
- * 기록을 글에 복사한다(HODL-42 수정 이후). 그런데 이 API 를 부르는 화면이 없어서
- * 지갑을 연결해도 글이 미인증으로 나갔다. 그래서 발행 직전에 한 번 부른다.
- *
- * 실패해도 발행은 막지 않는다. 서버는 갱신에 실패하면 503 을 주고 이전 기록을
- * 그대로 두므로, 마지막으로 성공한 기록이 글에 붙는다. 지갑이 없으면 서버가 빈
- * 목록을 바로 돌려준다.
- *
- * 이 순서는 브라우저가 지키는 것이라 API 를 직접 부르면 건너뛸 수 있다. 진짜
- * 해결은 서버가 발행 처리 안에서 갱신하는 것이다(백엔드 Jira 이슈). 그게 들어오면
- * 이 함수와 `PostDraft.verifiable` 을 지운다.
- */
-async function refreshHoldings(): Promise<void> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), HOLDING_REFRESH_TIMEOUT_MS);
-  try {
-    await http<unknown>("/api/v1/me/assets", { signal: controller.signal });
-  } catch {
-    // 갱신 실패는 발행 실패가 아니다. 마지막 기록으로 발행한다.
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 /**
@@ -156,6 +127,7 @@ export async function loadPost(postId: number): Promise<PostDetail> {
     coinSymbol: post.coinSymbol ?? "",
     title: post.title ?? "(제목 없음)",
     content: post.content ?? "",
+    authorId: post.author?.id ?? null,
     authorNickname: post.author?.nickname ?? "알 수 없음",
     createdAt,
     // 서버는 발행 때도 updatedAt 을 채운다. 몇 초 차이는 수정으로 보지 않는다.
