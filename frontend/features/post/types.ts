@@ -46,6 +46,11 @@ export type PostDraft = {
   images: UploadedImage[];
   /** 비어 있으면 보내지 않는다. */
   youtubeUrl: string;
+  /**
+   * 고른 방이 보유 인증을 지원하는지. true 면 발행 직전에 보유 기록을 갱신한다.
+   * 지원하지 않는 방(BTC 등)은 갱신해도 글에 붙을 것이 없어 RPC 를 부르지 않는다.
+   */
+  verifiable: boolean;
 };
 
 /**
