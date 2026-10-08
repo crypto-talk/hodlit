@@ -6,6 +6,7 @@ import {
   holdingLabel,
   holdingPeriodLabel,
   isVerifiable,
+  isHolderTier,
   tierLabel,
   tierOf,
   verificationLabel,
@@ -93,6 +94,35 @@ describe("tierOf · tierLabel", () => {
     expect(tierLabel(tierOf("WALLET", true))).toBe("지갑연결");
     expect(tierLabel(tierOf("UNVERIFIED", false))).toBe("미인증");
     expect(tierLabel(tierOf(undefined, undefined))).toBe("미인증");
+  });
+
+  it("지갑을 연결했는데 보유자가 아니면 미보유", () => {
+    // 서버는 잔액 확인에 성공했을 때만 walletCount 를 채운다. 1 이상이면 "확인했고 0개"다.
+    expect(tierOf("UNVERIFIED", false, 1)).toBe("empty");
+    expect(tierOf("UNVERIFIED", false, 2)).toBe("empty");
+  });
+
+  it("확인 기록이 없으면 미보유가 아니라 미인증", () => {
+    expect(tierOf("UNVERIFIED", false, 0)).toBe("none");
+    expect(tierOf("UNVERIFIED", false, null)).toBe("none");
+    expect(tierOf(undefined, undefined)).toBe("none");
+  });
+
+  it("보유자면 walletCount 와 상관없이 지갑연결", () => {
+    expect(tierOf("WALLET", true, 1)).toBe("wallet");
+  });
+
+  it("미보유 문구는 코인을 붙인다", () => {
+    expect(tierLabel("empty", "ETH")).toBe("ETH 미보유");
+    expect(tierLabel("empty")).toBe("미보유");
+    expect(tierLabel("none", "ETH")).toBe("미인증");
+  });
+
+  it("보유가 확인된 등급만 보유자로 센다", () => {
+    expect(isHolderTier("wallet")).toBe(true);
+    expect(isHolderTier("exchange")).toBe(true);
+    expect(isHolderTier("empty")).toBe(false);
+    expect(isHolderTier("none")).toBe(false);
   });
 
   it("verificationLabel 과 같은 문구를 쓴다", () => {

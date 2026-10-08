@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import TierBadge from "@/components/holder/tier-badge";
-import { UNSUPPORTED_LABEL } from "@/lib/holder-snapshot/label";
+import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
@@ -23,8 +23,10 @@ type Props = {
  * 보유 스냅샷 블록이 이 서비스의 "포인트 하나"다. 발행 순간 기록되고 이후
  * 바뀌지 않는다는 것을 블록 안에서 말한다.
  *
+ * 댓글은 `features/comment` 이고, 상세 페이지(`app/…/post-view.tsx`)가 이 아래에 붙인다.
+ *
  * 아직 없는 것
- *   - 댓글 · 좋아요 · 북마크 · 재게시 버튼
+ *   - 좋아요 · 북마크 · 재게시 버튼
  *   - 수정 · 삭제
  */
 export default function PostDetailView({ postId, symbol }: Props) {
@@ -87,8 +89,15 @@ export default function PostDetailView({ postId, symbol }: Props) {
           className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <TierBadge tier={data.holder.tier} />
-            <span className="text-sm font-semibold text-text-primary">{data.holder.holding}</span>
+            <TierBadge tier={data.holder.tier} symbol={room} />
+            {isHolderTier(data.holder.tier) ? (
+              <span className="text-sm font-semibold text-text-primary">{data.holder.holding}</span>
+            ) : null}
+            {data.holder.tier === "empty" ? (
+              <span className="text-sm text-text-muted">
+                작성 시점에 연결한 지갑의 {room} 잔액이 0이었습니다.
+              </span>
+            ) : null}
             {data.holder.amount ? (
               <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
                 {data.holder.amount}

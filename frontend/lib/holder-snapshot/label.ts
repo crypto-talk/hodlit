@@ -22,6 +22,7 @@ export const UNKNOWN_HOLDING_LABEL = "보유 기간 미확인";
 const TIER_LABEL: Record<Tier, string> = {
   wallet: "지갑연결",
   exchange: "거래소연동",
+  empty: "미보유",
   none: "미인증",
 };
 
@@ -31,19 +32,35 @@ const VERIFICATION_LABEL: Record<string, string> = {
 };
 
 /**
- * 서버 값 → 인증 등급. 모르는 값이면 가장 약한 등급으로 떨어뜨린다.
- * 거래소 연동 등급은 백엔드에 아직 없다. WALLET 아니면 전부 미인증이다.
+ * 서버 값 → 보유 표기 등급. 모르는 값이면 가장 약한 등급으로 떨어뜨린다.
+ *
+ * 미보유(`empty`)는 서버가 따로 주는 값이 없어서 `walletCount` 로 가른다. 서버는 잔액
+ * 확인에 **성공했을 때만** 보유 기록을 저장하고, 그때 연결 지갑 수를 같이 적는다
+ * (`AssetService.refreshAndList`). 그래서 `walletCount ≥ 1` 인데 보유자가 아니면
+ * "확인했고 0개"다. 확인이 한 번도 성공하지 못했으면 기록이 없어 `walletCount` 가 0 이고
+ * 미인증으로 남는다 — 확인하지 못한 것을 미보유라고 말하지 않는다.
+ *
+ * ⚠️ 서버가 보유 상태를 직접 내려주게 되면(Jira 요청) 이 추론을 지우고 그 값을 쓴다.
+ * 거래소 연동 등급도 그때 들어온다.
  */
 export function tierOf(
   verificationLevel: string | null | undefined,
   verifiedHolder: boolean | null | undefined,
+  walletCount?: number | null,
 ): Tier {
-  if (verificationLevel === "WALLET") return "wallet";
-  return verifiedHolder ? "wallet" : "none";
+  if (verificationLevel === "WALLET" || verifiedHolder) return "wallet";
+  if (typeof walletCount === "number" && walletCount > 0) return "empty";
+  return "none";
 }
 
-/** 인증 등급 배지 문구. */
-export function tierLabel(tier: Tier): string {
+/** 그 코인을 들고 있다고 확인된 등급인지. 보유 기간 · 보유 인증자 수는 이때만 센다. */
+export function isHolderTier(tier: Tier): boolean {
+  return tier === "wallet" || tier === "exchange";
+}
+
+/** 등급 배지 문구. 미보유는 코인을 붙여 `ETH 미보유` 로 쓴다. */
+export function tierLabel(tier: Tier, symbol?: string): string {
+  if (tier === "empty" && symbol) return `${symbol} ${TIER_LABEL.empty}`;
   return TIER_LABEL[tier];
 }
 
