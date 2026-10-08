@@ -36,7 +36,7 @@ export default function PostCard({ post, showRoom = true }: Props) {
             {post.symbol}
           </Link>
         ) : null}
-        {post.verifiable ? <TierBadge tier={post.tier} /> : null}
+        {post.verifiable ? <TierBadge tier={post.tier} symbol={post.symbol} /> : null}
         {post.range ? (
           <span className="flex-none rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
             {post.range}

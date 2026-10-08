@@ -1,8 +1,14 @@
 /**
- * 인증 등급. 지갑연결 / 거래소연동 / 미인증.
- * 거래소 등급은 백엔드에 아직 없어서 지금은 `exchange` 가 나오지 않는다.
+ * 보유 표기 등급.
+ *
+ * - `wallet`   지갑연결 — 연결한 지갑에 그 코인이 있다
+ * - `exchange` 거래소연동 — 백엔드에 아직 없어서 지금은 나오지 않는다
+ * - `empty`    미보유 — 지갑은 연결했고 잔액 확인도 성공했는데 0개
+ * - `none`     미인증 — 연결한 수단이 없거나, 확인이 한 번도 성공하지 못했다
+ *
+ * `empty` 와 `none` 은 화면에서 같은 무게로 보인다. 플랫폼은 사실만 보여준다.
  */
-export type Tier = "wallet" | "exchange" | "none";
+export type Tier = "wallet" | "exchange" | "empty" | "none";
 
 /**
  * 코인별 보유 인증 지원 여부. 백엔드 `verificationAvailability` 의 값이다.

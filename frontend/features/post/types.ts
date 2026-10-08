@@ -73,6 +73,8 @@ export type PostDetail = {
   title: string;
   /** Markdown. 예전 글은 평문이고, 평문도 그대로 유효한 Markdown 이다. */
   content: string;
+  /** 댓글에서 "작성자" 표시에 쓴다. 응답에 없으면 null. */
+  authorId: number | null;
   authorNickname: string;
   createdAt: string;
   /** 수정된 적이 있으면 true. 스냅샷은 그대로고 본문만 바뀐다. */
