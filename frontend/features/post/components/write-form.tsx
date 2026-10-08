@@ -14,7 +14,7 @@ import { CONTENT_MAX, TITLE_MAX, draftProblem } from "../limits";
 import BodyEditor from "./body-editor";
 import CharCounter from "./char-counter";
 import ImageAttachments from "./image-attachments";
-import type { Draft } from "../types";
+import type { Draft, DraftInput } from "../types";
 import DraftList from "./draft-list";
 import YoutubeField from "./youtube-field";
 
@@ -38,8 +38,9 @@ const FIELD =
  *   - "이 글에 붙을 정보" 미리보기 (`/me/assets` + badge 문구)
  *   - 미리보기
  *
- * 임시저장(HODL-43)은 서버에 한다. 처음 저장하면 새로 만들고, 그 뒤로는 같은 것을
- * 덮어쓴다. 주소에 `?draft=<번호>` 를 남겨 새로고침해도 이어 쓴다. 발행하면 지운다.
+ * 임시저장(HODL-43)은 서버에 한다. 본문이 처음 채워지면 자동으로 하나 만들고,
+ * 그 뒤로는 자동이든 버튼이든 같은 것을 덮어쓴다(`AUTOSAVE_DELAY`). 주소에
+ * `?draft=<번호>` 를 남겨 새로고침해도 이어 쓴다. 발행하면 지운다.
  */
 export default function WriteForm({ initialSymbol, draftId }: Props) {
   const router = useRouter();
@@ -115,6 +116,9 @@ function WriteFields({
   const [draftId, setDraftId] = useState(draft?.id ?? null);
   const [savedAt, setSavedAt] = useState(draft?.updatedAt ?? "");
   const [listOpen, setListOpen] = useState(false);
+  // 10개가 차서 새로 만들지 못했으면(409) 자동저장을 멈춘다. 같은 실패를 몇 초마다
+  // 되풀이하지 않게. 버튼으로는 계속 시도할 수 있다.
+  const [autoBlocked, setAutoBlocked] = useState(false);
 
   const rooms = useQuery({ queryKey: ["write-rooms"], queryFn: loadWriteRooms });
 
@@ -137,10 +141,18 @@ function WriteFields({
     },
   });
 
+  const input: DraftInput = { coinSymbol, title, content, youtubeUrl, images: images.uploaded };
+  const snapshot = JSON.stringify(input);
+  // 마지막으로 서버에 있는 내용. 같으면 자동저장하지 않는다. 불러온 임시저장은
+  // 처음부터 서버와 같으므로 지금 값으로 시작한다.
+  const [lastSaved, setLastSaved] = useState(() => (draft ? snapshot : ""));
+
   const save = useMutation({
-    mutationFn: () =>
-      saveDraft({ coinSymbol, title, content, youtubeUrl, images: images.uploaded }, draftId),
-    onSuccess: (saved) => {
+    mutationFn: (next: { input: DraftInput; snapshot: string; auto: boolean }) =>
+      saveDraft(next.input, draftId),
+    onSuccess: (saved, next) => {
+      setLastSaved(next.snapshot);
+      setAutoBlocked(false);
       setDraftId(saved.id);
       setSavedAt(saved.updatedAt || new Date().toISOString());
       // 새로고침해도 이어 쓰도록 주소에 남긴다. router 로 바꾸면 페이지가 다시 그려져
@@ -148,7 +160,36 @@ function WriteFields({
       window.history.replaceState(null, "", `/write?draft=${saved.id}`);
       void queryClient.invalidateQueries({ queryKey: ["drafts"] });
     },
+    onError: (error, next) => {
+      if (next.auto && error instanceof ApiError && error.status === 409) setAutoBlocked(true);
+    },
   });
+
+  const saveNow = (auto: boolean) => save.mutate({ input, snapshot, auto });
+
+  /**
+   * 자동저장. 입력이 멈추고 `AUTOSAVE_DELAY` 가 지나면 저장한다.
+   *
+   * 아직 임시저장이 없으면 본문이 채워졌을 때만 새로 만든다. 들어왔다 바로 나간 빈
+   * 글까지 쌓이면 10개가 금방 찬다. 이미 있으면 무엇이 바뀌든 덮어쓴다.
+   */
+  const canAutosave =
+    !autoBlocked &&
+    !loggedOut &&
+    !images.uploading &&
+    !save.isPending &&
+    !publish.isPending &&
+    !publish.isSuccess &&
+    snapshot !== lastSaved &&
+    (draftId !== null || content.trim().length > 0);
+
+  useEffect(() => {
+    if (!canAutosave) return;
+    const timer = window.setTimeout(() => saveNow(true), AUTOSAVE_DELAY);
+    return () => window.clearTimeout(timer);
+    // 내용(snapshot)이 바뀔 때마다 타이머를 다시 건다. saveNow 는 매번 새 함수라 뺀다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canAutosave, snapshot]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -170,8 +211,9 @@ function WriteFields({
   const pending = publish.isPending || publish.isSuccess;
   // 업로드 중에도 글은 계속 쓸 수 있다. 발행과 임시저장만 잠근다 — 올라가는 중인
   // 이미지는 아직 주소가 없어 저장에 실리지 않는다.
-  const publishLocked = pending || loggedOut || images.uploading;
-  const saveLocked = publishLocked || save.isPending;
+  // 임시저장이 도는 중에 발행하면 발행 뒤 삭제와 엇갈려 임시저장이 하나 남을 수 있다.
+  const publishLocked = pending || loggedOut || images.uploading || save.isPending;
+  const saveLocked = publishLocked;
 
   return (
     <form className="w-full max-w-180" onSubmit={submit} noValidate>
@@ -188,13 +230,13 @@ function WriteFields({
         <div className="flex-1" />
         {savedAt ? (
           <span className="text-xs text-text-muted" aria-live="polite">
-            {save.isPending ? "저장 중…" : `${savedTime(savedAt)} 임시저장됨`}
+            {save.isPending ? "저장 중…" : `${savedTime(savedAt)} 저장됨`}
           </span>
         ) : null}
         <Button type="button" onClick={() => router.back()}>
           나가기
         </Button>
-        <Button type="button" disabled={saveLocked} onClick={() => save.mutate()}>
+        <Button type="button" disabled={saveLocked} onClick={() => saveNow(false)}>
           {save.isPending ? "저장 중…" : "임시저장"}
         </Button>
         <Button type="submit" variant="primary" disabled={publishLocked}>
@@ -208,6 +250,9 @@ function WriteFields({
           onDeleted={(id) => {
             // 지금 쓰고 있는 임시저장을 지웠으면, 다음 저장은 새로 만든다.
             if (id !== draftId) return;
+            // 지운 직후 같은 내용을 자동저장이 다시 만들지 않게, 지금 내용을 저장된
+            // 것으로 친다. 이어서 고치면 그때 새로 만든다.
+            setLastSaved(snapshot);
             setDraftId(null);
             setSavedAt("");
             window.history.replaceState(null, "", "/write");
@@ -295,6 +340,9 @@ function WriteFields({
     </form>
   );
 }
+
+/** 입력이 멈추고 이만큼 지나면 자동저장한다. */
+const AUTOSAVE_DELAY = 3000;
 
 const SAVED_TIME = new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" });
 
