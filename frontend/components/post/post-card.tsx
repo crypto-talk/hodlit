@@ -13,10 +13,10 @@ type Props = {
 };
 
 // 조회수 API가 없습니다. 값이 없으면 숫자를 지어내지 않고 자리를 뺍니다(G-5).
-const stats = (post: PostSummary) =>
-  post.views === null
-    ? `댓글 ${post.comments}`
-    : `댓글 ${post.comments} · 조회 ${post.views.toLocaleString("en-US")}`;
+const stats = (post: PostSummary) => {
+  const base = `좋아요 ${post.likes} · 댓글 ${post.comments}`;
+  return post.views === null ? base : `${base} · 조회 ${post.views.toLocaleString("en-US")}`;
+};
 
 /**
  * 글 목록 카드. 랜딩 전체 글과 방 게시판이 같이 쓴다.

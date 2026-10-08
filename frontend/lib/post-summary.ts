@@ -45,6 +45,7 @@ export type PostSummary = {
   nick: string;
   /** 보유 기간 문구. 인덱서 전까지 항상 `보유 기간 미확인`. 미지원 코인이면 그 사실. */
   hold: string;
+  likes: number;
   comments: number;
   /** ⚠️ 조회수 API 가 없다. null 이면 화면에서 자리를 뺀다. */
   views: number | null;
@@ -75,6 +76,7 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
     nick: post.author?.nickname ?? "알 수 없음",
     // 인증을 지원하지 않는 코인이면 "보유 기간 미확인" 대신 그 사실을 말한다.
     hold: verifiable ? holdingPeriodLabel(snapshot?.holdingMonths) : UNSUPPORTED_LABEL,
+    likes: post.likes ?? 0,
     comments: post.comments ?? 0,
     // 조회수 API 가 없다. 숫자를 지어내지 않고 화면에서 자리를 뺀다(G-5).
     views: null,

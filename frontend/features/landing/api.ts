@@ -86,6 +86,6 @@ function toHotPosts(posts: FeedPost[]): HotPost[] {
       symbol: post.symbol,
       tier: post.tier,
       title: post.title,
-      meta: `댓글 ${post.comments}`,
+      meta: `좋아요 ${post.likes} · 댓글 ${post.comments}`,
     }));
 }
