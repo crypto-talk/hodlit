@@ -29,6 +29,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/drafts/{draftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 임시저장 상세 */
+        get: operations["get_1"];
+        /**
+         * 임시저장 덮어쓰기
+         * @description 전체 교체입니다. 생략한 필드는 null로 저장합니다.
+         */
+        put: operations["update_1"];
+        post?: never;
+        /**
+         * 임시저장 삭제
+         * @description 발행 성공 후 프론트에서 호출합니다. 발행된 미디어는 보존됩니다.
+         */
+        delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/posts": {
         parameters: {
             query?: never;
@@ -40,7 +65,7 @@ export interface paths {
         put?: never;
         /**
          * 게시글 작성
-         * @description 로그인 회원이 커뮤니티에 게시글을 작성하고 현재 가격 스냅샷을 저장합니다.
+         * @description 로그인 회원이 커뮤니티에 게시글을 작성하고 현재 가격 스냅샷을 저장합니다. 보유 인증은 DB에 저장된 자산 정보를 사용하며 잔액 조회·인증 여부는 작성 권한과 무관합니다.
          */
         post: operations["create"];
         delete?: never;
@@ -202,6 +227,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/exchanges/{exchange}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 거래소 API 키 연결
+         * @description 잔고 조회로 키를 확인한 뒤 암호화하여 저장합니다. 추가 권한이 없는지는 검증하지 못하므로 자산조회 전용 키만 사용하세요.
+         */
+        post: operations["connect_1"];
+        /**
+         * 거래소 API 키 연결 해제
+         * @description 저장된 암호화 자격 증명을 삭제합니다.
+         */
+        delete: operations["disconnect"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 임시저장 목록
+         * @description 최근 수정순으로 전체 목록을 반환합니다.
+         */
+        get: operations["list_1"];
+        put?: never;
+        /**
+         * 임시저장 생성
+         * @description 빈 필드를 허용합니다. 지갑·시세 조회나 스냅샷 기록을 수행하지 않습니다.
+         */
+        post: operations["create_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/signup": {
         parameters: {
             query?: never;
@@ -300,7 +373,7 @@ export interface paths {
          * 내 프로필 수정
          * @description 닉네임과 아바타 색상을 변경합니다.
          */
-        patch: operations["update_1"];
+        patch: operations["update_2"];
         trace?: never;
     };
     "/api/v1/me/asset-visibility": {
@@ -334,14 +407,14 @@ export interface paths {
          * 댓글 삭제
          * @description 작성자 본인의 댓글을 삭제합니다.
          */
-        delete: operations["delete_1"];
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         /**
          * 댓글 수정
          * @description 작성자 본인의 댓글 내용을 수정합니다.
          */
-        patch: operations["update_2"];
+        patch: operations["update_3"];
         trace?: never;
     };
     "/api/v1/members/{memberId}/social": {
@@ -406,14 +479,14 @@ export interface paths {
             cookie?: never;
         };
         /** 미디어 파일 조회 */
-        get: operations["get_1"];
+        get: operations["get_2"];
         put?: never;
         post?: never;
         /**
          * 미디어 파일 삭제
          * @description 업로드한 회원이 아직 게시글에 연결되지 않은 파일을 삭제합니다.
          */
-        delete: operations["delete_2"];
+        delete: operations["delete_3"];
         options?: never;
         head?: never;
         patch?: never;
@@ -428,6 +501,46 @@ export interface paths {
         };
         /** 연결된 EVM 지갑 목록 조회 */
         get: operations["wallets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/exchanges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 연결된 거래소 목록
+         * @description API 키는 응답에 포함하지 않습니다.
+         */
+        get: operations["list_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/exchanges/{exchange}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 거래소 잔고 조회
+         * @description 연결된 거래소의 현재 가용·잠금·전체 잔고를 조회합니다.
+         */
+        get: operations["assets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -464,7 +577,7 @@ export interface paths {
          * 내 자산 조회 및 갱신
          * @description 연결된 지갑의 블록체인 잔액과 현재 KRW 시세를 조회해 자산 스냅샷을 갱신합니다.
          */
-        get: operations["assets"];
+        get: operations["assets_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -584,7 +697,7 @@ export interface paths {
          * 커뮤니티 게시글 목록 조회
          * @description 코인 커뮤니티의 게시글을 최신순으로 조회합니다.
          */
-        get: operations["list_1"];
+        get: operations["list_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -627,7 +740,7 @@ export interface paths {
          * EVM 지갑 연결 해제
          * @description 과거 게시글과 댓글의 발행 스냅샷은 유지됩니다.
          */
-        delete: operations["disconnect"];
+        delete: operations["disconnect_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -730,6 +843,35 @@ export interface components {
             videoId?: string;
             thumbnailUrl?: string;
         };
+        /** @description 임시저장 전체 교체 요청. 생략한 필드는 null로 저장하며 빈 제목·본문·방을 허용합니다. */
+        SaveDraftRequest: {
+            coinSymbol?: string;
+            title?: string;
+            content?: string;
+            media?: components["schemas"]["MediaRequest"][];
+            tradingViewSymbol?: string;
+            tradingViewInterval?: string;
+            tradingViewAnalysis?: string;
+            assetPrice?: number;
+            assetPriceCurrency?: string;
+            youtubeUrl?: string;
+        };
+        DraftResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+            coinSymbol?: string;
+            title?: string;
+            content?: string;
+            media?: components["schemas"]["MediaRequest"][];
+            tradingViewSymbol?: string;
+            tradingViewInterval?: string;
+            tradingViewAnalysis?: string;
+            assetPrice?: number;
+            assetPriceCurrency?: string;
+            youtubeUrl?: string;
+        };
         CreatePostRequest: {
             coinSymbol: string;
             title: string;
@@ -799,6 +941,16 @@ export interface components {
             /** Format: int64 */
             expiresInSeconds?: number;
         };
+        ConnectRequest: {
+            accessKey: string;
+            secretKey: string;
+        };
+        ConnectionResponse: {
+            /** @enum {string} */
+            exchange?: "UPBIT" | "BITHUMB" | "COINONE";
+            /** Format: date-time */
+            connectedAt?: string;
+        };
         SignupRequest: {
             loginId: string;
             password: string;
@@ -838,30 +990,23 @@ export interface components {
             /** Format: date-time */
             connectedAt?: string;
         };
+        AssetResponse: {
+            /** @enum {string} */
+            exchange?: "UPBIT" | "BITHUMB" | "COINONE";
+            balances?: components["schemas"]["Balance"][];
+            /** Format: date-time */
+            fetchedAt?: string;
+        };
+        Balance: {
+            currency?: string;
+            available?: number;
+            locked?: number;
+            total?: number;
+        };
         AssetPortfolioResponse: {
             /** Format: int32 */
             walletCount?: number;
             assets?: components["schemas"]["AssetResponse"][];
-        };
-        AssetResponse: {
-            symbol?: string;
-            quantity?: number;
-            valueKrw?: number;
-            quantityBand?: string;
-            verified?: boolean;
-            verificationLevel?: string;
-            status?: string;
-            /** Format: int32 */
-            walletCount?: number;
-            /** Format: date-time */
-            holdingSince?: string;
-            /** Format: int32 */
-            holdingMonths?: number;
-            /** Format: date-time */
-            capturedAt?: string;
-            /** Format: int64 */
-            blockNumber?: number;
-            syncStatus?: string;
         };
         PriceQuote: {
             symbol?: string;
@@ -965,6 +1110,74 @@ export interface operations {
             header?: never;
             path: {
                 postId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draftId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftResponse"];
+                };
+            };
+        };
+    };
+    update_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draftId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftResponse"];
+                };
+            };
+        };
+    };
+    delete_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draftId: number;
             };
             cookie?: never;
         };
@@ -1302,6 +1515,96 @@ export interface operations {
             };
         };
     };
+    connect_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exchange: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConnectionResponse"];
+                };
+            };
+        };
+    };
+    disconnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exchange: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftResponse"][];
+                };
+            };
+        };
+    };
+    create_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftResponse"];
+                };
+            };
+        };
+    };
     signup: {
         parameters: {
             query?: never;
@@ -1408,7 +1711,7 @@ export interface operations {
             };
         };
     };
-    update_1: {
+    update_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1456,7 +1759,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    delete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1476,7 +1779,7 @@ export interface operations {
             };
         };
     };
-    update_2: {
+    update_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -1568,7 +1871,7 @@ export interface operations {
             };
         };
     };
-    get_1: {
+    get_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1590,7 +1893,7 @@ export interface operations {
             };
         };
     };
-    delete_2: {
+    delete_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -1630,6 +1933,48 @@ export interface operations {
             };
         };
     };
+    list_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConnectionResponse"][];
+                };
+            };
+        };
+    };
+    assets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exchange: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssetResponse"];
+                };
+            };
+        };
+    };
     bookmarks: {
         parameters: {
             query?: never;
@@ -1650,7 +1995,7 @@ export interface operations {
             };
         };
     };
-    assets: {
+    assets_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1784,7 +2129,7 @@ export interface operations {
             };
         };
     };
-    list_1: {
+    list_3: {
         parameters: {
             query?: {
                 size?: number;
@@ -1828,7 +2173,7 @@ export interface operations {
             };
         };
     };
-    disconnect: {
+    disconnect_1: {
         parameters: {
             query?: never;
             header?: never;
