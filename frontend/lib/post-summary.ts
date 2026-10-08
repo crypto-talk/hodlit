@@ -5,8 +5,8 @@ import { postHref } from "@/lib/routes";
 import type { Tier } from "@/lib/holder-snapshot/types";
 
 import {
-  UNSUPPORTED_LABEL,
   holdingPeriodLabel,
+  isHolderTier,
   isVerifiable,
   tierOf,
 } from "@/lib/holder-snapshot/label";
@@ -43,8 +43,12 @@ export type PostSummary = {
   title: string;
   preview: string;
   nick: string;
-  /** 보유 기간 문구. 인덱서 전까지 항상 `보유 기간 미확인`. 미지원 코인이면 그 사실. */
-  hold: string;
+  /**
+   * 보유 기간 문구. 보유가 확인된 글(지갑연결 · 거래소연동)에만 있고 나머지는 null.
+   * 미인증 · 미보유에 "보유 기간" 을 붙이면 말이 안 된다. 인덱서 전까지는 항상
+   * `보유 기간 미확인` 이다.
+   */
+  hold: string | null;
   likes: number;
   comments: number;
   /** ⚠️ 조회수 API 가 없다. null 이면 화면에서 자리를 뺀다. */
@@ -61,12 +65,14 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
   const snapshot = post.holderSnapshot;
   const verifiable = isVerifiable(snapshot?.verificationAvailability);
 
+  const tier = tierOf(snapshot?.verificationLevel, post.verifiedHolder, snapshot?.walletCount);
+
   return {
     id: post.id,
     href: postHref(post.coinSymbol ?? "", post.id),
     verifiable,
     symbol: post.coinSymbol ?? "",
-    tier: tierOf(snapshot?.verificationLevel, post.verifiedHolder, snapshot?.walletCount),
+    tier,
     // 서버가 완성해서 주는 문자열이다. 여기서 수량으로 다시 계산하지 않는다.
     range: snapshot?.quantityBand ?? "",
     createdAt: post.createdAt ?? "",
@@ -74,8 +80,7 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
     title: post.title ?? "(제목 없음)",
     preview: toPreview(post.content),
     nick: post.author?.nickname ?? "알 수 없음",
-    // 인증을 지원하지 않는 코인이면 "보유 기간 미확인" 대신 그 사실을 말한다.
-    hold: verifiable ? holdingPeriodLabel(snapshot?.holdingMonths) : UNSUPPORTED_LABEL,
+    hold: verifiable && isHolderTier(tier) ? holdingPeriodLabel(snapshot?.holdingMonths) : null,
     likes: post.likes ?? 0,
     comments: post.comments ?? 0,
     // 조회수 API 가 없다. 숫자를 지어내지 않고 화면에서 자리를 뺀다(G-5).
