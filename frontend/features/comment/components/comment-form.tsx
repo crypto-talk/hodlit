@@ -33,13 +33,12 @@ export default function CommentForm({ postId, verifiable }: Props) {
 
   const create = useMutation({
     mutationFn: createComment,
-    onSuccess: async () => {
+    // 재조회를 기다리지 않는다. 기다리면 그동안 버튼이 "등록 중…"에 묶여 느리게 느껴진다.
+    onSuccess: () => {
       setContent("");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["comments", postId] }),
-        // 글 하단의 댓글 수
-        queryClient.invalidateQueries({ queryKey: ["post", postId] }),
-      ]);
+      void queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      // 글 하단의 댓글 수
+      void queryClient.invalidateQueries({ queryKey: ["post", postId] });
     },
   });
 

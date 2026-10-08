@@ -65,7 +65,7 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
     href: postHref(post.coinSymbol ?? "", post.id),
     verifiable,
     symbol: post.coinSymbol ?? "",
-    tier: tierOf(snapshot?.verificationLevel, post.verifiedHolder),
+    tier: tierOf(snapshot?.verificationLevel, post.verifiedHolder, snapshot?.walletCount),
     // 서버가 완성해서 주는 문자열이다. 여기서 수량으로 다시 계산하지 않는다.
     range: snapshot?.quantityBand ?? "",
     createdAt: post.createdAt ?? "",

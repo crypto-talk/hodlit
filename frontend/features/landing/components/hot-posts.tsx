@@ -64,7 +64,7 @@ export default function HotPosts({ posts }: Props) {
             >
               {post.symbol}
             </Link>
-            {post.verifiable ? <TierBadge tier={post.tier} /> : null}
+            {post.verifiable ? <TierBadge tier={post.tier} symbol={post.symbol} /> : null}
             <Link
               href={post.href}
               className="min-w-0 flex-1 basis-60 truncate text-body after:absolute after:inset-0"

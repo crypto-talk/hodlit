@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { isHolderTier } from "@/lib/holder-snapshot/label";
 import { useSession } from "@/lib/session";
 import { loadComments } from "../api";
 import CommentForm from "./comment-form";
@@ -8,6 +9,8 @@ import CommentItem from "./comment-item";
 
 type Props = {
   postId: number;
+  /** 글의 방 코인. 미보유 배지 문구에 쓴다. */
+  symbol: string;
   /** 글쓴이 회원 id. 글쓴이 댓글에 "작성자" 를 붙인다. */
   postAuthorId: number | null;
   /** 이 글의 방이 보유 인증을 지원하는지. 글의 보유 정보에서 온다. */
@@ -23,7 +26,7 @@ type Props = {
  * 목록은 오래된 순(서버 순서 그대로)이다. 새 댓글은 맨 아래에 붙는다.
  * 서버에 페이지가 없어 한 번에 전부 받고, "더 보기" 도 없다.
  */
-export default function CommentSection({ postId, postAuthorId, verifiable }: Props) {
+export default function CommentSection({ postId, symbol, postAuthorId, verifiable }: Props) {
   const { member } = useSession();
   const comments = useQuery({
     queryKey: ["comments", postId],
@@ -34,7 +37,7 @@ export default function CommentSection({ postId, postAuthorId, verifiable }: Pro
   // "보유 인증자 N명" — 같은 사람이 여러 번 써도 한 명이다.
   const verifiedHolders = new Set(
     list
-      .filter((comment) => comment.holder?.verifiable && comment.holder.tier !== "none")
+      .filter((comment) => comment.holder?.verifiable && isHolderTier(comment.holder.tier))
       .map((comment) => comment.memberId ?? `comment-${comment.id}`),
   ).size;
 
@@ -76,6 +79,7 @@ export default function CommentSection({ postId, postAuthorId, verifiable }: Pro
             <CommentItem
               key={comment.id}
               postId={postId}
+              symbol={symbol}
               comment={comment}
               byPostAuthor={postAuthorId !== null && comment.memberId === postAuthorId}
               mine={!!member && comment.memberId === member.id}

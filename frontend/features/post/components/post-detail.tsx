@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import TierBadge from "@/components/holder/tier-badge";
-import { UNSUPPORTED_LABEL } from "@/lib/holder-snapshot/label";
+import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
@@ -89,8 +89,15 @@ export default function PostDetailView({ postId, symbol }: Props) {
           className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <TierBadge tier={data.holder.tier} />
-            <span className="text-sm font-semibold text-text-primary">{data.holder.holding}</span>
+            <TierBadge tier={data.holder.tier} symbol={room} />
+            {isHolderTier(data.holder.tier) ? (
+              <span className="text-sm font-semibold text-text-primary">{data.holder.holding}</span>
+            ) : null}
+            {data.holder.tier === "empty" ? (
+              <span className="text-sm text-text-muted">
+                작성 시점에 연결한 지갑의 {room} 잔액이 0이었습니다.
+              </span>
+            ) : null}
             {data.holder.amount ? (
               <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
                 {data.holder.amount}

@@ -82,7 +82,7 @@ function toView(comment: CommentResponse & { id: number }): CommentView {
     holder: snapshot
       ? {
           verifiable: isVerifiable(snapshot.verificationAvailability),
-          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder),
+          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.walletCount),
           holding: holdingPeriodLabel(snapshot.holdingMonths),
         }
       : null,

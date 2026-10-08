@@ -149,7 +149,7 @@ export async function loadPost(postId: number): Promise<PostDetail> {
     holder: snapshot
       ? {
           verifiable: isVerifiable(snapshot.verificationAvailability),
-          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder),
+          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.walletCount),
           // 서버가 완성해서 주는 문자열이다. 여기서 다시 계산하지 않는다.
           amount: snapshot.quantityBand ?? null,
           holding: holdingPeriodLabel(snapshot.holdingMonths),

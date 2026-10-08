@@ -28,6 +28,7 @@ export default function PostView({ postId, symbol }: Props) {
       {post.data ? (
         <CommentSection
           postId={postId}
+          symbol={post.data.coinSymbol || symbol}
           postAuthorId={post.data.authorId}
           verifiable={post.data.holder?.verifiable ?? false}
         />

@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import TierBadge from "@/components/holder/tier-badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format/time";
+import { isHolderTier } from "@/lib/holder-snapshot/label";
 import { deleteComment, updateComment } from "../api";
 import { commentErrorMessage } from "../error-message";
 import { COMMENT_MAX, commentProblem } from "../limits";
@@ -12,6 +13,8 @@ import type { CommentView } from "../types";
 
 type Props = {
   postId: number;
+  /** 글의 방 코인. 미보유 배지에 `ETH 미보유` 로 붙인다. */
+  symbol: string;
   comment: CommentView;
   /** 글쓴이의 댓글이면 닉네임 옆에 "작성자" 를 붙인다. 배지가 아니라 글자다. */
   byPostAuthor: boolean;
@@ -28,7 +31,7 @@ type Props = {
  *
  * 와이어프레임에서 아직 없는 것: 좋아요 · 답글 · 신고 (API 없음).
  */
-export default function CommentItem({ postId, comment, byPostAuthor, mine }: Props) {
+export default function CommentItem({ postId, symbol, comment, byPostAuthor, mine }: Props) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
@@ -45,11 +48,9 @@ export default function CommentItem({ postId, comment, byPostAuthor, mine }: Pro
 
   const remove = useMutation({
     mutationFn: deleteComment,
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["comments", postId] }),
-        queryClient.invalidateQueries({ queryKey: ["post", postId] }),
-      ]);
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      void queryClient.invalidateQueries({ queryKey: ["post", postId] });
     },
   });
 
@@ -77,8 +78,8 @@ export default function CommentItem({ postId, comment, byPostAuthor, mine }: Pro
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-semibold text-text-primary">{comment.nickname}</span>
         {byPostAuthor ? <span className="text-xs font-bold text-text-primary">작성자</span> : null}
-        {holder ? <TierBadge tier={holder.tier} /> : null}
-        {holder && holder.tier !== "none" ? (
+        {holder ? <TierBadge tier={holder.tier} symbol={symbol} /> : null}
+        {holder && isHolderTier(holder.tier) ? (
           <span className="text-xs text-text-muted">{holder.holding}</span>
         ) : null}
         <time dateTime={comment.createdAt} className="text-xs text-text-muted">
