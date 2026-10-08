@@ -83,8 +83,82 @@ export type PostDetail = {
   youtubeVideoId: string | null;
   /** 작성 시점 가격. 서버가 발행 순간 찍은 값이다. */
   price: { value: number; currency: string } | null;
-  likes: number;
   comments: number;
   /** 발행 시점에 고정된 보유 정보. 응답에 없으면 null. */
   holder: HolderView | null;
+} & PostReactions;
+
+/**
+ * 좋아요 · 북마크 상태. 누를 때마다 서버가 글 전체를 돌려주는데, 화면이 바꿔
+ * 끼우는 것은 이 부분뿐이다.
+ *
+ * `liked` · `bookmarked` 는 요청에 토큰이 실렸을 때만 의미가 있다. 로그인 전에
+ * 받은 글은 둘 다 false 다.
+ */
+export type PostReactions = {
+  likes: number;
+  liked: boolean;
+  bookmarked: boolean;
+};
+
+/**
+ * 수정 화면이 처음에 채우는 값.
+ *
+ * 글 상세 뷰 모델과 따로 둔 이유: 수정은 백엔드에 다시 보낼 원래 값이 필요하다
+ * (이미지의 상대 경로, 유튜브 원래 주소, 화면에 안 그리는 TradingView 값).
+ */
+export type EditablePost = {
+  id: number;
+  coinSymbol: string;
+  title: string;
+  content: string;
+  authorId: number | null;
+  /** `url` 은 백엔드 상대 경로, `src` 는 미리보기용 주소. */
+  images: { url: string; src: string }[];
+  youtubeUrl: string;
+  /**
+   * 화면에는 없지만 PUT 이 덮어쓰는 값. 빼고 보내면 서버가 null 로 지운다.
+   * 받은 그대로 돌려보낸다.
+   */
+  tradingView: { symbol?: string; interval?: string; analysis?: string } | null;
+};
+
+/** 수정해서 보낼 값. 방과 보유 정보 · 작성 시점 가격은 바꿀 수 없다. */
+export type PostEdit = {
+  id: number;
+  title: string;
+  content: string;
+  images: UploadedImage[];
+  youtubeUrl: string;
+  tradingView: EditablePost["tradingView"];
+};
+
+/**
+ * 임시저장 (HODL-43). 서버가 빈 방 · 제목 · 본문도 받아서 전부 비어 있을 수 있다.
+ * 이미지는 수정 화면과 같은 모양 — `url` 은 상대 경로, `src` 는 미리보기 주소.
+ */
+export type Draft = {
+  id: number;
+  updatedAt: string;
+  coinSymbol: string;
+  title: string;
+  content: string;
+  images: { url: string; src: string }[];
+  youtubeUrl: string;
+};
+
+/** 임시저장 목록 한 줄. */
+export type DraftSummary = Pick<Draft, "id" | "updatedAt" | "coinSymbol" | "title">;
+
+/** 임시저장할 값. 글쓰기 화면에 있는 것만 보낸다. */
+export type DraftInput = Pick<Draft, "coinSymbol" | "title" | "content" | "youtubeUrl"> & {
+  images: UploadedImage[];
+};
+
+/** 북마크한 글 한 줄. */
+export type BookmarkedPost = {
+  id: number;
+  coinSymbol: string;
+  title: string;
+  createdAt: string;
 };

@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import TierBadge from "@/components/holder/tier-badge";
 import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
@@ -9,8 +8,11 @@ import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
 import { roomHref } from "@/lib/routes";
-import { loadPost } from "../api";
+import { useSession } from "@/lib/session";
+import { usePost } from "../hooks/use-post";
+import PostActions from "./post-actions";
 import PostBody from "./post-body";
+import PostOwnerActions from "./post-owner-actions";
 
 type Props = {
   postId: number;
@@ -25,12 +27,15 @@ type Props = {
  *
  * 댓글은 `features/comment` 이고, 상세 페이지(`app/…/post-view.tsx`)가 이 아래에 붙인다.
  *
- * 아직 없는 것
- *   - 좋아요 · 북마크 · 재게시 버튼
- *   - 수정 · 삭제
+ * 맨 아래 줄에 작성 시점 가격과 좋아요 · 북마크(`post-actions.tsx`)가 있다.
+ *
+ * 글쓴이에게는 제목 위 줄에 수정 · 삭제(`post-owner-actions.tsx`)가 붙는다.
+ *
+ * 아직 없는 것: 재게시 (이번 범위에서 뺐다)
  */
 export default function PostDetailView({ postId, symbol }: Props) {
-  const post = useQuery({ queryKey: ["post", postId], queryFn: () => loadPost(postId) });
+  const post = usePost(postId);
+  const { member } = useSession();
 
   if (post.isPending) {
     return <p className="text-sm text-text-muted">불러오는 중…</p>;
@@ -60,7 +65,7 @@ export default function PostDetailView({ postId, symbol }: Props) {
   const room = data.coinSymbol || symbol;
 
   return (
-    <article className="rounded-lg border border-border-subtle bg-surface p-6">
+    <article className="relative rounded-lg border border-border-subtle bg-surface p-6">
       <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
         <Link
           href={roomHref(room)}
@@ -71,6 +76,9 @@ export default function PostDetailView({ postId, symbol }: Props) {
         <span className="flex-1" />
         <time dateTime={data.createdAt}>{formatRelativeTime(data.createdAt)}</time>
         {data.edited ? <span>· 수정됨</span> : null}
+        {member && data.authorId === member.id ? (
+          <PostOwnerActions postId={data.id} room={room} />
+        ) : null}
       </div>
 
       <h1 className="mt-4 text-h1 font-semibold break-words text-text-primary">{data.title}</h1>
@@ -155,9 +163,11 @@ export default function PostDetailView({ postId, symbol }: Props) {
           </span>
         ) : null}
         <span className="flex-1" />
-        <span className="tabular-nums">
-          좋아요 {data.likes} · 댓글 {data.comments}
-        </span>
+        <PostActions
+          postId={data.id}
+          reactions={{ likes: data.likes, liked: data.liked, bookmarked: data.bookmarked }}
+          comments={data.comments}
+        />
       </div>
     </article>
   );

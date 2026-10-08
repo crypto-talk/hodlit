@@ -4,7 +4,20 @@ import { config } from "@/lib/config";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
 import { refreshHoldings } from "@/lib/holdings-refresh";
 import { http } from "@/lib/http";
-import type { PostDetail, PostDraft, PublishedPost, UploadedImage, WriteRoom } from "./types";
+import type {
+  BookmarkedPost,
+  Draft,
+  DraftInput,
+  DraftSummary,
+  EditablePost,
+  PostDetail,
+  PostEdit,
+  PostDraft,
+  PostReactions,
+  PublishedPost,
+  UploadedImage,
+  WriteRoom,
+} from "./types";
 
 /**
  * 글 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -18,6 +31,9 @@ type Schemas = components["schemas"];
 type CoinResponse = Schemas["CoinResponse"];
 type PostResponse = Schemas["PostResponse"];
 type CreatePostRequest = Schemas["CreatePostRequest"];
+type UpdatePostRequest = Schemas["UpdatePostRequest"];
+type SaveDraftRequest = Schemas["SaveDraftRequest"];
+type DraftResponse = Schemas["DraftResponse"];
 type StoredMedia = Schemas["StoredMedia"];
 
 const MEDIA_PREFIX = "/api/v1/media/";
@@ -144,7 +160,7 @@ export async function loadPost(postId: number): Promise<PostDetail> {
       typeof price?.price === "number" && price.currency
         ? { value: price.price, currency: price.currency }
         : null,
-    likes: post.likes ?? 0,
+    ...toReactions(post),
     comments: post.comments ?? 0,
     holder: snapshot
       ? {
@@ -155,6 +171,189 @@ export async function loadPost(postId: number): Promise<PostDetail> {
           holding: holdingPeriodLabel(snapshot.holdingMonths),
         }
       : null,
+  };
+}
+
+/**
+ * 수정 화면에 채울 원래 값. 상세와 같은 `GET /posts/{id}` 다.
+ *
+ * 작성자가 아니어도 받아지지만, 저장은 서버가 403 으로 막는다.
+ */
+export async function loadEditablePost(postId: number): Promise<EditablePost> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}`);
+  const tradingView = post.tradingView;
+
+  return {
+    id: post.id ?? postId,
+    coinSymbol: post.coinSymbol ?? "",
+    title: post.title ?? "",
+    content: post.content ?? "",
+    authorId: post.author?.id ?? null,
+    images: (post.media ?? [])
+      .filter((media) => media.type === "IMAGE" && media.url)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((media) => ({ url: media.url ?? "", src: mediaSrc(media.url ?? "") })),
+    youtubeUrl: post.youtube?.url ?? "",
+    tradingView: tradingView?.symbol
+      ? {
+          symbol: tradingView.symbol,
+          interval: tradingView.interval,
+          analysis: tradingView.analysis,
+        }
+      : null,
+  };
+}
+
+/**
+ * 글 수정 (`PUT`). 제목 · 본문 · 이미지 · 유튜브만 바뀐다.
+ *
+ * 방 · 보유 정보 · 작성 시점 가격은 서버가 건드리지 않는다. 이미지는 보낸 목록으로
+ * 통째로 바뀌고, 빠진 기존 이미지는 서버가 저장이 끝난 뒤 지운다. 그래서 수정
+ * 화면에서 기존 이미지를 빼도 저장 전에는 서버에서 지우지 않는다.
+ *
+ * PUT 은 빠진 필드를 null 로 덮는다. 화면에 없는 TradingView 값도 받은 그대로 보낸다.
+ */
+export async function updatePost(edit: PostEdit): Promise<void> {
+  const youtubeUrl = edit.youtubeUrl.trim();
+  const body: UpdatePostRequest = {
+    title: edit.title.trim(),
+    content: edit.content.trim(),
+    media: edit.images.map((image) => ({ type: "IMAGE", url: image.url })),
+    ...(youtubeUrl ? { youtubeUrl } : {}),
+    ...(edit.tradingView
+      ? {
+          tradingViewSymbol: edit.tradingView.symbol,
+          tradingViewInterval: edit.tradingView.interval,
+          tradingViewAnalysis: edit.tradingView.analysis,
+        }
+      : {}),
+  };
+
+  await http<PostResponse>(`/api/v1/posts/${edit.id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+/** 글 삭제. 붙은 이미지 파일은 서버가 커밋 뒤에 지운다(`PostService.delete`). */
+export async function deletePost(postId: number): Promise<void> {
+  await http<void>(`/api/v1/posts/${postId}`, { method: "DELETE" });
+}
+
+/**
+ * 내 임시저장 목록. 최근 수정순, 회원당 최대 10개라 한 번에 전부 온다.
+ */
+export async function loadDrafts(): Promise<DraftSummary[]> {
+  const drafts = await http<DraftResponse[]>("/api/v1/drafts");
+  return drafts.filter(hasDraftId).map((draft) => ({
+    id: draft.id,
+    updatedAt: draft.updatedAt ?? "",
+    coinSymbol: draft.coinSymbol ?? "",
+    title: draft.title ?? "",
+  }));
+}
+
+/** 임시저장 하나. 남의 것이면 403, 없으면 404. */
+export async function loadDraft(draftId: number): Promise<Draft> {
+  return toDraft(await http<DraftResponse>(`/api/v1/drafts/${draftId}`));
+}
+
+/**
+ * 임시저장. `draftId` 가 없으면 새로 만들고(POST), 있으면 통째로 덮어쓴다(PUT).
+ *
+ * 서버는 값을 검증만 하고 그대로 둔다 — 빈 칸도, 앞뒤 공백도. 보유 정보 · 시세는
+ * 기록하지 않는다. 그건 발행할 때 일어난다.
+ *
+ * 회원당 10개를 넘기면 409. 이미지는 저장하는 순간 이 임시저장에 묶이고, 묶인
+ * 파일은 `DELETE /media` 가 409 로 거절한다(`discardImage` 가 에러를 삼킨다).
+ */
+export async function saveDraft(input: DraftInput, draftId: number | null): Promise<Draft> {
+  const body: SaveDraftRequest = {
+    coinSymbol: input.coinSymbol,
+    title: input.title,
+    content: input.content,
+    media: input.images.map((image) => ({ type: "IMAGE", url: image.url })),
+    youtubeUrl: input.youtubeUrl,
+  };
+
+  const saved = await http<DraftResponse>(
+    draftId === null ? "/api/v1/drafts" : `/api/v1/drafts/${draftId}`,
+    { method: draftId === null ? "POST" : "PUT", body: JSON.stringify(body) },
+  );
+  return toDraft(saved, draftId);
+}
+
+/**
+ * 임시저장 삭제. 발행이 끝난 뒤에도 부른다 — 서버가 발행으로 지워 주지 않는다.
+ * 붙어 있던 이미지는 연결만 풀리고 지워지지 않는다(발행된 글의 이미지는 그대로).
+ */
+export async function deleteDraft(draftId: number): Promise<void> {
+  await http<void>(`/api/v1/drafts/${draftId}`, { method: "DELETE" });
+}
+
+function toDraft(draft: DraftResponse, fallbackId: number | null = null): Draft {
+  const id = draft.id ?? fallbackId;
+  if (typeof id !== "number") throw new Error("임시저장은 됐지만 응답에 번호가 없습니다.");
+
+  return {
+    id,
+    updatedAt: draft.updatedAt ?? "",
+    coinSymbol: draft.coinSymbol ?? "",
+    title: draft.title ?? "",
+    content: draft.content ?? "",
+    images: (draft.media ?? [])
+      .filter((media) => media.type === "IMAGE" && media.url)
+      .map((media) => ({ url: media.url, src: mediaSrc(media.url) })),
+    youtubeUrl: draft.youtubeUrl ?? "",
+  };
+}
+
+function hasDraftId(draft: DraftResponse): draft is DraftResponse & { id: number } {
+  return typeof draft.id === "number";
+}
+
+/**
+ * 좋아요 켜기 · 끄기. 서버는 이미 켜진 걸 또 켜도, 꺼진 걸 또 꺼도 오류 없이 지금
+ * 상태를 돌려준다. 그래서 두 번 눌려도 숫자가 어긋나지 않는다.
+ */
+export async function setLiked(postId: number, on: boolean): Promise<PostReactions> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}/likes`, {
+    method: on ? "POST" : "DELETE",
+  });
+  return toReactions(post);
+}
+
+/** 북마크 켜기 · 끄기. 좋아요와 같은 규칙이다. */
+export async function setBookmarked(postId: number, on: boolean): Promise<PostReactions> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}/bookmarks`, {
+    method: on ? "POST" : "DELETE",
+  });
+  return toReactions(post);
+}
+
+/**
+ * 내가 북마크한 글. 북마크한 시각 최근 순이다. 페이지가 없어 한 번에 전부 온다.
+ *
+ * 마이페이지가 생기기 전까지 오른쪽 칸의 임시 목록이 쓴다.
+ */
+export async function loadBookmarks(): Promise<BookmarkedPost[]> {
+  const posts = await http<PostResponse[]>("/api/v1/me/bookmarks");
+
+  return posts
+    .filter((post): post is PostResponse & { id: number } => typeof post.id === "number")
+    .map((post) => ({
+      id: post.id,
+      coinSymbol: post.coinSymbol ?? "",
+      title: post.title ?? "(제목 없음)",
+      createdAt: post.createdAt ?? "",
+    }));
+}
+
+function toReactions(post: PostResponse): PostReactions {
+  return {
+    likes: post.likes ?? 0,
+    liked: post.liked ?? false,
+    bookmarked: post.bookmarked ?? false,
   };
 }
 

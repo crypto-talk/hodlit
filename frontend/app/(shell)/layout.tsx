@@ -9,6 +9,7 @@ import Sidebar from "@/components/layout/sidebar";
 import WalletCard from "@/components/layout/wallet-card";
 import type { SidebarRoom } from "@/components/layout/types";
 import { marqueeItems } from "@/features/landing/api";
+import BookmarkedPosts from "@/features/post/components/bookmarked-posts";
 import Marquee from "@/features/landing/components/marquee";
 import { loadRooms } from "@/features/room/api";
 import { loadWallets, type ConnectedWallet } from "@/features/wallet/api";
@@ -98,12 +99,18 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
        * 화면 정가운데에 온다(양옆 칸 폭이 같다).
        *
        * 본문이 화면 끝까지 늘어나면 한 줄이 너무 길어 읽기 힘들어 폭을 막았다.
-       * 오른쪽 칸에는 임시로 지갑 카드를 둔다. 나중에 광고·보조 정보가 들어갈 자리다.
+       * 오른쪽 칸에는 임시로 지갑 카드와 북마크한 글(마이페이지 전까지)을 둔다.
+       * 나중에 광고·보조 정보가 들어갈 자리다.
        * 1320px 미만에서는 오른쪽 칸이 숨고 지갑 카드는 사이드바로 돌아간다.
        * 900px 미만에서는 사이드바도 숨는다.
        */}
       <div className="mx-auto flex max-w-[1320px] items-start gap-8 px-6 pt-8 pb-12">
-        <Sidebar rooms={sidebarRooms} wallets={visibleWallets} onConnectWallet={onConnectWallet} />
+        <Sidebar
+          rooms={sidebarRooms}
+          wallets={visibleWallets}
+          onConnectWallet={onConnectWallet}
+          extra={<BookmarkedPosts />}
+        />
 
         <div className="flex min-w-0 flex-[0_1_720px] flex-col gap-12 max-shell:flex-1">
           {notice ? (
@@ -115,8 +122,9 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
           {children}
         </div>
 
-        <aside aria-label="내 지갑" className="hidden w-60 flex-none wide:block">
+        <aside aria-label="내 정보" className="hidden w-60 flex-none flex-col gap-4 wide:flex">
           <WalletCard wallets={visibleWallets} onConnectWallet={onConnectWallet} />
+          <BookmarkedPosts />
         </aside>
       </div>
 
