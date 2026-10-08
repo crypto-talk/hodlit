@@ -25,6 +25,9 @@ const stats = (post: PostSummary) => {
  * 배지는 "이 사람이 보유 중인가" 라 사람 옆에 둔다(댓글과 같은 순서). 닉네임은
  * 항상 있으니 배지가 없는 글도 첫 줄이 비지 않고, 제목 높이가 글마다 같다.
  *
+ * 첫 줄은 작고 흐리게 둔다(Reddit 식). 프로필 사진 없이 굵은 닉네임이 제목 바로
+ * 위에 있으면 제목이 두 줄처럼 보인다. 이 줄에서 눈에 띄는 것은 배지 하나다.
+ *
  * 미인증은 미보유와 같은 회색 테두리 칩이다(사실만 같은 무게로).
  * 인증을 지원하지 않는 코인(BTC 등)의 글에는 아무것도 붙이지 않는다. 방 전체가
  * 미지원이라 카드마다 반복하면 소음이고, 그 사실은 방 머리와 글 상세가 말한다.
@@ -44,7 +47,7 @@ export default function PostCard({ post, showRoom = true }: Props) {
           </Link>
         ) : null}
         {/* 공개 프로필 화면이 아직 없어 링크가 아니다. 프로필이 생기면 링크로 바꾼다. */}
-        <span className="text-sm font-semibold text-text-primary">{post.nick}</span>
+        <span className="text-xs text-text-muted">{post.nick}</span>
         {post.verifiable ? <TierBadge tier={post.tier} symbol={post.symbol} /> : null}
         {post.range ? (
           <span className="flex-none rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
@@ -53,9 +56,8 @@ export default function PostCard({ post, showRoom = true }: Props) {
         ) : null}
         {/* 인덱서가 붙기 전까지 서버 holdingMonths 가 null 이라 항상 '보유 기간 미확인'이다. */}
         {post.hold ? <span className="text-xs text-text-muted">{post.hold}</span> : null}
-        <span className="flex-1" />
         <time dateTime={post.createdAt} className="text-xs text-text-muted">
-          {post.time}
+          · {post.time}
         </time>
       </div>
 
