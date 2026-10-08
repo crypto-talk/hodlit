@@ -8,9 +8,11 @@ import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
 import { roomHref } from "@/lib/routes";
+import { useSession } from "@/lib/session";
 import { usePost } from "../hooks/use-post";
 import PostActions from "./post-actions";
 import PostBody from "./post-body";
+import PostOwnerActions from "./post-owner-actions";
 
 type Props = {
   postId: number;
@@ -27,12 +29,13 @@ type Props = {
  *
  * 맨 아래 줄에 작성 시점 가격과 좋아요 · 북마크(`post-actions.tsx`)가 있다.
  *
- * 아직 없는 것
- *   - 재게시 (이번 범위에서 뺐다)
- *   - 수정 · 삭제
+ * 글쓴이에게는 제목 위 줄에 수정 · 삭제(`post-owner-actions.tsx`)가 붙는다.
+ *
+ * 아직 없는 것: 재게시 (이번 범위에서 뺐다)
  */
 export default function PostDetailView({ postId, symbol }: Props) {
   const post = usePost(postId);
+  const { member } = useSession();
 
   if (post.isPending) {
     return <p className="text-sm text-text-muted">불러오는 중…</p>;
@@ -73,6 +76,9 @@ export default function PostDetailView({ postId, symbol }: Props) {
         <span className="flex-1" />
         <time dateTime={data.createdAt}>{formatRelativeTime(data.createdAt)}</time>
         {data.edited ? <span>· 수정됨</span> : null}
+        {member && data.authorId === member.id ? (
+          <PostOwnerActions postId={data.id} room={room} />
+        ) : null}
       </div>
 
       <h1 className="mt-4 text-h1 font-semibold break-words text-text-primary">{data.title}</h1>

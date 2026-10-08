@@ -12,6 +12,7 @@ import { loadWriteRooms, publishPost } from "../api";
 import { useImageUploads } from "../hooks/use-image-uploads";
 import { CONTENT_MAX, TITLE_MAX, draftProblem } from "../limits";
 import BodyEditor from "./body-editor";
+import CharCounter from "./char-counter";
 import ImageAttachments from "./image-attachments";
 import YoutubeField from "./youtube-field";
 
@@ -140,10 +141,10 @@ export default function WriteForm({ initialSymbol }: Props) {
         maxLength={TITLE_MAX}
         onChange={(event) => setTitle(event.target.value)}
       />
-      <Counter length={title.length} max={TITLE_MAX} />
+      <CharCounter length={title.length} max={TITLE_MAX} />
 
       <BodyEditor onChange={setContent} disabled={pending} />
-      <Counter length={content.length} max={CONTENT_MAX} />
+      <CharCounter length={content.length} max={CONTENT_MAX} />
 
       <ImageAttachments
         items={images.items}
@@ -176,20 +177,6 @@ export default function WriteForm({ initialSymbol }: Props) {
         리딩방·유료방 홍보는 예고 없이 삭제됩니다.
       </p>
     </form>
-  );
-}
-
-/**
- * 본문 글자 수는 서식 기호를 포함한 Markdown 길이다. 백엔드가 그 길이로 5000자를
- * 센다. 에디터는 입력을 끊지 않으므로 넘으면 빨갛게 보이고 발행에서 막힌다.
- */
-function Counter({ length, max }: { length: number; max: number }) {
-  return (
-    <p
-      className={`mt-1 text-right text-xs tabular-nums ${length > max ? "text-danger" : "text-text-subtle"}`}
-    >
-      {length.toLocaleString("ko-KR")} / {max.toLocaleString("ko-KR")}
-    </p>
   );
 }
 

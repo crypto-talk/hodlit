@@ -39,6 +39,11 @@ export function postHref(symbol: string, postId: number): string {
   return `/subhodl/${encodeURIComponent(symbol)}/${postId}`;
 }
 
+/** 글 수정. 글쓰기처럼 헤더만 있는 화면군(`(focus)`)이다. */
+export function editHref(symbol: string, postId: number): string {
+  return `${postHref(symbol, postId)}/edit`;
+}
+
 /** 글쓰기. 방 안에서 누르면 그 방을 미리 고른다. */
 export function writeHref(symbol?: string | null): string {
   return symbol ? `/write?symbol=${encodeURIComponent(symbol)}` : "/write";

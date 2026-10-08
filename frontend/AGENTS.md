@@ -217,7 +217,11 @@ had no posts, so every list screen could only be checked empty; writing first fi
    same styles as the editor, and anything outside the schema (raw HTML) is not rendered.
    Landing titles and the publish redirect now link here through `lib/routes.ts`.
    The holder snapshot block (tier badge, holding period, amount band) sits under the title.
-   Not built yet: comments, like/bookmark/repost, edit/delete.
+   Comments, like/bookmark (`post-actions.tsx`) and the author's edit/delete
+   (`post-owner-actions.tsx`, edit page `(focus)/subhodl/[symbol]/[postId]/edit`) are built.
+   Repost is left out on purpose. The post query key carries the viewer id
+   (`hooks/use-post.ts`) because `liked`/`bookmarked` depend on the token. The right column's
+   "북마크한 글" box is temporary until the profile page exists.
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header

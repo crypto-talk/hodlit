@@ -6,7 +6,9 @@ import { refreshHoldings } from "@/lib/holdings-refresh";
 import { http } from "@/lib/http";
 import type {
   BookmarkedPost,
+  EditablePost,
   PostDetail,
+  PostEdit,
   PostDraft,
   PostReactions,
   PublishedPost,
@@ -26,6 +28,7 @@ type Schemas = components["schemas"];
 type CoinResponse = Schemas["CoinResponse"];
 type PostResponse = Schemas["PostResponse"];
 type CreatePostRequest = Schemas["CreatePostRequest"];
+type UpdatePostRequest = Schemas["UpdatePostRequest"];
 type StoredMedia = Schemas["StoredMedia"];
 
 const MEDIA_PREFIX = "/api/v1/media/";
@@ -164,6 +167,72 @@ export async function loadPost(postId: number): Promise<PostDetail> {
         }
       : null,
   };
+}
+
+/**
+ * 수정 화면에 채울 원래 값. 상세와 같은 `GET /posts/{id}` 다.
+ *
+ * 작성자가 아니어도 받아지지만, 저장은 서버가 403 으로 막는다.
+ */
+export async function loadEditablePost(postId: number): Promise<EditablePost> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}`);
+  const tradingView = post.tradingView;
+
+  return {
+    id: post.id ?? postId,
+    coinSymbol: post.coinSymbol ?? "",
+    title: post.title ?? "",
+    content: post.content ?? "",
+    authorId: post.author?.id ?? null,
+    images: (post.media ?? [])
+      .filter((media) => media.type === "IMAGE" && media.url)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((media) => ({ url: media.url ?? "", src: mediaSrc(media.url ?? "") })),
+    youtubeUrl: post.youtube?.url ?? "",
+    tradingView: tradingView?.symbol
+      ? {
+          symbol: tradingView.symbol,
+          interval: tradingView.interval,
+          analysis: tradingView.analysis,
+        }
+      : null,
+  };
+}
+
+/**
+ * 글 수정 (`PUT`). 제목 · 본문 · 이미지 · 유튜브만 바뀐다.
+ *
+ * 방 · 보유 정보 · 작성 시점 가격은 서버가 건드리지 않는다. 이미지는 보낸 목록으로
+ * 통째로 바뀌고, 빠진 기존 이미지는 서버가 저장이 끝난 뒤 지운다. 그래서 수정
+ * 화면에서 기존 이미지를 빼도 저장 전에는 서버에서 지우지 않는다.
+ *
+ * PUT 은 빠진 필드를 null 로 덮는다. 화면에 없는 TradingView 값도 받은 그대로 보낸다.
+ */
+export async function updatePost(edit: PostEdit): Promise<void> {
+  const youtubeUrl = edit.youtubeUrl.trim();
+  const body: UpdatePostRequest = {
+    title: edit.title.trim(),
+    content: edit.content.trim(),
+    media: edit.images.map((image) => ({ type: "IMAGE", url: image.url })),
+    ...(youtubeUrl ? { youtubeUrl } : {}),
+    ...(edit.tradingView
+      ? {
+          tradingViewSymbol: edit.tradingView.symbol,
+          tradingViewInterval: edit.tradingView.interval,
+          tradingViewAnalysis: edit.tradingView.analysis,
+        }
+      : {}),
+  };
+
+  await http<PostResponse>(`/api/v1/posts/${edit.id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+/** 글 삭제. 붙은 이미지 파일은 서버가 커밋 뒤에 지운다(`PostService.delete`). */
+export async function deletePost(postId: number): Promise<void> {
+  await http<void>(`/api/v1/posts/${postId}`, { method: "DELETE" });
 }
 
 /**

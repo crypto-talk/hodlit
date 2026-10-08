@@ -24,6 +24,8 @@ type Props = {
   /** 바뀔 때마다 Markdown 문자열로 올려 보낸다. 백엔드 `content` 에 그대로 실린다. */
   onChange: (markdown: string) => void;
   disabled: boolean;
+  /** 처음 채울 Markdown. 수정 화면이 쓴다. 마운트 때 한 번만 읽는다. */
+  initialContent?: string;
 };
 
 /**
@@ -40,8 +42,10 @@ type Props = {
  * 이미지는 아직 본문 안이 아니라 아래 첨부 칸으로 붙는다. 백엔드 `media` 목록과
  * 본문 안 위치를 어떻게 맞출지 정한 뒤에 옮긴다.
  */
-export default function BodyEditor({ onChange, disabled }: Props) {
+export default function BodyEditor({ onChange, disabled, initialContent }: Props) {
   const editor = useEditor({
+    content: initialContent ?? "",
+    contentType: "markdown",
     // App Router 에서 서버 렌더와 첫 클라이언트 렌더가 어긋나지 않게 한다.
     immediatelyRender: false,
     editable: !disabled,

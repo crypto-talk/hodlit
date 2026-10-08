@@ -101,6 +101,38 @@ export type PostReactions = {
   bookmarked: boolean;
 };
 
+/**
+ * 수정 화면이 처음에 채우는 값.
+ *
+ * 글 상세 뷰 모델과 따로 둔 이유: 수정은 백엔드에 다시 보낼 원래 값이 필요하다
+ * (이미지의 상대 경로, 유튜브 원래 주소, 화면에 안 그리는 TradingView 값).
+ */
+export type EditablePost = {
+  id: number;
+  coinSymbol: string;
+  title: string;
+  content: string;
+  authorId: number | null;
+  /** `url` 은 백엔드 상대 경로, `src` 는 미리보기용 주소. */
+  images: { url: string; src: string }[];
+  youtubeUrl: string;
+  /**
+   * 화면에는 없지만 PUT 이 덮어쓰는 값. 빼고 보내면 서버가 null 로 지운다.
+   * 받은 그대로 돌려보낸다.
+   */
+  tradingView: { symbol?: string; interval?: string; analysis?: string } | null;
+};
+
+/** 수정해서 보낼 값. 방과 보유 정보 · 작성 시점 가격은 바꿀 수 없다. */
+export type PostEdit = {
+  id: number;
+  title: string;
+  content: string;
+  images: UploadedImage[];
+  youtubeUrl: string;
+  tradingView: EditablePost["tradingView"];
+};
+
 /** 북마크한 글 한 줄. */
 export type BookmarkedPost = {
   id: number;

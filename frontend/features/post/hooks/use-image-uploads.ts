@@ -13,7 +13,15 @@ export type ImageItem = {
   status: "uploading" | "done" | "error";
   image?: UploadedImage;
   error?: string;
+  /**
+   * 이미 글에 붙어 있던 이미지(수정 화면). 빼도 서버에서 바로 지우지 않는다 —
+   * 수정을 저장하지 않고 나가면 원래 글에 그대로 있어야 한다. 저장하면 서버가 지운다.
+   */
+  existing?: boolean;
 };
+
+/** 수정 화면이 처음에 채우는 이미지. `src` 는 미리보기 주소다. */
+export type InitialImage = { url: string; src: string };
 
 /**
  * 글쓰기의 이미지 첨부 상태.
@@ -22,8 +30,18 @@ export type ImageItem = {
  * 잠긴다(와이어프레임). 실패한 항목은 목록에 남겨 이유를 보여주고, 발행에는
  * 업로드가 끝난 것만 실린다.
  */
-export function useImageUploads() {
-  const [items, setItems] = useState<ImageItem[]>([]);
+export function useImageUploads(initial: InitialImage[] = []) {
+  // 처음 한 번만 읽는다. 수정 화면은 글을 다 받은 뒤에 이 훅을 쓰는 컴포넌트를 그린다.
+  const [items, setItems] = useState<ImageItem[]>(() =>
+    initial.map((image) => ({
+      key: image.url,
+      name: image.url.split("/").pop() ?? "이미지",
+      preview: image.src,
+      status: "done",
+      image: { url: image.url },
+      existing: true,
+    })),
+  );
   const [notice, setNotice] = useState("");
 
   // 업로드 중에 빼 버린 항목. 업로드가 끝나면 서버에서도 지운다.
@@ -35,7 +53,9 @@ export function useImageUploads() {
   }, [items]);
   useEffect(
     () => () => {
-      for (const item of latest.current) URL.revokeObjectURL(item.preview);
+      for (const item of latest.current) {
+        if (!item.existing) URL.revokeObjectURL(item.preview);
+      }
     },
     [],
   );
@@ -95,9 +115,9 @@ export function useImageUploads() {
   const remove = useCallback((key: string) => {
     const item = latest.current.find((candidate) => candidate.key === key);
     if (!item) return;
-    URL.revokeObjectURL(item.preview);
+    if (!item.existing) URL.revokeObjectURL(item.preview);
     if (item.status === "uploading") removed.current.add(key);
-    if (item.image) void discardImage(item.image);
+    if (item.image && !item.existing) void discardImage(item.image);
     setItems((current) => current.filter((candidate) => candidate.key !== key));
   }, []);
 
