@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import TierBadge from "@/components/holder/tier-badge";
 import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
@@ -9,7 +8,8 @@ import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
 import { roomHref } from "@/lib/routes";
-import { loadPost } from "../api";
+import { usePost } from "../hooks/use-post";
+import PostActions from "./post-actions";
 import PostBody from "./post-body";
 
 type Props = {
@@ -25,12 +25,14 @@ type Props = {
  *
  * 댓글은 `features/comment` 이고, 상세 페이지(`app/…/post-view.tsx`)가 이 아래에 붙인다.
  *
+ * 맨 아래 줄에 작성 시점 가격과 좋아요 · 북마크(`post-actions.tsx`)가 있다.
+ *
  * 아직 없는 것
- *   - 좋아요 · 북마크 · 재게시 버튼
+ *   - 재게시 (이번 범위에서 뺐다)
  *   - 수정 · 삭제
  */
 export default function PostDetailView({ postId, symbol }: Props) {
-  const post = useQuery({ queryKey: ["post", postId], queryFn: () => loadPost(postId) });
+  const post = usePost(postId);
 
   if (post.isPending) {
     return <p className="text-sm text-text-muted">불러오는 중…</p>;
@@ -155,9 +157,11 @@ export default function PostDetailView({ postId, symbol }: Props) {
           </span>
         ) : null}
         <span className="flex-1" />
-        <span className="tabular-nums">
-          좋아요 {data.likes} · 댓글 {data.comments}
-        </span>
+        <PostActions
+          postId={data.id}
+          reactions={{ likes: data.likes, liked: data.liked, bookmarked: data.bookmarked }}
+          comments={data.comments}
+        />
       </div>
     </article>
   );

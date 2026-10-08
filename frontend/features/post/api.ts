@@ -4,7 +4,15 @@ import { config } from "@/lib/config";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
 import { refreshHoldings } from "@/lib/holdings-refresh";
 import { http } from "@/lib/http";
-import type { PostDetail, PostDraft, PublishedPost, UploadedImage, WriteRoom } from "./types";
+import type {
+  BookmarkedPost,
+  PostDetail,
+  PostDraft,
+  PostReactions,
+  PublishedPost,
+  UploadedImage,
+  WriteRoom,
+} from "./types";
 
 /**
  * 글 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -144,7 +152,7 @@ export async function loadPost(postId: number): Promise<PostDetail> {
       typeof price?.price === "number" && price.currency
         ? { value: price.price, currency: price.currency }
         : null,
-    likes: post.likes ?? 0,
+    ...toReactions(post),
     comments: post.comments ?? 0,
     holder: snapshot
       ? {
@@ -155,6 +163,51 @@ export async function loadPost(postId: number): Promise<PostDetail> {
           holding: holdingPeriodLabel(snapshot.holdingMonths),
         }
       : null,
+  };
+}
+
+/**
+ * 좋아요 켜기 · 끄기. 서버는 이미 켜진 걸 또 켜도, 꺼진 걸 또 꺼도 오류 없이 지금
+ * 상태를 돌려준다. 그래서 두 번 눌려도 숫자가 어긋나지 않는다.
+ */
+export async function setLiked(postId: number, on: boolean): Promise<PostReactions> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}/likes`, {
+    method: on ? "POST" : "DELETE",
+  });
+  return toReactions(post);
+}
+
+/** 북마크 켜기 · 끄기. 좋아요와 같은 규칙이다. */
+export async function setBookmarked(postId: number, on: boolean): Promise<PostReactions> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}/bookmarks`, {
+    method: on ? "POST" : "DELETE",
+  });
+  return toReactions(post);
+}
+
+/**
+ * 내가 북마크한 글. 북마크한 시각 최근 순이다. 페이지가 없어 한 번에 전부 온다.
+ *
+ * 마이페이지가 생기기 전까지 오른쪽 칸의 임시 목록이 쓴다.
+ */
+export async function loadBookmarks(): Promise<BookmarkedPost[]> {
+  const posts = await http<PostResponse[]>("/api/v1/me/bookmarks");
+
+  return posts
+    .filter((post): post is PostResponse & { id: number } => typeof post.id === "number")
+    .map((post) => ({
+      id: post.id,
+      coinSymbol: post.coinSymbol ?? "",
+      title: post.title ?? "(제목 없음)",
+      createdAt: post.createdAt ?? "",
+    }));
+}
+
+function toReactions(post: PostResponse): PostReactions {
+  return {
+    likes: post.likes ?? 0,
+    liked: post.liked ?? false,
+    bookmarked: post.bookmarked ?? false,
   };
 }
 

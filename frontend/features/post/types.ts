@@ -83,8 +83,28 @@ export type PostDetail = {
   youtubeVideoId: string | null;
   /** 작성 시점 가격. 서버가 발행 순간 찍은 값이다. */
   price: { value: number; currency: string } | null;
-  likes: number;
   comments: number;
   /** 발행 시점에 고정된 보유 정보. 응답에 없으면 null. */
   holder: HolderView | null;
+} & PostReactions;
+
+/**
+ * 좋아요 · 북마크 상태. 누를 때마다 서버가 글 전체를 돌려주는데, 화면이 바꿔
+ * 끼우는 것은 이 부분뿐이다.
+ *
+ * `liked` · `bookmarked` 는 요청에 토큰이 실렸을 때만 의미가 있다. 로그인 전에
+ * 받은 글은 둘 다 false 다.
+ */
+export type PostReactions = {
+  likes: number;
+  liked: boolean;
+  bookmarked: boolean;
+};
+
+/** 북마크한 글 한 줄. */
+export type BookmarkedPost = {
+  id: number;
+  coinSymbol: string;
+  title: string;
+  createdAt: string;
 };
