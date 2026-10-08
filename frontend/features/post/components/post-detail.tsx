@@ -65,7 +65,7 @@ export default function PostDetailView({ postId, symbol }: Props) {
   const room = data.coinSymbol || symbol;
 
   return (
-    <article className="rounded-lg border border-border-subtle bg-surface p-6">
+    <article className="relative rounded-lg border border-border-subtle bg-surface p-6">
       <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
         <Link
           href={roomHref(room)}
