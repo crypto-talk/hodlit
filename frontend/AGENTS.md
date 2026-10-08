@@ -209,7 +209,9 @@ had no posts, so every list screen could only be checked empty; writing first fi
    `features/post/rich-text-class.ts` holds the body styles so the post detail screen
    renders the same way as the editor.
    Not built yet: chart blocks (needs a place to store the frozen price data — backend),
-   images inside the body, the "이 글에 붙을 정보" preview, draft saving, preview.
+   images inside the body, the "이 글에 붙을 정보" preview, preview.
+   Drafts are saved on the server (`/drafts`, HODL-43), not in localStorage: the 임시저장
+   button creates one and then overwrites it, `?draft=<id>` reopens it, publishing deletes it.
 2. ✅ Post detail `/subhodl/[symbol]/[postId]`, first pass (`features/post/components/
    post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    (youtube-nocookie), the price captured at publish time. The body is rendered by Tiptap in

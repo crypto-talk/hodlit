@@ -133,6 +133,28 @@ export type PostEdit = {
   tradingView: EditablePost["tradingView"];
 };
 
+/**
+ * 임시저장 (HODL-43). 서버가 빈 방 · 제목 · 본문도 받아서 전부 비어 있을 수 있다.
+ * 이미지는 수정 화면과 같은 모양 — `url` 은 상대 경로, `src` 는 미리보기 주소.
+ */
+export type Draft = {
+  id: number;
+  updatedAt: string;
+  coinSymbol: string;
+  title: string;
+  content: string;
+  images: { url: string; src: string }[];
+  youtubeUrl: string;
+};
+
+/** 임시저장 목록 한 줄. */
+export type DraftSummary = Pick<Draft, "id" | "updatedAt" | "coinSymbol" | "title">;
+
+/** 임시저장할 값. 글쓰기 화면에 있는 것만 보낸다. */
+export type DraftInput = Pick<Draft, "coinSymbol" | "title" | "content" | "youtubeUrl"> & {
+  images: UploadedImage[];
+};
+
 /** 북마크한 글 한 줄. */
 export type BookmarkedPost = {
   id: number;

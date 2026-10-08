@@ -6,6 +6,9 @@ import { refreshHoldings } from "@/lib/holdings-refresh";
 import { http } from "@/lib/http";
 import type {
   BookmarkedPost,
+  Draft,
+  DraftInput,
+  DraftSummary,
   EditablePost,
   PostDetail,
   PostEdit,
@@ -29,6 +32,8 @@ type CoinResponse = Schemas["CoinResponse"];
 type PostResponse = Schemas["PostResponse"];
 type CreatePostRequest = Schemas["CreatePostRequest"];
 type UpdatePostRequest = Schemas["UpdatePostRequest"];
+type SaveDraftRequest = Schemas["SaveDraftRequest"];
+type DraftResponse = Schemas["DraftResponse"];
 type StoredMedia = Schemas["StoredMedia"];
 
 const MEDIA_PREFIX = "/api/v1/media/";
@@ -233,6 +238,78 @@ export async function updatePost(edit: PostEdit): Promise<void> {
 /** 글 삭제. 붙은 이미지 파일은 서버가 커밋 뒤에 지운다(`PostService.delete`). */
 export async function deletePost(postId: number): Promise<void> {
   await http<void>(`/api/v1/posts/${postId}`, { method: "DELETE" });
+}
+
+/**
+ * 내 임시저장 목록. 최근 수정순, 회원당 최대 10개라 한 번에 전부 온다.
+ */
+export async function loadDrafts(): Promise<DraftSummary[]> {
+  const drafts = await http<DraftResponse[]>("/api/v1/drafts");
+  return drafts.filter(hasDraftId).map((draft) => ({
+    id: draft.id,
+    updatedAt: draft.updatedAt ?? "",
+    coinSymbol: draft.coinSymbol ?? "",
+    title: draft.title ?? "",
+  }));
+}
+
+/** 임시저장 하나. 남의 것이면 403, 없으면 404. */
+export async function loadDraft(draftId: number): Promise<Draft> {
+  return toDraft(await http<DraftResponse>(`/api/v1/drafts/${draftId}`));
+}
+
+/**
+ * 임시저장. `draftId` 가 없으면 새로 만들고(POST), 있으면 통째로 덮어쓴다(PUT).
+ *
+ * 서버는 값을 검증만 하고 그대로 둔다 — 빈 칸도, 앞뒤 공백도. 보유 정보 · 시세는
+ * 기록하지 않는다. 그건 발행할 때 일어난다.
+ *
+ * 회원당 10개를 넘기면 409. 이미지는 저장하는 순간 이 임시저장에 묶이고, 묶인
+ * 파일은 `DELETE /media` 가 409 로 거절한다(`discardImage` 가 에러를 삼킨다).
+ */
+export async function saveDraft(input: DraftInput, draftId: number | null): Promise<Draft> {
+  const body: SaveDraftRequest = {
+    coinSymbol: input.coinSymbol,
+    title: input.title,
+    content: input.content,
+    media: input.images.map((image) => ({ type: "IMAGE", url: image.url })),
+    youtubeUrl: input.youtubeUrl,
+  };
+
+  const saved = await http<DraftResponse>(
+    draftId === null ? "/api/v1/drafts" : `/api/v1/drafts/${draftId}`,
+    { method: draftId === null ? "POST" : "PUT", body: JSON.stringify(body) },
+  );
+  return toDraft(saved, draftId);
+}
+
+/**
+ * 임시저장 삭제. 발행이 끝난 뒤에도 부른다 — 서버가 발행으로 지워 주지 않는다.
+ * 붙어 있던 이미지는 연결만 풀리고 지워지지 않는다(발행된 글의 이미지는 그대로).
+ */
+export async function deleteDraft(draftId: number): Promise<void> {
+  await http<void>(`/api/v1/drafts/${draftId}`, { method: "DELETE" });
+}
+
+function toDraft(draft: DraftResponse, fallbackId: number | null = null): Draft {
+  const id = draft.id ?? fallbackId;
+  if (typeof id !== "number") throw new Error("임시저장은 됐지만 응답에 번호가 없습니다.");
+
+  return {
+    id,
+    updatedAt: draft.updatedAt ?? "",
+    coinSymbol: draft.coinSymbol ?? "",
+    title: draft.title ?? "",
+    content: draft.content ?? "",
+    images: (draft.media ?? [])
+      .filter((media) => media.type === "IMAGE" && media.url)
+      .map((media) => ({ url: media.url, src: mediaSrc(media.url) })),
+    youtubeUrl: draft.youtubeUrl ?? "",
+  };
+}
+
+function hasDraftId(draft: DraftResponse): draft is DraftResponse & { id: number } {
+  return typeof draft.id === "number";
 }
 
 /**
