@@ -52,7 +52,9 @@ class CrypTalkApplicationTest {
             }
         }
 
-        assertEquals(60, operationCount);
+        assertEquals(62, operationCount);
+        assertTrue(document.path("paths").has("/api/v1/feed/page"));
+        assertTrue(document.path("paths").has("/api/v1/feed/following/page"));
         assertTrue(document.path("paths").has("/api/v1/posts/page"));
         assertTrue(document.path("paths").has("/api/v1/coins/page"));
         assertTrue(document.path("paths").has("/api/v1/posts/{postId}/comments/page"));

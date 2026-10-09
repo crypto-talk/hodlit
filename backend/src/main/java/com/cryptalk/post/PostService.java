@@ -127,6 +127,9 @@ public class PostService {
     @Transactional(readOnly = true)
     public PostResponse get(Long postId, Long viewerId) { return response(post(postId), viewerId); }
 
+    @Transactional(readOnly = true)
+    public PostResponse pageItem(Long postId, Long viewerId) { return response(post(postId), viewerId); }
+
     @Transactional
     public PostResponse create(Long memberId, CreatePostRequest request) {
         Member member = member(memberId);

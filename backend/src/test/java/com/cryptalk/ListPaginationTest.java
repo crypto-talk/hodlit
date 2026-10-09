@@ -60,6 +60,38 @@ class ListPaginationTest {
     }
 
     @Test
+    void numbersCombinedFeedsWithoutLosingRepostEventsOrFollowingScope() throws Exception {
+        long author = members.saveAndFlush(new Member("page-feed-author", "#123456")).getId();
+        long outsider = members.saveAndFlush(new Member("page-feed-outsider", "#123456")).getId();
+        long viewer = members.saveAndFlush(new Member("page-feed-viewer", "#123456")).getId();
+        long coin = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow().getId();
+        Timestamp time = Timestamp.from(Instant.now());
+        for (int i=0; i<25; i++) {
+            jdbc.update("INSERT INTO posts(member_id,coin_id,title,content,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+                i<23 ? author : outsider,coin,"feed-"+i,"body",time,time);
+        }
+        long followedPost = jdbc.queryForObject("SELECT MAX(id) FROM posts WHERE member_id=?",Long.class,author);
+        long outsiderPost = jdbc.queryForObject("SELECT MAX(id) FROM posts WHERE member_id=?",Long.class,outsider);
+        jdbc.update("INSERT INTO post_reposts(post_id,member_id,created_at) VALUES(?,?,?)",followedPost,outsider,time);
+        jdbc.update("INSERT INTO post_reposts(post_id,member_id,created_at) VALUES(?,?,?)",outsiderPost,author,time);
+        jdbc.update("INSERT INTO member_follows(follower_id,following_id,created_at) VALUES(?,?,?)",viewer,author,time);
+        mvc.perform(get("/api/v1/feed/page"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(27))
+            .andExpect(jsonPath("$.items.length()").value(20)).andExpect(jsonPath("$.items[0].eventType").value("REPOST"));
+        mvc.perform(get("/api/v1/feed/page").param("page","1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(7));
+        mvc.perform(get("/api/v1/feed/following/page")).andExpect(status().isUnauthorized());
+        var jwt = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt()
+            .jwt(token -> token.subject(Long.toString(viewer)));
+        mvc.perform(get("/api/v1/feed/following/page").with(jwt))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(24))
+            .andExpect(jsonPath("$.items[0].actor.id").value(author))
+            .andExpect(jsonPath("$.items[0].post.author.id").value(outsider));
+        mvc.perform(get("/api/v1/feed/following/page").with(jwt).param("page","1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(4));
+    }
+
+    @Test
     void privatePagesRequireAuthenticationAndKeepWalletOwnership() throws Exception {
         long owner = members.saveAndFlush(new Member("page-wallet-owner", "#123456")).getId();
         long other = members.saveAndFlush(new Member("page-wallet-other", "#123456")).getId();
