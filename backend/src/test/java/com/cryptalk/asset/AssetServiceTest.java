@@ -17,8 +17,46 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+import java.time.Duration;
+import com.cryptalk.coin.VerificationAvailability;
+import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AssetServiceTest {
+    @Test
+    void staleCachedBalanceCannotVerifyPublicationAndTheCacheIsNotRewritten() {
+        AssetSnapshotRepository snapshots = mock(AssetSnapshotRepository.class);
+        CoinRepository coins = mock(CoinRepository.class);
+        MemberRepository members = mock(MemberRepository.class);
+        WalletRepository wallets = mock(WalletRepository.class);
+        EthereumBalanceClient ethereum = mock(EthereumBalanceClient.class);
+        MarketPriceService prices = mock(MarketPriceService.class);
+        Member member = mock(Member.class);
+        Coin eth = mock(Coin.class);
+        Wallet wallet = mock(Wallet.class);
+        when(members.findById(7L)).thenReturn(Optional.of(member));
+        when(wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of(wallet));
+        when(wallet.getAddress()).thenReturn("0x1111111111111111111111111111111111111111");
+        when(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH")).thenReturn(Optional.of(eth));
+        when(eth.getId()).thenReturn(2L);
+        when(eth.getVerificationAvailability()).thenReturn(VerificationAvailability.SUPPORTED);
+        when(ethereum.balanceOf(any(String.class), any(Duration.class)))
+            .thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO, "RPC_ERROR"));
+        AssetSnapshot cached = new AssetSnapshot(member, eth);
+        cached.capture(BigDecimal.TEN, BigDecimal.TEN, true, "VERIFIED", 1);
+        ReflectionTestUtils.setField(cached, "capturedAt", Instant.now().minus(Duration.ofHours(2)));
+        when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(cached));
+        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, ethereum, prices)
+            .snapshotForPublication(7L, eth);
+        assertFalse(published.isVerified());
+        assertEquals("STALE", published.getSyncStatus());
+        assertEquals(0, BigDecimal.ZERO.compareTo(published.getQuantity()));
+        assertTrue(cached.isVerified());
+        assertEquals(0, BigDecimal.TEN.compareTo(cached.getQuantity()));
+    }
+
     @Test
     void aggregatesVerifiedEthAcrossConnectedEvmWallets() {
         AssetSnapshotRepository snapshots = mock(AssetSnapshotRepository.class);

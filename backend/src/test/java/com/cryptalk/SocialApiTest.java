@@ -38,7 +38,9 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.clearInvocations;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import java.time.Duration;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -54,6 +56,8 @@ class SocialApiTest {
     void prices() {
         when(ethereum.balanceOf(any(String.class)))
             .thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("12.5"), "VERIFIED"));
+        when(ethereum.balanceOf(any(String.class), any(Duration.class)))
+            .thenAnswer(invocation -> ethereum.balanceOf(invocation.getArgument(0, String.class)));
         when(marketPrices.currentPrice(any(Coin.class), nullable(String.class))).thenAnswer(invocation -> {
             Coin coin = invocation.getArgument(0);
             String requested = invocation.getArgument(1);
@@ -198,7 +202,7 @@ class SocialApiTest {
 
     @ParameterizedTest
     @CsvSource({"UNAVAILABLE,false", "RPC_ERROR,false", "UNAVAILABLE,true", "RPC_ERROR,true"})
-    void publicationUsesStoredAssetsWithoutRequiringRpc(String rpcStatus, boolean savedAssets) throws Exception {
+    void publicationAttemptsRefreshAndUsesOnlyFreshCachedAssetsOnRpcFailure(String rpcStatus, boolean savedAssets) throws Exception {
         String suffix = rpcStatus.toLowerCase() + (savedAssets ? "-saved" : "-new");
         Account author = signup("rpc-" + suffix, "RPC " + suffix);
         wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
@@ -226,7 +230,7 @@ class SocialApiTest {
             .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(savedAssets))
             .andExpect(jsonPath("$.holderSnapshot.verificationLevel").value(savedAssets ? "WALLET" : "UNVERIFIED"))
             .andExpect(jsonPath("$.holderSnapshot.walletCount").value(savedAssets ? 1 : 0))
-            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value(savedAssets ? "READY" : "NO_DATA"))
+            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value(savedAssets ? "CACHED" : "NO_DATA"))
             .andReturn();
         JsonNode response = json.readTree(result.getResponse().getContentAsString());
         long postId = response.get("id").asLong();
@@ -245,7 +249,32 @@ class SocialApiTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"RPC 장애 중 댓글\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(savedAssets));
-        verifyNoInteractions(ethereum);
+        verify(ethereum, times(2)).balanceOf(any(String.class), any(Duration.class));
+    }
+
+    @Test
+    void directPublicationRefreshesWithoutAClientAssetCallAndRecordsCurrentBalance() throws Exception {
+        Account author = signup("fresh-publication", "서버갱신");
+        wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
+            "0x4444444444444444444444444444444444444444"));
+        MvcResult published = mvc.perform(post("/api/v1/posts")
+                .header("Authorization", bearer(author.token()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"coinSymbol\":\"ETH\",\"title\":\"직접 발행\",\"content\":\"프론트 갱신 없이 서버에서 조회\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.verifiedHolder").value(true))
+            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value("READY"))
+            .andReturn();
+        long postId = json.readTree(published.getResponse().getContentAsString()).get("id").asLong();
+        when(ethereum.balanceOf(any(String.class)))
+            .thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO, "VERIFIED"));
+        mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
+                .header("Authorization", bearer(author.token()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"잔액이 바뀐 뒤 댓글\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(false));
+        mvc.perform(get("/api/v1/posts/{postId}", postId))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.verifiedHolder").value(true));
     }
 
     private PriceQuote quote(Coin coin, String currency) {

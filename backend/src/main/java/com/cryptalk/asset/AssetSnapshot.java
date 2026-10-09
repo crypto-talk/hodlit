@@ -40,6 +40,20 @@ public class AssetSnapshot {
         this.quantity = quantity; this.valueKrw = valueKrw; this.verified = verified; this.verificationStatus = status;
         this.walletCount = walletCount; this.syncStatus = "READY"; this.capturedAt = Instant.now();
     }
+    /** Detached publication view: never rewrite the cached record or earlier post/comment snapshots. */
+    public AssetSnapshot publicationCopy(boolean fresh, boolean refreshFailed) {
+        AssetSnapshot copy = new AssetSnapshot(member, coin);
+        copy.quantity = fresh ? quantity : BigDecimal.ZERO;
+        copy.valueKrw = fresh ? valueKrw : BigDecimal.ZERO;
+        copy.verified = fresh && verified;
+        copy.verificationStatus = verificationStatus;
+        copy.walletCount = walletCount;
+        copy.holdingSince = fresh ? holdingSince : null;
+        copy.blockNumber = fresh ? blockNumber : null;
+        copy.capturedAt = capturedAt;
+        copy.syncStatus = !fresh ? "STALE" : refreshFailed ? "CACHED" : syncStatus;
+        return copy;
+    }
     public Coin getCoin() { return coin; }
     public BigDecimal getQuantity() { return quantity; }
     public BigDecimal getValueKrw() { return valueKrw; }
