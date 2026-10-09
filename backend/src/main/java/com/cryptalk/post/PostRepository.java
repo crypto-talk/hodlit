@@ -8,6 +8,9 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
+    @Query("select p from Post p where p.coin.active = true and (:symbol is null or lower(p.coin.symbol) = lower(:symbol)) and (:verified = false or p.authorVerified = true)")
+    org.springframework.data.domain.Page<Post> numberedPage(@Param("symbol") String symbol,
+        @Param("verified") boolean verified, Pageable pageable);
     List<Post> findByCoinSymbolIgnoreCaseOrderByCreatedAtDesc(String symbol, Pageable pageable);
     List<Post> findAllByOrderByCreatedAtDesc(Pageable pageable);
     List<Post> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);

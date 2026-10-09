@@ -21,6 +21,13 @@ public class WalletService {
         return wallets.findByMemberIdOrderByCreatedAtAsc(memberId).stream().map(this::response).toList();
     }
 
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<WalletResponse> numberedPage(Long memberId, int page, int size) {
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by("createdAt", "id"));
+        return com.cryptalk.common.PageResponse.of(wallets.findByMemberId(memberId, request).map(this::response));
+    }
+
     @Transactional
     public void disconnect(Long memberId, Long walletId) {
         Wallet wallet = wallets.findById(walletId)

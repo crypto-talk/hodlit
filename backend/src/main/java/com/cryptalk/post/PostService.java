@@ -93,6 +93,27 @@ public class PostService {
     }
 
     @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<PostResponse> numberedPage(String symbol, Long viewerId,
+                                                                       boolean verified, int page, int size) {
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt", "id"));
+        if (symbol != null && coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).isEmpty()) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다.");
+        }
+        return com.cryptalk.common.PageResponse.of(posts.numberedPage(symbol, verified, request)
+            .map(post -> response(post, viewerId)));
+    }
+
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<PostResponse> bookmarkPage(Long memberId, int page, int size) {
+        member(memberId);
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt", "post.id"));
+        return com.cryptalk.common.PageResponse.of(bookmarks.findByMemberId(memberId, request)
+            .map(bookmark -> response(bookmark.getPost(), memberId)));
+    }
+
+    @Transactional(readOnly = true)
     public FeedPageResponse feed(Long viewerId, String cursor, int size) {
         return feedPage(viewerId, cursor, size, null);
     }

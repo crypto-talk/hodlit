@@ -29,6 +29,13 @@ public class ExchangeConnectionService {
         return connections.findByMemberIdOrderByExchangeAsc(memberId).stream().map(this::response).toList();
     }
 
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<ConnectionResponse> numberedPage(Long memberId, int page, int size) {
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by("exchange", "id"));
+        return com.cryptalk.common.PageResponse.of(connections.findByMemberId(memberId, request).map(this::response));
+    }
+
     @Transactional
     public ConnectionResponse connect(Long memberId, Exchange exchange, String accessKey, String secretKey) {
         cipher.requireConfigured();

@@ -21,6 +21,13 @@ public class CommentService {
     }
     @Transactional(readOnly = true)
     public List<CommentResponse> list(Long postId) { posts.post(postId); return comments.findByPostIdOrderByCreatedAt(postId).stream().map(this::response).toList(); }
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<CommentResponse> numberedPage(Long postId, int page, int size) {
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by("createdAt", "id"));
+        posts.post(postId);
+        return com.cryptalk.common.PageResponse.of(comments.findByPostId(postId, request).map(this::response));
+    }
     @Transactional
     public CommentResponse create(Long memberId, Long postId, String content) {
         var post = posts.post(postId);

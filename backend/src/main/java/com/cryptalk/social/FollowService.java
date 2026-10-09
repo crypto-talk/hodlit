@@ -48,6 +48,16 @@ public class FollowService {
         return follows.findByFollowerIdOrderByCreatedAtDesc(memberId).stream().map(follow -> summary(follow.getFollowing())).toList();
     }
 
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<MemberSummary> numberedPage(Long memberId, boolean following, int page, int size) {
+        member(memberId);
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                "createdAt", following ? "following.id" : "follower.id"));
+        var result = following ? follows.findByFollowerId(memberId, request) : follows.findByFollowingId(memberId, request);
+        return com.cryptalk.common.PageResponse.of(result.map(item -> summary(following ? item.getFollowing() : item.getFollower())));
+    }
+
     private Member member(Long id) { return members.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다.")); }
     private MemberSummary summary(Member member) { return new MemberSummary(member.getId(), member.getNickname(), member.getAvatarColor()); }
 
