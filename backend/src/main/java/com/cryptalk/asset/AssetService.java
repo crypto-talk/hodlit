@@ -36,16 +36,27 @@ public class AssetService {
         if (connectedWallets.isEmpty()) return List.of();
         Coin eth = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow();
         BigDecimal quantity = BigDecimal.ZERO;
+        boolean complete = true;
         for (var wallet : connectedWallets) {
             EthereumBalanceClient.BalanceResult balance = ethereum.balanceOf(wallet.getAddress());
-            if (!"VERIFIED".equals(balance.status()))
-                throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "EVM 지갑 잔액을 모두 확인하지 못했습니다.");
+            if (!"VERIFIED".equals(balance.status())) {
+                complete = false;
+                continue;
+            }
             quantity = quantity.add(balance.quantity());
         }
         AssetSnapshot snapshot = snapshots.findByMemberIdAndCoinId(memberId, eth.getId()).orElseGet(() -> new AssetSnapshot(member, eth));
-        BigDecimal value = quantity.signum() == 0 ? BigDecimal.ZERO
-            : quantity.multiply(marketPrices.currentPrice(eth, "KRW").price());
-        snapshot.capture(quantity, value, quantity.signum() > 0, "VERIFIED", connectedWallets.size());
+        BigDecimal value = BigDecimal.ZERO;
+        if (quantity.signum() > 0) {
+            try {
+                value = quantity.multiply(marketPrices.currentPrice(eth, "KRW").price());
+            } catch (ApiException exception) {
+                if (exception.status() != HttpStatus.SERVICE_UNAVAILABLE) throw exception;
+                complete = false;
+            }
+        }
+        snapshot.capture(quantity, value, complete && quantity.signum() > 0,
+            complete ? "VERIFIED" : "RPC_ERROR", connectedWallets.size());
         snapshots.save(snapshot);
         return snapshots.findByMemberIdOrderByCoinDisplayOrder(memberId).stream().map(this::response).toList();
     }
@@ -59,7 +70,13 @@ public class AssetService {
     @Transactional(readOnly = true)
     public AssetSnapshot snapshotForPublication(Long memberId, Coin coin) {
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
-        return snapshots.findByMemberIdAndCoinId(memberId, coin.getId()).orElse(null);
+        var connected = wallets.findByMemberIdOrderByCreatedAtAsc(memberId);
+        if (connected.isEmpty()) return null;
+        return snapshots.findByMemberIdAndCoinId(memberId, coin.getId()).orElseGet(() -> {
+            AssetSnapshot unknown = new AssetSnapshot(members.findById(memberId).orElseThrow(), coin);
+            unknown.capture(BigDecimal.ZERO, BigDecimal.ZERO, false, "UNKNOWN", connected.size());
+            return unknown;
+        });
     }
 
     private AssetResponse response(AssetSnapshot snapshot) {

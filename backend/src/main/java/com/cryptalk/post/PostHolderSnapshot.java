@@ -41,6 +41,9 @@ public class PostHolderSnapshot {
     @Column(name = "sync_status", nullable = false, length = 20)
     private String syncStatus;
 
+    @Column(name = "holder_status", nullable = false, length = 20)
+    private String holderStatus = "UNKNOWN";
+
     protected PostHolderSnapshot() {}
 
     public PostHolderSnapshot(Post post, AssetSnapshot asset) {
@@ -54,6 +57,7 @@ public class PostHolderSnapshot {
             this.syncStatus = availability.name();
             return;
         }
+        this.holderStatus = asset == null ? "NOT_CONNECTED" : asset.getHolderStatus();
         this.verificationLevel = asset != null && asset.isVerified() ? "WALLET" : "UNVERIFIED";
         this.verifiedHolder = asset != null && asset.isVerified();
         this.quantityExact = asset == null ? null : asset.getQuantity();
@@ -75,6 +79,7 @@ public class PostHolderSnapshot {
         return "100+ " + symbol;
     }
 
+    public String getHolderStatus() { return holderStatus; }
     public String getVerificationAvailability() { return verificationAvailability; }
     public String getVerificationLevel() { return verificationLevel; }
     public boolean isVerifiedHolder() { return verifiedHolder; }

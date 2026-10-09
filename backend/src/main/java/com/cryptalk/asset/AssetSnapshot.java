@@ -38,7 +38,15 @@ public class AssetSnapshot {
     public AssetSnapshot(Member member, Coin coin) { this.member = member; this.coin = coin; }
     public void capture(BigDecimal quantity, BigDecimal valueKrw, boolean verified, String status, int walletCount) {
         this.quantity = quantity; this.valueKrw = valueKrw; this.verified = verified; this.verificationStatus = status;
-        this.walletCount = walletCount; this.syncStatus = "READY"; this.capturedAt = Instant.now();
+        this.walletCount = walletCount;
+        this.syncStatus = "VERIFIED".equals(status) ? "READY" : "PARTIAL";
+        this.capturedAt = Instant.now();
+    }
+    public String getHolderStatus() {
+        if (walletCount == 0) return "NOT_CONNECTED";
+        if (!"VERIFIED".equals(verificationStatus) || "STALE".equals(syncStatus)
+            || "CACHED".equals(syncStatus)) return "UNKNOWN";
+        return quantity != null && quantity.signum() > 0 ? "HOLDER" : "EMPTY";
     }
     public Coin getCoin() { return coin; }
     public BigDecimal getQuantity() { return quantity; }

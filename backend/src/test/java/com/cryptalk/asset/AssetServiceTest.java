@@ -16,11 +16,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AssetServiceTest {
-    @Test
-    void aggregatesVerifiedEthAcrossConnectedEvmWallets() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void aggregatesSuccessfulBalancesButNeverVerifiesPartialFailure(boolean partialFailure) {
         AssetSnapshotRepository snapshots = mock(AssetSnapshotRepository.class);
         CoinRepository coins = mock(CoinRepository.class);
         MemberRepository members = mock(MemberRepository.class);
@@ -43,7 +45,7 @@ class AssetServiceTest {
         when(ethereum.balanceOf(wallet.getAddress()))
             .thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("2"), "VERIFIED"));
         when(ethereum.balanceOf(secondWallet.getAddress()))
-            .thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("3"), "VERIFIED"));
+            .thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("3"), partialFailure ? "RPC_ERROR" : "VERIFIED"));
         when(marketPrices.currentPrice(eth, "KRW")).thenReturn(new PriceQuote("ETH", new BigDecimal("3242542"),
             "KRW", new BigDecimal("-3.45"), Instant.parse("2026-09-02T12:49:50Z"), "COINGECKO"));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(snapshot));
@@ -52,8 +54,10 @@ class AssetServiceTest {
 
         AssetService.AssetResponse asset = service.refreshAndList(7L).get(0);
 
-        assertEquals(0, new BigDecimal("16212710").compareTo(asset.valueKrw()));
-        assertEquals("VERIFIED", asset.status());
+        assertEquals(0, new BigDecimal(partialFailure ? "6485084" : "16212710").compareTo(asset.valueKrw()));
+        assertEquals(partialFailure ? "RPC_ERROR" : "VERIFIED", asset.status());
+        assertEquals(!partialFailure, asset.verified());
+        assertEquals(partialFailure ? "UNKNOWN" : "HOLDER", snapshot.getHolderStatus());
         assertEquals("1~10 ETH", asset.quantityBand());
         assertEquals(2, asset.walletCount());
     }

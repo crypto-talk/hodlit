@@ -40,6 +40,9 @@ public class CommentHolderSnapshot {
     @Column(name = "sync_status", nullable = false, length = 20)
     private String syncStatus;
 
+    @Column(name = "holder_status", nullable = false, length = 20)
+    private String holderStatus = "UNKNOWN";
+
     protected CommentHolderSnapshot() {}
     public CommentHolderSnapshot(Comment comment, AssetSnapshot asset) {
         this.comment = comment; this.coin = comment.getPost().getCoin(); this.capturedAt = Instant.now();
@@ -48,6 +51,7 @@ public class CommentHolderSnapshot {
         if (availability != VerificationAvailability.SUPPORTED) {
             this.syncStatus = availability.name(); return;
         }
+        this.holderStatus = asset == null ? "NOT_CONNECTED" : asset.getHolderStatus();
         this.verificationLevel = asset != null && asset.isVerified() ? "WALLET" : "UNVERIFIED";
         this.verifiedHolder = asset != null && asset.isVerified();
         this.quantityExact = asset == null ? null : asset.getQuantity();
@@ -69,6 +73,7 @@ public class CommentHolderSnapshot {
         return "100+ " + symbol;
     }
 
+    public String getHolderStatus() { return holderStatus; }
     public String getVerificationAvailability() { return verificationAvailability; }
     public String getVerificationLevel() { return verificationLevel; }
     public boolean isVerifiedHolder() { return verifiedHolder; }
