@@ -28,5 +28,5 @@ public final class DraftDtos {
     public record DraftResponse(Long id, Instant updatedAt, String coinSymbol, String title, String content,
                                 List<MediaRequest> media, String tradingViewSymbol, String tradingViewInterval,
                                 String tradingViewAnalysis, BigDecimal assetPrice, String assetPriceCurrency,
-                                String youtubeUrl) {}
+                                String youtubeUrl, Long sourcePostId) {}
 }

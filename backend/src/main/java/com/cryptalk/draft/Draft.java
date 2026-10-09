@@ -14,6 +14,8 @@ public class Draft {
     private Member member;
     @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String payload;
+    @Column(name = "source_post_id")
+    private Long sourcePostId;
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -26,6 +28,12 @@ public class Draft {
         this.payload = payload;
         this.updatedAt = Instant.now();
     }
+    public static Draft editing(Member member, String payload, Long postId) {
+        Draft draft = new Draft(member, payload);
+        draft.sourcePostId = postId;
+        return draft;
+    }
+    public Long getSourcePostId() { return sourcePostId; }
     public Long getId() { return id; }
     public Member getMember() { return member; }
     public String getPayload() { return payload; }

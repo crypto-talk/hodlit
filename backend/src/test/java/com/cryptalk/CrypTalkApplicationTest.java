@@ -52,7 +52,8 @@ class CrypTalkApplicationTest {
             }
         }
 
-        assertEquals(51, operationCount);
+        assertEquals(53, operationCount);
+        assertTrue(document.path("paths").has("/api/v1/posts/{postId}/draft"));
         assertEquals(expectedTags, actualTags);
         assertFalse(actualTags.stream().anyMatch(tag -> tag.endsWith("-controller")));
     }

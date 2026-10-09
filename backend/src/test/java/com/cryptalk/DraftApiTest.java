@@ -176,6 +176,73 @@ class DraftApiTest {
         mvc.perform(get(url)).andExpect(status().isNotFound());
     }
 
+    @Test
+    void editAutoSaveUpsertsPrivatelyWithoutChangingPublishedOriginal() throws Exception {
+        long postId = published("{\"coinSymbol\":\"ETH\",\"title\":\"original\",\"content\":\"original body\"}");
+        clearInvocations(snapshots, prices);
+        mvc.perform(get("/api/v1/posts/{id}/draft", postId)).andExpect(status().isUnauthorized());
+        mvc.perform(auth(get("/api/v1/posts/{id}/draft", postId), owner)).andExpect(status().isNotFound());
+        mvc.perform(auth(put("/api/v1/posts/{id}/draft", postId), other).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isForbidden());
+        String body = "{\"coinSymbol\":\"ETH\",\"title\":\"edited\",\"content\":\"new body\"}";
+        long draft = json.readTree(mvc.perform(auth(put("/api/v1/posts/{id}/draft", postId), owner)
+            .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.sourcePostId").value(postId)).andReturn().getResponse().getContentAsString()).get("id").asLong();
+        mvc.perform(auth(put("/api/v1/posts/{id}/draft", postId), owner).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(draft));
+        mvc.perform(get("/api/v1/posts/{id}", postId)).andExpect(jsonPath("$.title").value("original"));
+        mvc.perform(auth(get("/api/v1/posts/{id}/draft", postId), owner)).andExpect(jsonPath("$.title").value("edited"));
+        mvc.perform(auth(get("/api/v1/posts/{id}/draft", postId), other)).andExpect(status().isForbidden());
+        verifyNoInteractions(snapshots, prices);
+        mvc.perform(auth(put("/api/v1/posts/{id}", postId), owner).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("edited"));
+        mvc.perform(auth(delete("/api/v1/posts/{id}", postId), owner)).andExpect(status().isNoContent());
+        mvc.perform(auth(get("/api/v1/drafts/{id}", draft), owner))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.sourcePostId").value(postId));
+        mvc.perform(auth(get("/api/v1/posts/{id}/draft", postId), owner)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void editDraftKeepsPublishedMediaAttachedToOriginal() throws Exception {
+        String originalMedia = upload(owner);
+        String newMedia = upload(owner);
+        long postId = published("{\"coinSymbol\":\"ETH\",\"title\":\"original\",\"content\":\"body\",\"media\":[{\"type\":\"IMAGE\",\"url\":\"%s\"}]}".formatted(originalMedia));
+        String body = "{\"media\":[{\"type\":\"IMAGE\",\"url\":\"%s\"},{\"type\":\"IMAGE\",\"url\":\"%s\"}]}".formatted(originalMedia,newMedia);
+        long draft = json.readTree(mvc.perform(auth(put("/api/v1/posts/{id}/draft", postId), owner)
+            .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString()).get("id").asLong();
+        assertThat(assets.findById(originalMedia.substring(14)).orElseThrow().getDraftId()).isNull();
+        assertThat(assets.findById(newMedia.substring(14)).orElseThrow().getDraftId()).isEqualTo(draft);
+        mvc.perform(auth(delete("/api/v1/drafts/{id}", draft), owner)).andExpect(status().isNoContent());
+        mvc.perform(get(originalMedia)).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/posts/{id}", postId)).andExpect(jsonPath("$.media[0].url").value(originalMedia));
+    }
+
+    @Test
+    void concurrentAutoSavesShareOneDraftAndRespectCombinedQuota() throws Exception {
+        long postId = published("{\"coinSymbol\":\"ETH\",\"title\":\"original\",\"content\":\"body\"}");
+        for (int i=0; i<9; i++) create("{}");
+        var request = json.readValue("{}", com.cryptalk.draft.DraftDtos.SaveDraftRequest.class);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<Long> save = () -> { start.await(); return drafts.saveEditDraft(owner, postId, request).id(); };
+            var first = executor.submit(save);
+            var second = executor.submit(save);
+            start.countDown();
+            assertThat(first.get(10, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(second.get(10, java.util.concurrent.TimeUnit.SECONDS));
+        }
+        assertThat(draftRows.countByMemberId(owner)).isEqualTo(10);
+        mvc.perform(auth(post("/api/v1/drafts"), owner).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isConflict());
+        mvc.perform(auth(put("/api/v1/posts/{id}/draft", postId), owner).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isOk());
+    }
+
+    private long published(String body) throws Exception {
+        return json.readTree(mvc.perform(auth(post("/api/v1/posts"), owner).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+    }
+
     private long create(String body) throws Exception {
         return json.readTree(mvc.perform(auth(post("/api/v1/drafts"), owner).contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
