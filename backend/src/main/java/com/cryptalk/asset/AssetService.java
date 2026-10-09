@@ -33,7 +33,10 @@ public class AssetService {
     public List<AssetResponse> refreshAndList(Long memberId) {
         Member member = members.findById(memberId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
         var connectedWallets = wallets.findByMemberIdOrderByCreatedAtAsc(memberId);
-        if (connectedWallets.isEmpty()) return List.of();
+        if (connectedWallets.isEmpty()) {
+            snapshots.deleteByMemberId(memberId);
+            return List.of();
+        }
         Coin eth = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow();
         BigDecimal quantity = BigDecimal.ZERO;
         for (var wallet : connectedWallets) {
@@ -59,6 +62,7 @@ public class AssetService {
     @Transactional(readOnly = true)
     public AssetSnapshot snapshotForPublication(Long memberId, Coin coin) {
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
+        if (wallets.findByMemberIdOrderByCreatedAtAsc(memberId).isEmpty()) return null;
         return snapshots.findByMemberIdAndCoinId(memberId, coin.getId()).orElse(null);
     }
 

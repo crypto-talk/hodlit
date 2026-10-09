@@ -3,6 +3,11 @@ package com.cryptalk.asset;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import com.cryptalk.coin.VerificationAvailability;
 
 import com.cryptalk.coin.Coin;
 import com.cryptalk.coin.CoinRepository;
@@ -19,6 +24,25 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class AssetServiceTest {
+    @Test
+    void emptyWalletRefreshClearsStaleCachedHoldingsAndPublicationRejectsThem() {
+        AssetSnapshotRepository snapshots = mock(AssetSnapshotRepository.class);
+        CoinRepository coins = mock(CoinRepository.class);
+        MemberRepository members = mock(MemberRepository.class);
+        WalletRepository wallets = mock(WalletRepository.class);
+        EthereumBalanceClient ethereum = mock(EthereumBalanceClient.class);
+        MarketPriceService prices = mock(MarketPriceService.class);
+        Coin coin = mock(Coin.class);
+        when(members.findById(7L)).thenReturn(Optional.of(mock(Member.class)));
+        when(wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of());
+        when(coin.getVerificationAvailability()).thenReturn(VerificationAvailability.SUPPORTED);
+        AssetService service = new AssetService(snapshots, coins, members, wallets, ethereum, prices);
+        assertEquals(List.of(), service.refreshAndList(7L));
+        verify(snapshots).deleteByMemberId(7L);
+        assertNull(service.snapshotForPublication(7L, coin));
+        verify(snapshots, never()).findByMemberIdAndCoinId(anyLong(), anyLong());
+    }
+
     @Test
     void aggregatesVerifiedEthAcrossConnectedEvmWallets() {
         AssetSnapshotRepository snapshots = mock(AssetSnapshotRepository.class);
