@@ -71,17 +71,19 @@ public class PostService {
     private final MarketPriceService marketPrices;
     private final FollowRepository follows;
     private final PostHolderSnapshotRepository holderSnapshots;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public PostService(PostRepository posts, PostLikeRepository likes, CommentRepository comments,
                        MemberRepository members, CoinRepository coins,
                        AssetService assets, PostMediaRepository postMedia,
                        PostBookmarkRepository bookmarks, PostRepostRepository reposts,
                        MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows,
-                       PostHolderSnapshotRepository holderSnapshots) {
+                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.posts = posts; this.likes = likes; this.comments = comments; this.members = members;
         this.coins = coins; this.assets = assets; this.postMedia = postMedia;
         this.bookmarks = bookmarks; this.reposts = reposts; this.mediaFiles = mediaFiles;
         this.marketPrices = marketPrices; this.follows = follows; this.holderSnapshots = holderSnapshots;
+        this.jdbc = jdbc;
     }
 
     @Transactional(readOnly = true)
@@ -103,8 +105,15 @@ public class PostService {
         return feedPage(memberId, cursor, size, follows.findFollowingMemberIds(memberId));
     }
 
-    @Transactional(readOnly = true)
-    public PostResponse get(Long postId, Long viewerId) { return response(post(postId), viewerId); }
+    @Transactional
+    public PostResponse get(Long postId, Long viewerId) {
+        Post post = post(postId);
+        PostResponse result = response(post, viewerId);
+        Long participant = viewerId != null && members.existsById(viewerId) ? viewerId : null;
+        jdbc.update("INSERT INTO post_view_events (post_id, member_id, created_at) VALUES (?, ?, ?)",
+            postId, participant, java.sql.Timestamp.from(Instant.now()));
+        return result;
+    }
 
     @Transactional
     public PostResponse create(Long memberId, CreatePostRequest request) {

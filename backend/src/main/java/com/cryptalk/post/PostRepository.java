@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
+    long countByCoinId(Long coinId);
     List<Post> findByCoinSymbolIgnoreCaseOrderByCreatedAtDesc(String symbol, Pageable pageable);
     List<Post> findAllByOrderByCreatedAtDesc(Pageable pageable);
     List<Post> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);

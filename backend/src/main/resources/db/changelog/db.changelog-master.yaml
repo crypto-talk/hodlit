@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/009-exchange-connections.sql
   - include:
       file: db/changelog/010-post-drafts.sql
+  - include:
+      file: db/changelog/011-community-activity.sql
