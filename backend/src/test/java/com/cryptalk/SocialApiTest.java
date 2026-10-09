@@ -248,6 +248,58 @@ class SocialApiTest {
         verifyNoInteractions(ethereum);
     }
 
+    @Test
+    void repliesStayOneLevelDeepAndCannotTargetAnotherPost() throws Exception {
+        Account author = signup("reply-author", "답글작성자");
+        long postId = replyPost(author);
+        long otherPost = replyPost(author);
+        long root = createReply(author, postId, null).get("id").asLong();
+        JsonNode reply = createReply(author, postId, root);
+        long replyId = reply.get("id").asLong();
+        org.junit.jupiter.api.Assertions.assertEquals(root, reply.get("parentCommentId").asLong());
+        org.junit.jupiter.api.Assertions.assertEquals("답글작성자", reply.get("replyToNickname").asText());
+        JsonNode next = createReply(author, postId, replyId);
+        org.junit.jupiter.api.Assertions.assertEquals(root, next.get("parentCommentId").asLong());
+        org.junit.jupiter.api.Assertions.assertEquals(replyId, next.get("replyToCommentId").asLong());
+        mvc.perform(post("/api/v1/posts/{postId}/comments", otherPost)
+                .header("Authorization", bearer(author.token())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"bad\",\"replyToCommentId\":" + root + "}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
+                .header("Authorization", bearer(author.token())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"bad\",\"replyToCommentId\":-1}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"anonymous\"}"))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/comments/{id}", replyId).header("Authorization", bearer(author.token())))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/posts/{postId}/comments", postId))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[1].parentCommentId").value(root))
+            .andExpect(jsonPath("$[1].replyToCommentId").isEmpty());
+        mvc.perform(delete("/api/v1/comments/{id}", root).header("Authorization", bearer(author.token())))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/posts/{postId}/comments", postId))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+    }
+
+    private long replyPost(Account author) throws Exception {
+        var result = mvc.perform(post("/api/v1/posts").header("Authorization", bearer(author.token()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"coinSymbol\":\"BTC\",\"title\":\"reply test\",\"content\":\"body\"}"))
+            .andExpect(status().isOk()).andReturn();
+        return json.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+    }
+
+    private JsonNode createReply(Account author, long postId, Long target) throws Exception {
+        var result = mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
+                .header("Authorization", bearer(author.token())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"reply\",\"replyToCommentId\":" + target + "}"))
+            .andExpect(status().isOk()).andReturn();
+        return json.readTree(result.getResponse().getContentAsString());
+    }
+
     private PriceQuote quote(Coin coin, String currency) {
         return new PriceQuote(coin.getSymbol(), new BigDecimal("4321.25"), currency, new BigDecimal("2.75"),
             Instant.parse("2026-09-01T00:00:00Z"), "COINGECKO");
