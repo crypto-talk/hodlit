@@ -54,7 +54,7 @@ public class PostHolderSnapshot {
             this.syncStatus = availability.name();
             return;
         }
-        this.verificationLevel = asset != null && asset.isVerified() ? "WALLET" : "UNVERIFIED";
+        this.verificationLevel = asset != null && asset.isVerified() ? asset.getVerificationLevel() : "UNVERIFIED";
         this.verifiedHolder = asset != null && asset.isVerified();
         this.quantityExact = asset == null ? null : asset.getQuantity();
         this.quantityBand = verifiedHolder ? band(coin.getSymbol(), quantityExact) : null;
@@ -75,6 +75,11 @@ public class PostHolderSnapshot {
         return "100+ " + symbol;
     }
 
+    public String getHolderStatus() {
+        if (verifiedHolder) return "HOLDER";
+        if ("READY".equals(syncStatus) && quantityExact != null && quantityExact.signum() == 0) return "EMPTY";
+        return "NO_DATA".equals(syncStatus) ? "NOT_CONNECTED" : "UNKNOWN";
+    }
     public String getVerificationAvailability() { return verificationAvailability; }
     public String getVerificationLevel() { return verificationLevel; }
     public boolean isVerifiedHolder() { return verifiedHolder; }

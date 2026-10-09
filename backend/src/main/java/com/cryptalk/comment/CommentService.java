@@ -44,13 +44,13 @@ public class CommentService {
         HolderSnapshotResponse snapshot = holderSnapshots.findById(comment.getId()).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getHoldingMonths(), item.getWalletCount(), item.getCapturedAt(),
-                item.getSyncStatus())).orElse(null);
+                item.getSyncStatus(), item.getHolderStatus())).orElse(null);
         return new CommentResponse(comment.getId(), member.getId(), member.getNickname(), member.getAvatarColor(),
             comment.getContent(), comment.getCreatedAt(), comment.getUpdatedAt(), snapshot);
     }
     public record HolderSnapshotResponse(String verificationAvailability, String verificationLevel,
                                          boolean verifiedHolder, Integer holdingMonths, int walletCount,
-                                         Instant capturedAt, String syncStatus) {}
+                                         Instant capturedAt, String syncStatus, String holderStatus) {}
     public record CommentResponse(Long id, Long memberId, String nickname, String avatarColor, String content,
                                   Instant createdAt, Instant updatedAt, HolderSnapshotResponse holderSnapshot) {}
 }

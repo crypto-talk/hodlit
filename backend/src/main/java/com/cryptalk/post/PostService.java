@@ -113,7 +113,9 @@ public class PostService {
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
         AssetSnapshot snapshot = assets.snapshotForPublication(memberId, coin);
         boolean verified = snapshot != null && snapshot.isVerified();
-        BigDecimal value = verified ? snapshot.getValueKrw() : null;
+        // Exchange-backed aggregate quantities are public only as bands, never inferable exact valuations.
+        BigDecimal value = verified && snapshot.getExchangeCount() == 0 && "READY".equals(snapshot.getSyncStatus())
+            ? snapshot.getValueKrw() : null;
         YoutubeData youtube = youtube(request.youtubeUrl());
         PriceQuote quote = marketPrices.currentPrice(coin, request.assetPriceCurrency());
         Post saved = posts.save(new Post(member, coin, request.title().trim(), request.content().trim(), value, verified,
@@ -324,7 +326,7 @@ public class PostService {
         HolderSnapshotResponse holderSnapshot = holderSnapshots.findById(post.getId()).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getWalletCount(),
-                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus())).orElse(null);
+                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus())).orElse(null);
         return new PostResponse(post.getId(), post.getCoin().getSymbol(), post.getTitle(), post.getContent(), author(member),
             visible && post.isAuthorVerified(), value, assetDisplay(member.getAssetVisibility(), value),
             likes.countByPostId(post.getId()), comments.countByPostId(post.getId()), liked,

@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ExchangeConnectionRepository extends JpaRepository<ExchangeConnection, Long> {
     List<ExchangeConnection> findByMemberIdOrderByExchangeAsc(Long memberId);
     Optional<ExchangeConnection> findByMemberIdAndExchange(Long memberId, Exchange exchange);
+    Optional<ExchangeConnection> findByCredentialFingerprint(String credentialFingerprint);
+    List<ExchangeConnection> findByExchangeAndCredentialFingerprintIsNull(Exchange exchange);
 }

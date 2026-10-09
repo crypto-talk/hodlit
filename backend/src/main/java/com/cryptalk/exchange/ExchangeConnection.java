@@ -35,6 +35,13 @@ public class ExchangeConnection {
     @Column(name = "encrypted_secret_key", nullable = false, length = 512)
     private String encryptedSecretKey;
 
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private long version;
+
+    @Column(name = "credential_fingerprint", length = 64, unique = true)
+    private String credentialFingerprint;
+
     @Column(name = "connected_at", nullable = false)
     private Instant connectedAt;
 
@@ -52,6 +59,9 @@ public class ExchangeConnection {
         this.connectedAt = Instant.now();
     }
 
+    public void fingerprint(String value) { this.credentialFingerprint = value; }
+    public String getCredentialFingerprint() { return credentialFingerprint; }
+    public Member getMember() { return member; }
     public Long getId() { return id; }
     public Exchange getExchange() { return exchange; }
     public String getEncryptedAccessKey() { return encryptedAccessKey; }

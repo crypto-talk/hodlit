@@ -41,7 +41,7 @@ public final class PostDtos {
     public record PriceSnapshotResponse(BigDecimal price, String currency, Instant capturedAt, String source) {}
     public record HolderSnapshotResponse(String verificationAvailability, String verificationLevel,
                                          boolean verifiedHolder, String quantityBand, Integer holdingMonths,
-                                         int walletCount, Instant capturedAt, Long blockNumber, String syncStatus) {}
+                                         int walletCount, Instant capturedAt, Long blockNumber, String syncStatus, String holderStatus) {}
     public record YoutubeResponse(String url, String videoId, String thumbnailUrl) {}
     public record PostResponse(Long id, String coinSymbol, String title, String content, AuthorResponse author,
                                boolean verifiedHolder, BigDecimal assetValueKrw, String assetDisplay,

@@ -33,7 +33,7 @@ class AssetServiceTest {
         Coin eth = mock(Coin.class);
         AssetSnapshot snapshot = new AssetSnapshot(member, eth);
 
-        when(members.findById(7L)).thenReturn(Optional.of(member));
+        when(members.lockById(7L)).thenReturn(Optional.of(member));
         when(wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of(wallet, secondWallet));
         when(wallet.getAddress()).thenReturn("0x1111111111111111111111111111111111111111");
         when(secondWallet.getAddress()).thenReturn("0x2222222222222222222222222222222222222222");
@@ -48,7 +48,8 @@ class AssetServiceTest {
             "KRW", new BigDecimal("-3.45"), Instant.parse("2026-09-02T12:49:50Z"), "COINGECKO"));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(snapshot));
         when(snapshots.findByMemberIdOrderByCoinDisplayOrder(7L)).thenReturn(List.of(snapshot));
-        AssetService service = new AssetService(snapshots, coins, members, wallets, ethereum, marketPrices);
+        AssetService service = new AssetService(snapshots, coins, members, wallets, ethereum, marketPrices,
+            mock(com.cryptalk.exchange.ExchangeConnectionService.class));
 
         AssetService.AssetResponse asset = service.refreshAndList(7L).get(0);
 
