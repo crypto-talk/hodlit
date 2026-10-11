@@ -17,7 +17,7 @@ public class NewsController {
 
     @Operation(summary="방 뉴스 페이지 조회")
     @GetMapping("/communities/{symbol}/news")
-    NewsDtos.NewsPage list(@PathVariable String symbol, @RequestParam(defaultValue="0") int page,
+    com.cryptalk.common.PageResponse<NewsDtos.NewsResponse> list(@PathVariable String symbol, @RequestParam(defaultValue="0") int page,
                           @RequestParam(defaultValue="20") int size) {
         return news.list(symbol, page, size);
     }

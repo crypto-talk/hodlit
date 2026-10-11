@@ -13,6 +13,4 @@ public final class NewsDtos {
                                   @NotBlank @Size(max=1000) String sourceUrl) {}
     public record NewsResponse(Long id, String coinSymbol, String title, String summary, String sourceName,
                                String sourceUrl, Instant createdAt, Instant updatedAt) {}
-    public record NewsPage(List<NewsResponse> items, int page, int size, long totalElements, int totalPages,
-                           boolean hasNext, boolean hasPrevious) {}
 }

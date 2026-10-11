@@ -98,6 +98,37 @@ class CommunityStatisticsTest {
         assertEquals(50, room.verifiedParticipantRate());
     }
 
+    @Test
+    void exchangeOnlyVerifiedParticipantsRequireAConfirmedAccountAndDoNotChangePopularity() {
+        Member member = members.saveAndFlush(new Member("stats-exchange", "#123456"));
+        long coin = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow().getId();
+        Instant recent = Instant.now().minus(Duration.ofMinutes(5));
+        insertPost(member.getId(), coin, recent);
+        jdbc.update("INSERT INTO asset_snapshots(member_id,coin_id,quantity,value_krw,verified,verification_status,captured_at,wallet_count,exchange_count,verification_level,sync_status) VALUES(?,?,1,1,TRUE,'VERIFIED',?,0,1,'EXCHANGE','READY')",
+            member.getId(), coin, Timestamp.from(recent));
+        jdbc.update("INSERT INTO exchange_connections(member_id,exchange,encrypted_access_key,encrypted_secret_key,connected_at) VALUES(?,'UPBIT','test-only','test-only',?)",
+            member.getId(), Timestamp.from(recent));
+        assertEquals(0, statistics.statistics("24h", "ETH").rooms().getFirst().verifiedParticipantCount());
+        jdbc.update("UPDATE exchange_connections SET account_fingerprint=? WHERE member_id=?", "a".repeat(64), member.getId());
+        var room = statistics.statistics("24h", "ETH").rooms().getFirst();
+        assertEquals(1, room.verifiedParticipantCount());
+        assertEquals(100, room.verifiedParticipantRate());
+        assertEquals(3, room.hotScore());
+    }
+
+    @Test
+    void numberedListsDoNotRecordPostDetailViews() throws Exception {
+        Member member = members.saveAndFlush(new Member("stats-pages", "#123456"));
+        long coin = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow().getId();
+        long post = insertPost(member.getId(), coin, Instant.now().minusSeconds(60));
+        mvc.perform(get("/api/v1/posts/page")).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/feed/page")).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/communities/ETH/posts/page")).andExpect(status().isOk());
+        assertEquals(0L, jdbc.queryForObject("SELECT COUNT(*) FROM post_view_events WHERE post_id=?", Long.class, post));
+        mvc.perform(get("/api/v1/posts/{id}", post)).andExpect(status().isOk());
+        assertEquals(1L, jdbc.queryForObject("SELECT COUNT(*) FROM post_view_events WHERE post_id=?", Long.class, post));
+    }
+
     private long insertPost(long member, long coin, Instant when) {
         jdbc.update("INSERT INTO posts(member_id,coin_id,title,content,author_verified,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
             member, coin, "activity", "content", false, Timestamp.from(when), Timestamp.from(when));

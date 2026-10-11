@@ -61,7 +61,7 @@ public class PostHolderSnapshot {
         this.verificationLevel = asset != null && asset.isVerified() ? asset.getVerificationLevel() : "UNVERIFIED";
         this.verifiedHolder = asset != null && asset.isVerified();
         this.quantityExact = asset == null ? null : asset.getQuantity();
-        this.quantityBand = verifiedHolder ? band(coin.getSymbol(), quantityExact) : null;
+        this.quantityBand = verifiedHolder ? com.cryptalk.asset.HoldingQuantityBand.of(coin.getSymbol(), quantityExact) : null;
         this.holdingSince = asset == null ? null : asset.getHoldingSince();
         this.holdingMonths = holdingSince == null ? null : Math.toIntExact(ChronoUnit.MONTHS.between(
             holdingSince.atZone(java.time.ZoneOffset.UTC).toLocalDate(), capturedAt.atZone(java.time.ZoneOffset.UTC).toLocalDate()));
@@ -70,14 +70,6 @@ public class PostHolderSnapshot {
         this.syncStatus = asset == null ? "NO_DATA" : asset.getSyncStatus();
     }
 
-    private String band(String symbol, BigDecimal quantity) {
-        if (quantity == null || quantity.signum() == 0) return null;
-        if (quantity.compareTo(new BigDecimal("0.1")) < 0) return "0~0.1 " + symbol;
-        if (quantity.compareTo(BigDecimal.ONE) < 0) return "0.1~1 " + symbol;
-        if (quantity.compareTo(BigDecimal.TEN) < 0) return "1~10 " + symbol;
-        if (quantity.compareTo(new BigDecimal("100")) < 0) return "10~100 " + symbol;
-        return "100+ " + symbol;
-    }
 
     public String getHolderStatus() {
         return holderStatus;

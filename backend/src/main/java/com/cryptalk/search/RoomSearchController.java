@@ -17,7 +17,7 @@ public class RoomSearchController {
 
     @Operation(summary="방 내 글·댓글 검색", description="현재 활성 방에만 한정한 제목/본문/작성자 포함 검색, 관련도순. page 0부터, size 기본 20.")
     @GetMapping
-    RoomSearchService.SearchPage search(@PathVariable String symbol, @RequestParam String q,
+    com.cryptalk.common.PageResponse<SearchService.SearchItem> search(@PathVariable String symbol, @RequestParam String q,
             @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size) {
         return search.search(symbol, q, page, size);
     }

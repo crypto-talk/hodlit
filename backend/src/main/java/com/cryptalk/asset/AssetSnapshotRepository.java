@@ -8,5 +8,4 @@ public interface AssetSnapshotRepository extends JpaRepository<AssetSnapshot, Lo
     Optional<AssetSnapshot> findByMemberIdAndCoinId(Long memberId, Long coinId);
     void deleteByMemberId(Long memberId);
     List<AssetSnapshot> findByMemberIdOrderByCoinDisplayOrder(Long memberId);
-    void deleteByMemberId(Long memberId);
 }

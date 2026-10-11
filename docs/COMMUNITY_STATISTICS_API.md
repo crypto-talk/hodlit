@@ -18,7 +18,7 @@ The global default `GET /api/v1/communities/stats?window=24h` is the **지금 �
 - Likes: currently retained likes created during the window; unlikes remove the record.
 - Views: successful backend post-detail GET requests, including anonymous/repeated requests. Lists and feeds do not increment views. These are request counts, not unique visitors; cached responses not reaching the backend are not counted. Collection starts with this migration; historical views are not invented.
 - Participants: distinct logged-in member IDs appearing in posts, comments, likes or detail views during the window. A member appears once across activity types; anonymous views do not add participants.
-- Verified participants: participants with a positive verified snapshot for that coin captured within the last hour and at least one currently connected wallet. This is current recorded verification, not a claim of a historical on-chain check for every activity.
+- Verified participants: participants with a positive verified snapshot for that coin captured within the last hour and a currently connected verification source. Exchange-only holders are included; Upbit/Bithumb connections must have a confirmed account fingerprint, while Coinone retains the explicitly deferred identity policy. This is current recorded verification, not a claim of a historical source check for every activity. Verification never changes hotScore.
 - Deleting content cascades its likes/comments/views; the statistics count retained content, not an append-only audit ledger. Post deletion can reduce cumulative statistics.
 
 ## Hot-room ranking (approved 2026-10-11)

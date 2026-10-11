@@ -104,7 +104,8 @@ public class AssetService {
             }
             var snapshot = snapshots.findByMemberIdAndCoinId(memberId,coin.getId())
                 .orElseGet(() -> new AssetSnapshot(member,coin));
-            snapshot.capture(quantity,value,verified,complete ? "VERIFIED" : "UNKNOWN",eth ? connectedWallets.size() : 0);
+            String status = complete ? "VERIFIED" : (!walletComplete && exchangeComplete ? "RPC_ERROR" : "UNKNOWN");
+            snapshot.capture(quantity,value,verified,status,eth ? connectedWallets.size() : 0);
             snapshot.captureSources(level,connections.size(),sync);
             snapshots.save(snapshot);
         }
@@ -140,20 +141,12 @@ public class AssetService {
     private AssetResponse response(AssetSnapshot snapshot) {
         return new AssetResponse(snapshot.getCoin().getSymbol(),snapshot.getQuantity(),
             "READY".equals(snapshot.getSyncStatus()) ? snapshot.getValueKrw() : null,
-            snapshot.isVerified() ? quantityBand(snapshot.getCoin().getSymbol(),snapshot.getQuantity()) : null,
+            snapshot.isVerified() ? HoldingQuantityBand.of(snapshot.getCoin().getSymbol(),snapshot.getQuantity()) : null,
             snapshot.isVerified(),snapshot.getVerificationLevel(),snapshot.getVerificationStatus(),snapshot.getWalletCount(),
             snapshot.getHoldingSince(),null,snapshot.getCapturedAt(),snapshot.getBlockNumber(),snapshot.getSyncStatus(),
             snapshot.getHolderStatus(),snapshot.getExchangeCount());
     }
 
-    private String quantityBand(String symbol,BigDecimal quantity) {
-        if (quantity == null || quantity.signum() == 0) return null;
-        if (quantity.compareTo(new BigDecimal("0.1")) < 0) return "0~0.1 " + symbol;
-        if (quantity.compareTo(BigDecimal.ONE) < 0) return "0.1~1 " + symbol;
-        if (quantity.compareTo(BigDecimal.TEN) < 0) return "1~10 " + symbol;
-        if (quantity.compareTo(new BigDecimal("100")) < 0) return "10~100 " + symbol;
-        return "100+ " + symbol;
-    }
 
     public record AssetPortfolioResponse(int walletCount,int exchangeCount,List<AssetResponse> assets) {}
     public record AssetResponse(String symbol,BigDecimal quantity,BigDecimal valueKrw,String quantityBand,

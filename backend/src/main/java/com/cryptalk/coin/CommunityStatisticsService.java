@@ -95,8 +95,10 @@ public class CommunityStatisticsService {
             SUM(CASE WHEN a.kind = 'LIKE' THEN 1 ELSE 0 END) AS likes,
             COUNT(DISTINCT a.member_id) AS participants,
             COUNT(DISTINCT CASE WHEN s.verified = TRUE AND s.verification_status = 'VERIFIED'
-                AND s.wallet_count > 0 AND s.captured_at >= :freshAfter AND s.captured_at < :until
-                AND EXISTS (SELECT 1 FROM wallets w WHERE w.member_id = a.member_id)
+                AND s.captured_at >= :freshAfter AND s.captured_at < :until
+                AND ((s.wallet_count > 0 AND EXISTS (SELECT 1 FROM wallets w WHERE w.member_id = a.member_id))
+                  OR (s.exchange_count > 0 AND EXISTS (SELECT 1 FROM exchange_connections ec WHERE ec.member_id = a.member_id
+                      AND (ec.exchange = 'COINONE' OR ec.account_fingerprint IS NOT NULL))))
                 THEN a.member_id ELSE NULL END) AS verified_participants
         FROM coins c LEFT JOIN activity a ON a.coin_id = c.id
         LEFT JOIN asset_snapshots s ON s.coin_id = c.id AND s.member_id = a.member_id

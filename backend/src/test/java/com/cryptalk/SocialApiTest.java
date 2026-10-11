@@ -301,6 +301,27 @@ class SocialApiTest {
         return json.readTree(result.getResponse().getContentAsString());
     }
 
+    @Test
+    void directPublicationRefreshesWithoutAClientAssetCallAndRecordsCurrentBalance() throws Exception {
+        Account author = signup("fresh-publication", "서버갱신");
+        wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
+            "0x" + java.util.UUID.randomUUID().toString().replace("-", "") + "12345678"));
+        var created = mvc.perform(post("/api/v1/posts").header("Authorization", bearer(author.token()))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"coinSymbol\":\"ETH\",\"title\":\"server refresh\",\"content\":\"body\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.verifiedHolder").value(true))
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("HOLDER"))
+            .andReturn();
+        long postId = json.readTree(created.getResponse().getContentAsString()).path("id").asLong();
+        when(ethereum.balanceOf(any(String.class))).thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO, "VERIFIED"));
+        mvc.perform(post("/api/v1/posts/{id}/comments", postId).header("Authorization", bearer(author.token()))
+            .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"after selling\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.holderSnapshot.holderStatus").value("EMPTY"));
+        mvc.perform(get("/api/v1/posts/{id}", postId))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.holderSnapshot.holderStatus").value("HOLDER"));
+        verify(ethereum, times(2)).balanceOf(any(String.class), any(Duration.class));
+    }
+
     private PriceQuote quote(Coin coin, String currency) {
         return new PriceQuote(coin.getSymbol(), new BigDecimal("4321.25"), currency, new BigDecimal("2.75"),
             Instant.parse("2026-09-01T00:00:00Z"), "COINGECKO");

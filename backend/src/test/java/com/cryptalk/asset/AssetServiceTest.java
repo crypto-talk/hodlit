@@ -41,7 +41,8 @@ class AssetServiceTest {
         Member member = mock(Member.class);
         Coin eth = mock(Coin.class);
         Wallet wallet = mock(Wallet.class);
-        when(members.findById(7L)).thenReturn(Optional.of(member));
+        when(members.lockById(7L)).thenThrow(new com.cryptalk.common.ApiException(
+            org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "temporarily unavailable"));
         when(wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of(wallet));
         when(wallet.getAddress()).thenReturn("0x1111111111111111111111111111111111111111");
         when(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH")).thenReturn(Optional.of(eth));
@@ -53,7 +54,8 @@ class AssetServiceTest {
         cached.capture(BigDecimal.TEN, BigDecimal.TEN, true, "VERIFIED", 1);
         ReflectionTestUtils.setField(cached, "capturedAt", Instant.now().minus(Duration.ofHours(2)));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(cached));
-        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, ethereum, prices)
+        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, ethereum, prices,
+            mock(com.cryptalk.exchange.ExchangeConnectionService.class))
             .snapshotForPublication(7L, eth);
         assertFalse(published.isVerified());
         assertEquals("STALE", published.getSyncStatus());

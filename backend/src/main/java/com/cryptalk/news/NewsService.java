@@ -22,14 +22,12 @@ public class NewsService {
     }
 
     @Transactional(readOnly=true)
-    public NewsDtos.NewsPage list(String symbol, int page, int size) {
-        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE)
-            throw new ApiException(HttpStatus.BAD_REQUEST, "page는 0 이상, size는 1~100이어야 합니다.");
+    public com.cryptalk.common.PageResponse<NewsDtos.NewsResponse> list(String symbol, int page, int size) {
+        var request = com.cryptalk.common.PageResponse.request(page, size, Sort.by(Sort.Direction.DESC,"createdAt","id"));
         var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 방을 찾을 수 없습니다."));
-        var rows = news.findByCoinId(coin.getId(), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC,"createdAt","id")));
-        return new NewsDtos.NewsPage(rows.map(this::response).getContent(), page, size, rows.getTotalElements(),
-            rows.getTotalPages(), rows.hasNext(), rows.hasPrevious());
+        var rows = news.findByCoinId(coin.getId(), request);
+        return com.cryptalk.common.PageResponse.of(rows.map(this::response));
     }
 
     @Transactional

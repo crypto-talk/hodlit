@@ -1,20 +1,42 @@
 package com.cryptalk.asset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
+import com.sun.net.httpserver.HttpServer;
 import java.math.BigDecimal;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 class EthereumBalanceClientTest {
-    private static final String URL = "https://rpc.example.test";
     private static final String ADDRESS = "0x1111111111111111111111111111111111111111";
+    private HttpServer server;
+    private String url;
+    private String body = "{}";
+    private int status = 200;
+    private final AtomicInteger calls = new AtomicInteger();
+
+    @BeforeEach
+    void start() throws Exception {
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", request -> {
+            calls.incrementAndGet();
+            request.getRequestBody().readAllBytes();
+            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+            request.getResponseHeaders().set("Content-Type", "application/json");
+            request.sendResponseHeaders(status, bytes.length);
+            try (var output = request.getResponseBody()) { output.write(bytes); }
+        });
+        server.start();
+        url = "http://127.0.0.1:" + server.getAddress().getPort();
+    }
+
+    @AfterEach void stop() { server.stop(0); }
 
     @Test
     void zeroBalanceIsVerifiedRatherThanAnRpcFailure() {
@@ -29,32 +51,37 @@ class EthereumBalanceClientTest {
 
     @Test
     void rejectsMalformedAndJsonRpcErrorResults() {
-        for (String body : new String[] {"{}", "{\"result\":\"-1\"}", "{\"result\":\"0x\"}",
+        for (String value : new String[] {"{}", "{\"result\":\"-1\"}", "{\"result\":\"0x\"}",
             "{\"result\":\"0xGG\"}", "{\"error\":{\"code\":-32000,\"message\":\"private\"}}"}) {
-            assertEquals("RPC_ERROR", result(body).status());
+            assertEquals("RPC_ERROR", result(value).status());
         }
     }
 
     @Test
     void httpErrorsReturnRpcError() {
-        RestClient.Builder builder = RestClient.builder();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
-        assertEquals("RPC_ERROR", new EthereumBalanceClient(URL, builder).balanceOf(ADDRESS).status());
-        server.verify();
+        status = 429;
+        assertEquals("RPC_ERROR", result("{}").status());
     }
 
     @Test
     void missingConfigurationDoesNotMakeANetworkCall() {
         assertEquals("UNAVAILABLE", new EthereumBalanceClient("", RestClient.builder()).balanceOf(ADDRESS).status());
+        assertEquals(0, calls.get());
     }
 
-    private EthereumBalanceClient.BalanceResult result(String body) {
-        RestClient.Builder builder = RestClient.builder();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo(URL)).andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
-        var result = new EthereumBalanceClient(URL, builder).balanceOf(ADDRESS);
-        server.verify();
+    @Test
+    void exhaustedPublicationBudgetDoesNotMakeANetworkCall() {
+        var client = new EthereumBalanceClient(url, RestClient.builder());
+        assertEquals("RPC_ERROR", client.balanceOf(ADDRESS, Duration.ZERO).status());
+        assertEquals("RPC_ERROR", client.balanceOf(ADDRESS, Duration.ofSeconds(-1)).status());
+        assertEquals(0, calls.get());
+    }
+
+    private EthereumBalanceClient.BalanceResult result(String value) {
+        body = value;
+        int previous = calls.get();
+        var result = new EthereumBalanceClient(url, RestClient.builder()).balanceOf(ADDRESS);
+        assertEquals(previous + 1, calls.get());
         return result;
     }
 }
