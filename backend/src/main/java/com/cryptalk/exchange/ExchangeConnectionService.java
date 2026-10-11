@@ -95,7 +95,9 @@ public class ExchangeConnectionService {
         }
     }
 
-    @Transactional(readOnly = true)
+    // Expected provider/identity errors are handled as UNKNOWN by the enclosing asset refresh.
+    // This read-only operation must not mark that caller's write transaction rollback-only.
+    @Transactional(readOnly = true, noRollbackFor = ApiException.class)
     public AssetResponse assets(Long memberId, Exchange exchange) {
         ExchangeConnection connection = owned(memberId, exchange);
         if (exchange != Exchange.COINONE && connection.getAccountFingerprint() == null) {

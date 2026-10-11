@@ -18,6 +18,8 @@ HODL-50부터 업비트·빗썸은 서버가 조회한 계정 식별자도 검�
 
 ## 장애 진단
 
+거래소 계정 미확인·키 만료·조회 실패는 통합 `GET /api/v1/me/assets`에서 HTTP 200과 `UNKNOWN/PARTIAL`로 처리합니다. 이때 해당 조회 실패 때문에 자산 갱신이나 글·댓글 발행 트랜잭션이 롤백되지 않습니다. 개별 거래소 자산 조회는 기존 오류 상태를 그대로 반환합니다(예: 계정 미확인 503). 데이터베이스 오류는 정상 부분 조회로 숨기지 않습니다.
+
 거래소 HTTP 오류는 WARN 로그에 거래소 이름(`exchange`), 거래소 HTTP 상태(`status`), 허용 목록에 포함된 오류 코드(`errorCode`)만 기록합니다. 예: `exchange=BITHUMB, status=403, errorCode=ip_address_not_allowed`. 알 수 없는 코드나 JSON이 아닌 응답은 `errorCode=unknown`으로 표시하며, 네트워크/전송 오류는 `status=unavailable, errorCode=transport_error`로 표시합니다. 코인원의 HTTP 200 실패 응답은 `exchange=COINONE, status=200, errorCode=unknown`으로 표시합니다.
 
 API Key, Secret Key, Authorization 헤더, 잔고, 거래소 응답 본문 전체 및 예외 메시지는 기록하지 않습니다. API 오류 응답과 상태 코드는 변경하지 않습니다. 로그가 없다는 사실만으로 요청 미도달을 판단하지 마세요. 성공 및 모든 응답 형식 오류를 로깅하는 것은 아닙니다.
