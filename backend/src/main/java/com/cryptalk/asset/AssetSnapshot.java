@@ -58,6 +58,22 @@ public class AssetSnapshot {
         if ("VERIFIED".equals(verificationStatus) && quantity.signum() == 0) return "EMPTY";
         return "UNKNOWN";
     }
+    /** Detached publication view: never rewrite the cached record or earlier post/comment snapshots. */
+    public AssetSnapshot publicationCopy(boolean fresh, boolean refreshFailed) {
+        AssetSnapshot copy = new AssetSnapshot(member, coin);
+        copy.quantity = fresh ? quantity : BigDecimal.ZERO;
+        copy.valueKrw = fresh ? valueKrw : BigDecimal.ZERO;
+        copy.verified = fresh && !refreshFailed && verified;
+        copy.verificationStatus = verificationStatus;
+        copy.walletCount = walletCount;
+        copy.exchangeCount = exchangeCount;
+        copy.verificationLevel = copy.verified ? verificationLevel : "UNVERIFIED";
+        copy.holdingSince = fresh ? holdingSince : null;
+        copy.blockNumber = fresh ? blockNumber : null;
+        copy.capturedAt = capturedAt;
+        copy.syncStatus = !fresh ? "STALE" : refreshFailed ? "CACHED" : syncStatus;
+        return copy;
+    }
     public Coin getCoin() { return coin; }
     public BigDecimal getQuantity() { return quantity; }
     public BigDecimal getValueKrw() { return valueKrw; }

@@ -38,7 +38,9 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.clearInvocations;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import java.time.Duration;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -54,6 +56,8 @@ class SocialApiTest {
     void prices() {
         when(ethereum.balanceOf(any(String.class)))
             .thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("12.5"), "VERIFIED"));
+        when(ethereum.balanceOf(any(String.class), any(Duration.class)))
+            .thenAnswer(invocation -> ethereum.balanceOf(invocation.getArgument(0, String.class)));
         when(marketPrices.currentPrice(any(Coin.class), nullable(String.class))).thenAnswer(invocation -> {
             Coin coin = invocation.getArgument(0);
             String requested = invocation.getArgument(1);

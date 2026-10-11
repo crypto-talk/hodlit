@@ -9,9 +9,12 @@ import com.cryptalk.market.MarketPriceService;
 import com.cryptalk.member.MemberRepository;
 import com.cryptalk.wallet.WalletRepository;
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +28,10 @@ public class AssetService {
     private final EthereumBalanceClient ethereum;
     private final MarketPriceService marketPrices;
     private final ExchangeConnectionService exchanges;
+    @Value("${cryptalk.asset.publication-max-age:PT1H}")
+    private Duration publicationMaxAge = Duration.ofHours(1);
+    @Value("${cryptalk.asset.publication-refresh-budget:PT3S}")
+    private Duration publicationRefreshBudget = Duration.ofSeconds(3);
 
     public AssetService(AssetSnapshotRepository snapshots, CoinRepository coins, MemberRepository members,
                         WalletRepository wallets, EthereumBalanceClient ethereum, MarketPriceService marketPrices,
@@ -40,6 +47,11 @@ public class AssetService {
 
     @Transactional
     public List<AssetResponse> refreshAndList(Long memberId) {
+        return refreshAndList(memberId, false);
+    }
+
+    private List<AssetResponse> refreshAndList(Long memberId, boolean publication) {
+        long deadline = System.nanoTime() + publicationRefreshBudget.toNanos();
         var member = members.lockById(memberId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"회원을 찾을 수 없습니다."));
         var connectedWallets = wallets.findByMemberIdOrderByCreatedAtAsc(memberId);
@@ -52,7 +64,9 @@ public class AssetService {
         BigDecimal walletQuantity = BigDecimal.ZERO;
         boolean walletComplete = true;
         for (var wallet : connectedWallets) {
-            var balance = ethereum.balanceOf(wallet.getAddress());
+            Duration remaining = Duration.ofNanos(deadline - System.nanoTime());
+            var balance = publication ? ethereum.balanceOf(wallet.getAddress(), remaining)
+                : ethereum.balanceOf(wallet.getAddress());
             if (!"VERIFIED".equals(balance.status())) walletComplete = false;
             else walletQuantity = walletQuantity.add(balance.quantity());
         }
@@ -106,9 +120,21 @@ public class AssetService {
 
     @Transactional
     public AssetSnapshot snapshotForPublication(Long memberId,Coin coin) {
-        refreshAndList(memberId); // Server-side balances at publication; published holder rows copy immutable values.
+        if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED && exchanges.list(memberId).isEmpty()) return null;
+        boolean refreshFailed = false;
+        try {
+            refreshAndList(memberId, true);
+        } catch (ApiException exception) {
+            if (exception.status() != HttpStatus.SERVICE_UNAVAILABLE) throw exception;
+            refreshFailed = true;
+        }
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
-        return snapshots.findByMemberIdAndCoinId(memberId,coin.getId()).orElse(null);
+        var snapshot = snapshots.findByMemberIdAndCoinId(memberId,coin.getId()).orElse(null);
+        if (snapshot == null) return null;
+        Instant now = Instant.now();
+        boolean fresh = snapshot.getCapturedAt() != null && !snapshot.getCapturedAt().isAfter(now)
+            && !snapshot.getCapturedAt().isBefore(now.minus(publicationMaxAge));
+        return snapshot.publicationCopy(fresh, refreshFailed);
     }
 
     private AssetResponse response(AssetSnapshot snapshot) {
