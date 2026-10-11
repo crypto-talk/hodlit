@@ -3,6 +3,7 @@ package com.cryptalk.draft;
 import com.cryptalk.common.ApiException;
 import com.cryptalk.draft.DraftDtos.*;
 import com.cryptalk.media.MediaService;
+import com.cryptalk.post.PostRepository;
 import com.cryptalk.member.Member;
 import com.cryptalk.member.MemberRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -21,12 +22,14 @@ public class DraftService {
     private final MemberRepository members;
     private final MediaService media;
     private final ObjectMapper json;
+    private final PostRepository posts;
 
-    public DraftService(DraftRepository drafts, MemberRepository members, MediaService media, ObjectMapper json) {
+    public DraftService(DraftRepository drafts, MemberRepository members, MediaService media, ObjectMapper json, PostRepository posts) {
         this.drafts = drafts;
         this.members = members;
         this.media = media;
         this.json = json;
+        this.posts = posts;
     }
 
     @Transactional(readOnly = true)
@@ -51,7 +54,8 @@ public class DraftService {
     public DraftResponse update(Long memberId, Long id, SaveDraftRequest request) {
         lockMember(memberId);
         Draft draft = owned(memberId, id);
-        media.replaceDraftMedia(memberId, id, mediaUrls(request));
+        if (draft.getSourcePostId() != null) requirePostOwner(memberId, draft.getSourcePostId());
+        media.replaceDraftMedia(memberId, id, mediaUrls(request), draft.getSourcePostId());
         draft.update(encode(request));
         return response(draft);
     }
@@ -62,6 +66,36 @@ public class DraftService {
         Draft draft = owned(memberId, id);
         media.replaceDraftMedia(memberId, id, List.of());
         drafts.delete(draft);
+    }
+
+    @Transactional(readOnly = true)
+    public DraftResponse editDraft(Long memberId, Long postId) {
+        requirePostOwner(memberId, postId);
+        return response(drafts.findByMemberIdAndSourcePostId(memberId, postId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "수정 초안이 없습니다.")));
+    }
+
+    @Transactional
+    public DraftResponse saveEditDraft(Long memberId, Long postId, SaveDraftRequest request) {
+        Member member = lockMember(memberId);
+        requirePostOwner(memberId, postId);
+        Draft draft = drafts.findByMemberIdAndSourcePostId(memberId, postId).orElse(null);
+        if (draft == null) {
+            if (drafts.countByMemberId(memberId) >= 10)
+                throw new ApiException(HttpStatus.CONFLICT, "임시저장은 회원당 10개까지 가능합니다.");
+            draft = drafts.save(Draft.editing(member, encode(request), postId));
+        } else {
+            draft.update(encode(request));
+        }
+        media.replaceDraftMedia(memberId, draft.getId(), mediaUrls(request), postId);
+        return response(draft);
+    }
+
+    private void requirePostOwner(Long memberId, Long postId) {
+        var post = posts.findById(postId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "원문을 찾을 수 없습니다."));
+        if (!post.getMember().getId().equals(memberId))
+            throw new ApiException(HttpStatus.FORBIDDEN, "본인 글의 수정 초안만 접근할 수 있습니다.");
     }
 
     private Member lockMember(Long id) {
@@ -97,7 +131,7 @@ public class DraftService {
             SaveDraftRequest data = json.readValue(draft.getPayload(), SaveDraftRequest.class);
             return new DraftResponse(draft.getId(), draft.getUpdatedAt(), data.coinSymbol(), data.title(), data.content(),
                 data.media(), data.tradingViewSymbol(), data.tradingViewInterval(), data.tradingViewAnalysis(),
-                data.assetPrice(), data.assetPriceCurrency(), data.youtubeUrl());
+                data.assetPrice(), data.assetPriceCurrency(), data.youtubeUrl(), draft.getSourcePostId());
         } catch (JsonProcessingException exception) { throw new IllegalStateException("Cannot decode draft", exception); }
     }
 }
