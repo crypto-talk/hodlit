@@ -214,7 +214,7 @@ class SocialApiTest {
         when(alchemy.fetch(anyList(), any(Duration.class)))
             .thenReturn(new AlchemyPortfolioClient.Result(List.of(), List.of("eth-mainnet"), true, rpcStatus, Instant.now()));
         mvc.perform(get("/api/v1/me/assets").header("Authorization", bearer(author.token())))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.assets[0].holderStatus").value("UNKNOWN"));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.unresolvedAssets[0].holderStatus").value("UNKNOWN"));
         clearInvocations(alchemy);
 
         MvcResult result = mvc.perform(post("/api/v1/posts")

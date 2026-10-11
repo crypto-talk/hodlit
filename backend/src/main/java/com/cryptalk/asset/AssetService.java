@@ -122,8 +122,12 @@ public class AssetService {
     @Transactional
     public AssetPortfolioResponse refreshPortfolio(Long memberId) {
         var values = refreshAndList(memberId, false);
+        var held = values.assets().stream().filter(asset -> asset.quantity().signum() > 0).toList();
+        var unresolved = values.assets().stream().filter(asset -> "UNKNOWN".equals(asset.holderStatus()))
+            .map(asset -> new AssetIssueResponse(asset.symbol(), asset.status(), asset.syncStatus(), asset.holderStatus()))
+            .toList();
         return new AssetPortfolioResponse(wallets.findByMemberIdOrderByCreatedAtAsc(memberId).size(),
-            exchanges.list(memberId).size(), values.assets(), values.walletAssets());
+            exchanges.list(memberId).size(), held, unresolved, WalletAssetPortfolioResponse.from(values.walletAssets()));
     }
 
     @Transactional
@@ -157,13 +161,13 @@ public class AssetService {
 
 
     @Transactional(readOnly = true)
-    public AlchemyPortfolioClient.Result walletPortfolio(Long memberId) {
+    public WalletAssetPortfolioResponse walletPortfolio(Long memberId) {
         if (!members.existsById(memberId)) throw new ApiException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다.");
         var addresses = wallets.findByMemberIdOrderByCreatedAtAsc(memberId).stream()
             .map(wallet -> wallet.getAddress()).toList();
-        if (addresses.isEmpty()) return emptyWalletPortfolio();
+        if (addresses.isEmpty()) return WalletAssetPortfolioResponse.from(emptyWalletPortfolio());
         if (!alchemy.isConfigured()) throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Alchemy API 키를 설정해 주세요.");
-        return alchemy.fetch(addresses, Duration.ofSeconds(15));
+        return WalletAssetPortfolioResponse.from(alchemy.fetch(addresses, Duration.ofSeconds(15)));
     }
 
     private AlchemyPortfolioClient.Result emptyWalletPortfolio() {
@@ -199,7 +203,8 @@ public class AssetService {
     private record WalletBalance(BigDecimal quantity, boolean complete) {}
 
     public record AssetPortfolioResponse(int walletCount,int exchangeCount,List<AssetResponse> assets,
-                                         AlchemyPortfolioClient.Result walletAssets) {}
+                                         List<AssetIssueResponse> unresolvedAssets, WalletAssetPortfolioResponse walletAssets) {}
+    public record AssetIssueResponse(String symbol, String status, String syncStatus, String holderStatus) {}
     public record AssetResponse(String symbol,BigDecimal quantity,BigDecimal valueKrw,String quantityBand,
                                 boolean verified,String verificationLevel,String status,int walletCount,
                                 java.time.Instant holdingSince,Integer holdingMonths,java.time.Instant capturedAt,
