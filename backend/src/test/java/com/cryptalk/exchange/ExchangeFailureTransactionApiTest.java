@@ -53,8 +53,8 @@ class ExchangeFailureTransactionApiTest {
         mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(Long.toString(owner)))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.exchangeCount").value(1))
-            .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].holderStatus").value("UNKNOWN"))
-            .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].syncStatus").value("PARTIAL"));
+            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'ETH')].holderStatus").value("UNKNOWN"))
+            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'ETH')].syncStatus").value("PARTIAL"));
         long coinId = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow().getId();
         assertEquals("UNKNOWN", snapshots.findByMemberIdAndCoinId(owner, coinId).orElseThrow().getHolderStatus());
         mvc.perform(get("/api/v1/me/exchanges/upbit/assets")

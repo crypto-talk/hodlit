@@ -84,8 +84,8 @@ class AlchemyWalletApiTest {
         mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].holderStatus").value("HOLDER"))
-            .andExpect(jsonPath("$.assets[?(@.symbol == 'POL')].holderStatus").value("UNKNOWN"))
-            .andExpect(jsonPath("$.assets[?(@.symbol == 'POL')].syncStatus").value("PARTIAL"));
+            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'POL')].holderStatus").value("UNKNOWN"))
+            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'POL')].syncStatus").value("PARTIAL"));
     }
 
     @Test void certificationMatchesChainAndContractRatherThanProviderSymbol() throws Exception {
@@ -155,8 +155,8 @@ class AlchemyWalletApiTest {
             token(1, null, "ETH", java.math.BigInteger.ONE.shiftLeft(255).toString())), List.of()));
         mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].holderStatus").value("UNKNOWN"))
-            .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].verified").value(false));
+            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'ETH')].holderStatus").value("UNKNOWN"))
+            .andExpect(jsonPath("$.assets").isEmpty());
     }
 
     @Test void otherMemberCannotQueryOwnersWalletAndMissingMemberIsNotFound() throws Exception {
@@ -166,6 +166,58 @@ class AlchemyWalletApiTest {
         mvc.perform(get("/api/v1/me/wallets/assets").with(jwt().jwt(token -> token.subject("9223372036854775807"))))
             .andExpect(status().isNotFound());
         verify(alchemy, never()).fetch(anyList(), any(Duration.class));
+    }
+
+    @Test void zeroBalancesAreHiddenButPositiveRawBalanceWithoutMetadataRemainsVisible() throws Exception {
+        var tiny = new AlchemyPortfolioClient.Token(address, "eth-mainnet", 1, CONTRACT, "UNLISTED", null,
+            null, "1", null, "READY");
+        when(alchemy.fetch(anyList(), any(Duration.class))).thenReturn(result(List.of(
+            token(1, null, "ETH", "0"), token(137, null, "POL", "0"), tiny), List.of()));
+        mvc.perform(get("/api/v1/me/wallets/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.assets.length()").value(1))
+            .andExpect(jsonPath("$.assets[0].rawBalance").value("1"))
+            .andExpect(jsonPath("$.assets[0].quantity").doesNotExist())
+            .andExpect(jsonPath("$.unresolvedAssets").isEmpty());
+        mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.assets").isEmpty())
+            .andExpect(jsonPath("$.unresolvedAssets").isEmpty())
+            .andExpect(jsonPath("$.walletAssets.assets.length()").value(1));
+        // Filtering the HTTP list must not destroy the verified zero used at publication.
+        mvc.perform(post("/api/v1/posts").with(jwt().jwt(token -> token.subject(owner.getId().toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"coinSymbol\":\"POL\",\"title\":\"empty\",\"content\":\"body\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("EMPTY"));
+    }
+
+    @Test void unreadableTokenIsReportedSeparatelyInsteadOfClaimedAsAnAsset() throws Exception {
+        var unknown = new AlchemyPortfolioClient.Token(address, "eth-mainnet", 1, null, "ETH", "Ethereum",
+            18, null, null, "UNKNOWN");
+        when(alchemy.fetch(anyList(), any(Duration.class))).thenReturn(result(List.of(unknown), List.of("eth-mainnet")));
+        mvc.perform(get("/api/v1/me/wallets/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.assets").isEmpty())
+            .andExpect(jsonPath("$.unresolvedAssets[0].status").value("UNKNOWN"))
+            .andExpect(jsonPath("$.failedNetworks[0]").value("eth-mainnet"));
+        mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.assets").isEmpty())
+            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'ETH')].holderStatus").value("UNKNOWN"))
+            .andExpect(jsonPath("$.walletAssets.unresolvedAssets[0].status").value("UNKNOWN"));
+    }
+
+    @Test void positiveKnownSubtotalRemainsVisibleWhenAnotherSourceFails() throws Exception {
+        when(exchanges.list(owner.getId())).thenReturn(List.of(new ExchangeConnectionService.ConnectionResponse(
+            com.cryptalk.exchange.Exchange.UPBIT, Instant.now())));
+        when(exchanges.assets(owner.getId(), com.cryptalk.exchange.Exchange.UPBIT)).thenThrow(
+            new com.cryptalk.common.ApiException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "unavailable"));
+        mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH' && @.quantity > 0)].symbol").value("ETH"))
+            .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].syncStatus").value("PARTIAL"))
+            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'ETH')].holderStatus").value("UNKNOWN"));
     }
 
     private AlchemyPortfolioClient.Result result(List<AlchemyPortfolioClient.Token> tokens, List<String> failed) {

@@ -33,6 +33,7 @@ Alchemy ETH JSON-RPC endpoint와 Portfolio API는 별개입니다. 이 연동은
       "status": "READY"
     }
   ],
+  "unresolvedAssets": [],
   "failedNetworks": [],
   "paginationComplete": true,
   "syncStatus": "READY",
@@ -42,9 +43,15 @@ Alchemy ETH JSON-RPC endpoint와 Portfolio API는 별개입니다. 이 연동은
 
 기본 자산은 `contractAddress=null`, ERC20은 계약 주소를 반환합니다. 서비스 코인 목록에 없는 토큰도 포함됩니다. `rawBalance`는 소수점 적용 전 정수의 10진 문자열입니다. ERC20의 메타데이터/소수점 정보를 얻지 못하면 `decimals`와 `quantity`는 생략될 수 있고 `rawBalance`는 유지됩니다. 임의로 18자리로 추정하지 마세요. `status=UNKNOWN`인 토큰은 원본 잔액도 확인하지 못한 상태입니다. 토큰 표시용 이름·심볼은 공급자 메타데이터이고 보유 인증의 식별자로 사용하지 않습니다. 여러 지갑의 항목은 `walletAddress`별로 구분됩니다.
 
+`assets`에는 원본 잔액(`rawBalance`)이 양수인 항목만 포함합니다. 기본 자산과 ERC20 모두 확인된 0잔액은 제외하며, 소수점 정보가 없어도 원본 잔액이 양수이면 포함합니다. 원본 잔액 자체를 확인하지 못한 토큰은 `unresolvedAssets`로 반환합니다. 네트워크 실패·페이지 중단은 기존 `failedNetworks`와 `paginationComplete`로 구분합니다. 따라서 자산 목록이 비어 있어도 실패 상태가 있으면 전체 미보유로 해석하면 안 됩니다.
+
 ## 기존 통합 자산 API와 인증
 
 `GET /api/v1/me/assets`의 기존 `assets`는 서비스 코인의 지갑+거래소 합산 스냅샷 계약을 유지합니다. 새 `walletAssets` 필드에는 위 지갑 전용 결과를 함께 제공합니다. 동일 요청에서 Alchemy를 두 번 조회하지 않습니다. 연결 지갑이 있는데 키가 없으면 이 API도 503으로 설정 필요를 안내합니다. 지갑 없이 거래소만 연결한 회원은 Alchemy 키 없이 거래소 조회를 사용할 수 있습니다. 발행 시 키 미설정은 글·댓글 작성을 막지 않고 보유 상태를 UNKNOWN으로 처리합니다. 이전 인증 캐시가 최신이어도 재인증으로 사용하지 않습니다.
+
+통합 `assets`도 합산된 확인 수량이 양수인 항목만 반환합니다. 확인 불가 상태는 최상위 `unresolvedAssets`의 `{symbol,status,syncStatus,holderStatus}`에 따로 반환합니다. 일부 수단에서 양수 잔액을 확인했지만 다른 수단에 실패한 경우, 확보된 양수 부분합은 `assets`에 유지하고 미확인 상태도 `unresolvedAssets`에 표시합니다. 이 부분합을 정확한 전체 잔액으로 표시하지 마세요. `walletAssets.assets`는 거래소 상태와 독립된 지갑 양수 목록입니다.
+
+필터는 HTTP 응답에만 적용합니다. 내부 보유 기록 및 Alchemy 조회 결과에는 0잔액·조회 실패 정보를 유지하여 글·댓글의 EMPTY/UNKNOWN을 구분하며, 기존 발행 스냅샷은 변경하지 않습니다.
 
 서비스 코인의 `chain_id`, `asset_type`, `contract_address`, `token_decimals`가 정확히 설정된 경우만 지갑 잔액을 인증에 연결합니다. 기본 자산은 체인과 null 계약 주소, ERC20은 체인과 계약 주소가 모두 일치해야 합니다. 심볼만 같은 토큰은 인증에 반영하지 않습니다. 등록 계약 정보가 없는 ERC20도 지갑 목록에서는 확인할 수 있지만 해당 코인 방의 인증으로 자동 연결되지 않습니다. 현재 기본 등록 인증 정보는 ETH와 POL이며, 다른 코인은 신뢰할 수 있는 계약 정보를 별도로 설정해야 합니다.
 
