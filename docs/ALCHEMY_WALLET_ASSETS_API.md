@@ -9,7 +9,7 @@ ALCHEMY_API_KEY=발급받은_키
 ALCHEMY_BASE_URL=https://api.g.alchemy.com
 ```
 
-Alchemy ETH JSON-RPC endpoint와 Portfolio API는 별개입니다. 이 연동은 `POST /data/v1/{apiKey}/assets/tokens/by-address`를 호출합니다. ETH endpoint로 `ALCHEMY_BASE_URL`을 바꾸지 마세요. `ETHEREUM_RPC_URL` 및 `POLYGON_RPC_URL`은 키를 설정하지 않았을 때 기존 기본 자산 조회에 사용합니다. 키가 설정되어 있으면 Alchemy 조회 실패를 빈 잔액으로 덮거나 RPC 결과와 중복 합산하지 않습니다.
+Alchemy ETH JSON-RPC endpoint와 Portfolio API는 별개입니다. 이 연동은 `POST /data/v1/{apiKey}/assets/tokens/by-address`를 호출합니다. ETH endpoint로 `ALCHEMY_BASE_URL`을 바꾸지 마세요. 지갑 조회는 Alchemy만 사용합니다. 기존 ETH/POL 직접 RPC 경로와 대체 조회를 제거했습니다. Alchemy 조회 실패를 빈 잔액으로 덮지 않습니다.
 
 기본 대상은 Ethereum Mainnet(`eth-mainnet`, chain ID 1)과 Polygon PoS(`matic-mainnet`, chain ID 137)입니다. Alchemy 앱에서 해당 네트워크 및 Portfolio API 사용 권한을 확인해야 합니다. 실제 발급 키로 조회 성공 여부는 운영 환경에서 확인해야 합니다.
 
@@ -44,7 +44,7 @@ Alchemy ETH JSON-RPC endpoint와 Portfolio API는 별개입니다. 이 연동은
 
 ## 기존 통합 자산 API와 인증
 
-`GET /api/v1/me/assets`의 기존 `assets`는 서비스 코인의 지갑+거래소 합산 스냅샷 계약을 유지합니다. 새 `walletAssets` 필드에는 위 지갑 전용 결과를 함께 제공합니다. 동일 요청에서 Alchemy를 두 번 조회하지 않습니다. 키가 없는 기존 설정에서는 기본 ETH/POL RPC를 사용하며 `walletAssets`는 생략됩니다.
+`GET /api/v1/me/assets`의 기존 `assets`는 서비스 코인의 지갑+거래소 합산 스냅샷 계약을 유지합니다. 새 `walletAssets` 필드에는 위 지갑 전용 결과를 함께 제공합니다. 동일 요청에서 Alchemy를 두 번 조회하지 않습니다. 연결 지갑이 있는데 키가 없으면 이 API도 503으로 설정 필요를 안내합니다. 지갑 없이 거래소만 연결한 회원은 Alchemy 키 없이 거래소 조회를 사용할 수 있습니다. 발행 시 키 미설정은 글·댓글 작성을 막지 않고 보유 상태를 UNKNOWN으로 처리합니다. 이전 인증 캐시가 최신이어도 재인증으로 사용하지 않습니다.
 
 서비스 코인의 `chain_id`, `asset_type`, `contract_address`, `token_decimals`가 정확히 설정된 경우만 지갑 잔액을 인증에 연결합니다. 기본 자산은 체인과 null 계약 주소, ERC20은 체인과 계약 주소가 모두 일치해야 합니다. 심볼만 같은 토큰은 인증에 반영하지 않습니다. 등록 계약 정보가 없는 ERC20도 지갑 목록에서는 확인할 수 있지만 해당 코인 방의 인증으로 자동 연결되지 않습니다. 현재 기본 등록 인증 정보는 ETH와 POL이며, 다른 코인은 신뢰할 수 있는 계약 정보를 별도로 설정해야 합니다.
 

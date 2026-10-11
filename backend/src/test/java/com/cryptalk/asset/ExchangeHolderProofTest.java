@@ -45,7 +45,7 @@ class ExchangeHolderProofTest {
     @Test
     void positiveWalletIsStrongerAndQuantitiesAreAdded() {
         var f = new Fixture();
-        when(f.ethereum.balanceOf("wallet")).thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("2"),"VERIFIED"));
+        f.walletEth("2", true);
         f.exchange("ETH",new BigDecimal("5"));
         var asset = f.service.refreshAndList(7L).getFirst();
         assertEquals(0,new BigDecimal("7").compareTo(asset.quantity()));
@@ -56,7 +56,7 @@ class ExchangeHolderProofTest {
     void anyFailedEligibleSourceIsUnknownEvenWithPositiveOtherHoldings() {
         var f = new Fixture();
         f.exchange("ETH",new BigDecimal("5"));
-        when(f.ethereum.balanceOf("wallet")).thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO,"RPC_ERROR"));
+        f.walletEth("0", false);
         var asset = f.service.refreshAndList(7L).getFirst();
         assertFalse(asset.verified());
         assertEquals("UNKNOWN",asset.holderStatus());
@@ -101,7 +101,7 @@ class ExchangeHolderProofTest {
         final CoinRepository coins = mock(CoinRepository.class);
         final MemberRepository members = mock(MemberRepository.class);
         final WalletRepository wallets = mock(WalletRepository.class);
-        final EthereumBalanceClient ethereum = mock(EthereumBalanceClient.class);
+        final AlchemyPortfolioClient alchemy = mock(AlchemyPortfolioClient.class);
         final MarketPriceService prices = mock(MarketPriceService.class);
         final ExchangeConnectionService exchanges = mock(ExchangeConnectionService.class);
         final Member member = mock(Member.class);
@@ -109,13 +109,14 @@ class ExchangeHolderProofTest {
         final Coin btc = coin(1L,"BTC");
         final AssetSnapshot ethSnapshot = new AssetSnapshot(member,eth);
         final AssetSnapshot btcSnapshot = new AssetSnapshot(member,btc);
-        final AssetService service = new AssetService(snapshots,coins,members,wallets,ethereum,mock(PolygonBalanceClient.class),prices,mock(AlchemyPortfolioClient.class),exchanges);
+        final AssetService service = new AssetService(snapshots,coins,members,wallets,prices,alchemy,exchanges);
         Fixture() {
             when(members.lockById(7L)).thenReturn(Optional.of(member));
             Wallet wallet = mock(Wallet.class);
             when(wallet.getAddress()).thenReturn("wallet");
             when(wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of(wallet));
-            when(ethereum.balanceOf("wallet")).thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO,"VERIFIED"));
+            when(alchemy.isConfigured()).thenReturn(true);
+            walletEth("0", true);
             when(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH")).thenReturn(Optional.of(eth));
             when(coins.findByActiveTrueOrderByDisplayOrder()).thenReturn(List.of(btc,eth));
             when(snapshots.findByMemberIdAndCoinId(7L,2L)).thenReturn(Optional.of(ethSnapshot));
@@ -123,6 +124,14 @@ class ExchangeHolderProofTest {
             when(snapshots.findByMemberIdOrderByCoinDisplayOrder(7L)).thenReturn(List.of(ethSnapshot));
             when(prices.currentPrice(any(Coin.class),eq("KRW"))).thenReturn(
                 new MarketPriceService.PriceQuote("ETH",new BigDecimal("1000"),"KRW",BigDecimal.ZERO,Instant.now(),"TEST"));
+        }
+        void walletEth(String amount, boolean complete) {
+            when(alchemy.fetch(anyList(), any(java.time.Duration.class))).thenAnswer(call ->
+                new AlchemyPortfolioClient.Result(((List<?>) call.getArgument(0)).isEmpty() ? List.of() : List.of(
+                    new AlchemyPortfolioClient.Token("wallet", "eth-mainnet", 1, null, "ETH", "Ethereum", 18,
+                        new BigDecimal(amount).movePointRight(18).toBigIntegerExact().toString(),
+                        new BigDecimal(amount), "READY")), complete ? List.of() : List.of("eth-mainnet"),
+                    true, complete ? "READY" : "PARTIAL", Instant.now()));
         }
         void exchange(String symbol,BigDecimal amount) {
             when(exchanges.list(7L)).thenReturn(List.of(new ExchangeConnectionService.ConnectionResponse(Exchange.UPBIT,Instant.now())));
@@ -133,6 +142,11 @@ class ExchangeHolderProofTest {
             var coin = mock(Coin.class);
             when(coin.getId()).thenReturn(id);
             when(coin.getSymbol()).thenReturn(symbol);
+            if ("ETH".equals(symbol)) {
+                when(coin.getChainId()).thenReturn(1L);
+                when(coin.getAssetType()).thenReturn("NATIVE");
+                when(coin.getTokenDecimals()).thenReturn(18);
+            }
             when(coin.getVerificationAvailability()).thenReturn(VerificationAvailability.SUPPORTED);
             return coin;
         }

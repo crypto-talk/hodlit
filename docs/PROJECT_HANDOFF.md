@@ -381,7 +381,7 @@ API client는 `frontend/lib/api.ts`에 있다.
 | `DB_PASSWORD` | `cryptalk` | 예 | DB 비밀번호 |
 | `JWT_SECRET` | 로컬 예시값 | 예 | 최소 32 bytes, 운영 secret 사용 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | 예 | 쉼표 구분 허용 origin |
-| `ETHEREUM_RPC_URL` | 빈 값 | 자산 인증 시 예 | Ethereum JSON-RPC endpoint |
+| `ALCHEMY_API_KEY` | 빈 값 | 연결 지갑 조회 시 예 | 서버 전용 Alchemy Portfolio API 키 |
 | `MARKET_PRICE_BASE_URL` | CoinGecko 공개 API | 선택 | 호환 가격 공급자/proxy base URL |
 | `AUTH_COOKIE_SECURE` | `false` | HTTPS 운영에서 `true` | Secure/None cookie 적용 |
 
@@ -433,7 +433,7 @@ npm run dev
 실제 ETH 자산을 확인하려면 backend 실행 전에 RPC를 설정한다.
 
 ```bash
-export ETHEREUM_RPC_URL="https://..."
+export ALCHEMY_API_KEY="..."
 ./gradlew bootRun
 ```
 

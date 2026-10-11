@@ -24,9 +24,9 @@ CRYPTALK_TEST_PAGES_ENABLED=true ./gradlew bootRun
 보관합니다. 테스트 페이지는 기본적으로 비활성화되며 운영 환경에서는 활성화하지 마세요.
 
 기본 설정은 로컬 개발용입니다. 운영 환경에서는 `DB_*`, `JWT_SECRET`,
-`ETHEREUM_RPC_URL`, `CORS_ALLOWED_ORIGINS`를 반드시 설정하세요. 코인 가격은 기본적으로
+`ALCHEMY_API_KEY`, `CORS_ALLOWED_ORIGINS`를 반드시 설정하세요. 코인 가격은 기본적으로
 CoinGecko 공개 API에서 조회하며 필요하면 `MARKET_PRICE_BASE_URL`로 호스트를 교체할 수 있습니다.
 
-로그인한 계정의 지갑 연결은 EVM 지갑의 `personal_sign` 서명을 검증합니다. ETH 보유량 인증은
-설정된 Ethereum JSON-RPC를 통해 서버에서 조회하며, RPC 주소가 없으면 인증 상태를
-`UNAVAILABLE`로 반환합니다.
+로그인한 계정의 지갑 연결은 EVM 지갑의 `personal_sign` 서명을 검증합니다. 지갑 잔액은
+Alchemy Portfolio API만 사용해 Ethereum·Polygon 기본 자산과 ERC20을 조회합니다.
+연결 지갑이 있는데 API 키가 없으면 자산 조회는 503이며 발행 보유 인증은 UNKNOWN입니다.
