@@ -33,6 +33,7 @@ public class Coin {
     @Column(nullable = false)
     private boolean active;
     protected Coin() {}
+    public void enableVerification() { this.verificationAvailability = VerificationAvailability.SUPPORTED; }
     public Long getId() { return id; }
     public String getSymbol() { return symbol; }
     public String getName() { return name; }

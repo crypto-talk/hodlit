@@ -34,12 +34,15 @@ class ExchangeConnectionApiTest {
     @Autowired ObjectMapper json;
     @Autowired ExchangeConnectionRepository connections;
     @MockitoBean ExchangeBalanceClient balanceClient;
+    @MockitoBean ExchangeAccountClient accountClient;
 
     @Test
     void connectsOnlyAfterSuccessfulBalanceFetchAndNeverReturnsCredentials() throws Exception {
         Account owner = signup();
         when(balanceClient.balances(eq(Exchange.UPBIT), eq("access-value"), eq("secret-value")))
             .thenReturn(List.of(new ExchangeBalanceClient.Balance("BTC", BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ONE)));
+        when(accountClient.accountId(eq(Exchange.UPBIT), eq("access-value"), eq("secret-value")))
+            .thenReturn("upbit-main-account");
 
         String response = mvc.perform(post("/api/v1/me/exchanges/upbit").header("Authorization", bearer(owner.token()))
                 .contentType(MediaType.APPLICATION_JSON).content(credentials()))
@@ -64,7 +67,8 @@ class ExchangeConnectionApiTest {
     void isolatesConnectionsByMemberAndRejectsInvalidRequests() throws Exception {
         Account owner = signup();
         Account other = signup();
-        when(balanceClient.balances(eq(Exchange.BITHUMB), any(), any())).thenReturn(List.of());
+        when(accountClient.accountId(eq(Exchange.BITHUMB), any(), any())).thenReturn("bithumb-account");
+        when(accountClient.bithumbBalances(any(), any())).thenReturn(List.of());
         mvc.perform(post("/api/v1/me/exchanges/bithumb").header("Authorization", bearer(owner.token()))
                 .contentType(MediaType.APPLICATION_JSON).content(credentials()))
             .andExpect(status().isOk());

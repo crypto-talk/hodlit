@@ -198,7 +198,7 @@ class SocialApiTest {
 
     @ParameterizedTest
     @CsvSource({"UNAVAILABLE,false", "RPC_ERROR,false", "UNAVAILABLE,true", "RPC_ERROR,true"})
-    void publicationUsesStoredAssetsWithoutRequiringRpc(String rpcStatus, boolean savedAssets) throws Exception {
+    void publicationRefreshesAndReportsUnknownOnAnySourceFailure(String rpcStatus, boolean savedAssets) throws Exception {
         String suffix = rpcStatus.toLowerCase() + (savedAssets ? "-saved" : "-new");
         Account author = signup("rpc-" + suffix, "RPC " + suffix);
         wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
@@ -212,7 +212,7 @@ class SocialApiTest {
         when(ethereum.balanceOf(any(String.class)))
             .thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO, rpcStatus));
         mvc.perform(get("/api/v1/me/assets").header("Authorization", bearer(author.token())))
-            .andExpect(status().isServiceUnavailable());
+            .andExpect(status().isOk()).andExpect(jsonPath("$.assets[0].holderStatus").value("UNKNOWN"));
         clearInvocations(ethereum);
 
         MvcResult result = mvc.perform(post("/api/v1/posts")
@@ -222,30 +222,27 @@ class SocialApiTest {
                     {"coinSymbol":"ETH","title":"RPC 장애 중 작성","content":"잔액 인증과 글 작성은 독립적입니다."}
                     """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.verifiedHolder").value(savedAssets))
-            .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(savedAssets))
-            .andExpect(jsonPath("$.holderSnapshot.verificationLevel").value(savedAssets ? "WALLET" : "UNVERIFIED"))
-            .andExpect(jsonPath("$.holderSnapshot.walletCount").value(savedAssets ? 1 : 0))
-            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value(savedAssets ? "READY" : "NO_DATA"))
+            .andExpect(jsonPath("$.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.holderSnapshot.verificationLevel").value("UNVERIFIED"))
+            .andExpect(jsonPath("$.holderSnapshot.walletCount").value(1))
+            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value("PARTIAL"))
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("UNKNOWN"))
             .andReturn();
         JsonNode response = json.readTree(result.getResponse().getContentAsString());
         long postId = response.get("id").asLong();
         mvc.perform(get("/api/v1/posts/{postId}", postId)
                 .header("Authorization", bearer(author.token())))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.verifiedHolder").value(savedAssets));
-        if (savedAssets) {
-            org.junit.jupiter.api.Assertions.assertEquals(0,
-                new BigDecimal("54015.63").compareTo(response.get("assetValueKrw").decimalValue()));
-        } else {
-            org.junit.jupiter.api.Assertions.assertTrue(response.get("assetValueKrw").isNull());
-        }
+            .andExpect(jsonPath("$.verifiedHolder").value(false));
+        org.junit.jupiter.api.Assertions.assertTrue(response.get("assetValueKrw").isNull());
         mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                 .header("Authorization", bearer(author.token()))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"RPC 장애 중 댓글\"}"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(savedAssets));
-        verifyNoInteractions(ethereum);
+            .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("UNKNOWN"));
+        org.mockito.Mockito.verify(ethereum,org.mockito.Mockito.times(2)).balanceOf(any(String.class));
     }
 
     private PriceQuote quote(Coin coin, String currency) {
