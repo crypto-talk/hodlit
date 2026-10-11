@@ -35,6 +35,7 @@ cryptalk:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   asset:
     ethereum-rpc-url: ${ETHEREUM_RPC_URL:}
+    polygon-rpc-url: ${POLYGON_RPC_URL:}
   exchange:
     encryption-key: ${EXCHANGE_CREDENTIAL_ENCRYPTION_KEY:}
     upbit-base-url: https://api.upbit.com

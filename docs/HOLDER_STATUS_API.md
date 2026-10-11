@@ -9,7 +9,7 @@ Post and comment `holderSnapshot` responses gain `holderStatus`:
 | UNKNOWN | A connected source failed, there is no checked snapshot yet, or publication falls back to stale/cached verification. |
 | NOT_CONNECTED | No verification source is connected at publication. |
 
-`verificationAvailability` remains separate; do not display a holding status for unsupported/not-configured coins. Integrated HODL-50 supports EVM ETH wallets and matching exchange currencies, including exchange-only BTC/ETH. Source counts must include exchanges when deriving NOT_CONNECTED.
+`verificationAvailability` remains separate; do not display a holding status for unsupported/not-configured coins. Integrated HODL-50 supports Ethereum ETH and Polygon PoS POL wallet balances and matching exchange currencies, including exchange-only BTC/ETH. Source counts must include exchanges when deriving NOT_CONNECTED.
 
 `GET /me/assets` no longer discards the entire refresh on one wallet failure. Successful wallets contribute their known quantities; failed wallets are not assumed empty. The result is HTTP 200 with `status=RPC_ERROR`, `verified=false`, `syncStatus=PARTIAL` when incomplete. A successful zero balance is `VERIFIED`, not an error. In the integrated source-aware implementation, price-provider failure alone does not negate successfully verified ownership: syncStatus=PRICE_UNAVAILABLE and private valueKrw=null. Wallet/exchange balance failures remain UNKNOWN/PARTIAL. Invalid account and other non-provider errors still propagate. The private quantity is a **known subtotal**, not a verified total, whenever status is incomplete.
 

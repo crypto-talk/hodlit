@@ -16,6 +16,16 @@
 - JSON-RPC failure: numeric RPC error code.
 - Transport/parse failure: exception category, not raw message/stack/body/URL.
 
-Raw exception text and response bodies can contain credentials or wallet addresses and are intentionally not logged. Failed reads still return `RPC_ERROR`; HTTP 503 remains the asset API's contract until the separately tracked partial-success/state work (HODL-49).
+Raw exception text and response bodies can contain credentials or wallet addresses and are intentionally not logged. Failed RPC reads produce `RPC_ERROR` with `UNKNOWN/PARTIAL` in the private aggregate asset response (HTTP 200). A successful partial response is not proof that all sources were verified.
 
 Unit tests cover successful zero/nonzero balances, malformed payloads, provider errors and missing configuration. Tests are not proof that production is correctly configured. Production `/me/assets` confirmation requires deployment access and a test account; do not close the operational incident based only on these tests.
+
+## Polygon PoS native POL
+
+The same connected EVM address is queried on Polygon PoS mainnet for its native POL balance, separately from Ethereum ETH. Polygon uses chain ID 137 and 18 decimal places. The client checks `eth_chainId` before `eth_getBalance`; a different chain, malformed response, missing configuration or upstream failure produces UNKNOWN/PARTIAL, never EMPTY. A successful zero balance is EMPTY. Ethereum and Polygon RPC failures are isolated per coin.
+
+Docker Compose supplies `POLYGON_RPC_URL=https://polygon-bor-rpc.publicnode.com` by default. Override this in the deployment root `.env` with a Polygon PoS mainnet JSON-RPC endpoint and recreate the backend container. An application started outside Compose must set `POLYGON_RPC_URL` explicitly. Do not replace `ETHEREUM_RPC_URL` with a Polygon endpoint. Provider reference: https://polygon.publicnode.com/ and network reference: https://support.polygon.technology/support/solutions/articles/82000889434-how-to-add-polygon-mainnet-on-metamask-
+
+`GET /api/v1/me/assets` now includes a POL entry for connected EVM wallets alongside ETH. The response retains its existing aggregate wallet+exchange contract; a failed eligible exchange still makes the aggregate UNKNOWN/PARTIAL even when a successful wallet contribution is positive. Private quantity contains the successful contributions, not a complete total in that case. No new wallet connection is required. This support is for native POL on Polygon PoS; wrapped POL or ERC20 assets on other networks are not included.
+
+POL rooms support WALLET holder proof for posts/comments with existing freshness, immutable snapshot, source-count and disconnect invalidation rules. Publication refresh uses the existing shared time budget and checks the publication coin's chain first.
