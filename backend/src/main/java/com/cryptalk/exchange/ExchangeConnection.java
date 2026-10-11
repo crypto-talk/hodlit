@@ -42,6 +42,9 @@ public class ExchangeConnection {
     @Column(name = "credential_fingerprint", length = 64, unique = true)
     private String credentialFingerprint;
 
+    @Column(name = "account_fingerprint", length = 64, unique = true)
+    private String accountFingerprint;
+
     @Column(name = "connected_at", nullable = false)
     private Instant connectedAt;
 
@@ -61,6 +64,8 @@ public class ExchangeConnection {
 
     public void fingerprint(String value) { this.credentialFingerprint = value; }
     public String getCredentialFingerprint() { return credentialFingerprint; }
+    public void identifyAccount(String fingerprint) { this.accountFingerprint = fingerprint; }
+    public String getAccountFingerprint() { return accountFingerprint; }
     public Member getMember() { return member; }
     public Long getId() { return id; }
     public Exchange getExchange() { return exchange; }

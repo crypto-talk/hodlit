@@ -9,4 +9,6 @@ public interface ExchangeConnectionRepository extends JpaRepository<ExchangeConn
     Optional<ExchangeConnection> findByMemberIdAndExchange(Long memberId, Exchange exchange);
     Optional<ExchangeConnection> findByCredentialFingerprint(String credentialFingerprint);
     List<ExchangeConnection> findByExchangeAndCredentialFingerprintIsNull(Exchange exchange);
+    Optional<ExchangeConnection> findByAccountFingerprint(String accountFingerprint);
+    List<ExchangeConnection> findByExchangeAndAccountFingerprintIsNull(Exchange exchange);
 }

@@ -40,6 +40,7 @@ class ExchangeHolderPublicationApiTest {
     @Autowired ExchangeCredentialCipher cipher;
     @Autowired AssetSnapshotRepository snapshots;
     @MockitoBean ExchangeBalanceClient balances;
+    @MockitoBean ExchangeAccountClient accounts;
     @MockitoBean MarketPriceService prices;
     long owner;
     String key;
@@ -51,6 +52,8 @@ class ExchangeHolderPublicationApiTest {
         key = "test-only-" + UUID.randomUUID();
         credentials = "{\"accessKey\":\""+key+"\",\"secretKey\":\"test-only-secret\"}";
         when(balances.balances(any(Exchange.class),anyString(),anyString())).thenReturn(eth("5"));
+        when(accounts.accountId(any(Exchange.class), anyString(), anyString()))
+            .thenAnswer(call -> "account-" + call.getArgument(1));
         when(prices.currentPrice(any(Coin.class),nullable(String.class))).thenAnswer(call ->
             new MarketPriceService.PriceQuote(((Coin)call.getArgument(0)).getSymbol(),new BigDecimal("1000"),
                 call.getArgument(1)==null ? "USD" : call.getArgument(1),BigDecimal.ZERO,Instant.now(),"TEST"));
@@ -103,6 +106,19 @@ class ExchangeHolderPublicationApiTest {
             .contentType(MediaType.APPLICATION_JSON).content("{\"coinSymbol\":\"SOL\",\"title\":\"title\",\"content\":\"body\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.holderSnapshot.verificationAvailability").value("SUPPORTED"))
             .andExpect(jsonPath("$.holderSnapshot.verificationLevel").value("EXCHANGE"));
+    }
+
+    @Test
+    void legacyUnidentifiedExchangeDoesNotProduceAHolderClaim() throws Exception {
+        connections.saveAndFlush(new ExchangeConnection(members.findById(owner).orElseThrow(), Exchange.UPBIT,
+            cipher.encrypt(key), cipher.encrypt("test-only-secret")));
+        mvc.perform(post("/api/v1/posts").with(jwt().jwt(token -> token.subject(Long.toString(owner))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"coinSymbol\":\"ETH\",\"title\":\"title\",\"content\":\"body\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("UNKNOWN"))
+            .andExpect(jsonPath("$.holderSnapshot.quantityBand").doesNotExist());
     }
 
     @org.junit.jupiter.params.ParameterizedTest
