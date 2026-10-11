@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/012-exchange-account-identity.sql
   - include:
       file: db/changelog/011-holder-status.sql
+  - include:
+      file: db/changelog/011-community-activity.sql
