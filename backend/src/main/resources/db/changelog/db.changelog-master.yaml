@@ -27,3 +27,5 @@ databaseChangeLog:
       file: db/changelog/011-community-activity.sql
   - include:
       file: db/changelog/011-edit-drafts.sql
+  - include:
+      file: db/changelog/011-comment-replies.sql
