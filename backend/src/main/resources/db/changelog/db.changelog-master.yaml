@@ -31,3 +31,5 @@ databaseChangeLog:
       file: db/changelog/011-comment-replies.sql
   - include:
       file: db/changelog/011-community-news.sql
+  - include:
+      file: db/changelog/011-community-polls.sql
