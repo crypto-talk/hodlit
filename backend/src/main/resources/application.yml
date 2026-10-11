@@ -33,9 +33,6 @@ cryptalk:
     refresh-token-days: 14
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
-  asset:
-    ethereum-rpc-url: ${ETHEREUM_RPC_URL:}
-    polygon-rpc-url: ${POLYGON_RPC_URL:}
   alchemy:
     api-key: ${ALCHEMY_API_KEY:}
     base-url: ${ALCHEMY_BASE_URL:https://api.g.alchemy.com}

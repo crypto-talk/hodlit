@@ -31,8 +31,6 @@ services:
       DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       CORS_ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost}
-      ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL:-}
-      POLYGON_RPC_URL: ${POLYGON_RPC_URL:-https://polygon-bor-rpc.publicnode.com}
       ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}
       ALCHEMY_BASE_URL: ${ALCHEMY_BASE_URL:-https://api.g.alchemy.com}
       EXCHANGE_CREDENTIAL_ENCRYPTION_KEY: ${EXCHANGE_CREDENTIAL_ENCRYPTION_KEY:-}

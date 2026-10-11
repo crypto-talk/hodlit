@@ -1,31 +1,14 @@
-# EVM RPC diagnostics (HODL-47)
+# 지갑 자산 조회 운영 확인
 
-`ETHEREUM_RPC_URL` must name an Ethereum Mainnet JSON-RPC provider. An empty value intentionally disables verification; it does not mean a wallet has no ETH. A successful `0x0` result is a verified empty wallet, not an error.
+지갑 잔액 조회는 Alchemy Portfolio API만 사용합니다. Ethereum Mainnet과 Polygon PoS의 기본 자산 및 ERC20을 동일 경로에서 조회합니다. 직접 RPC 클라이언트와 대체 조회 경로는 제거되었습니다.
 
-## Deployment checks
+1. 배포 서버 프로젝트 루트 `.env`에 `ALCHEMY_API_KEY`를 설정하고 백엔드 컨테이너를 재생성합니다. 키·URL·.env 전체를 로그나 채팅으로 출력하지 마세요.
+2. Alchemy 앱에서 Ethereum/Polygon 및 Portfolio API 사용 권한을 확인합니다. 키를 ETH JSON-RPC endpoint와 혼동하지 마세요. 기본 `ALCHEMY_BASE_URL`은 `https://api.g.alchemy.com`입니다.
+3. 지갑 연결 계정으로 `GET /api/v1/me/wallets/assets`를 호출합니다. 거래소를 조회하지 않는 지갑 전용 API입니다. 부분 실패는 `failedNetworks`, 잘린 목록은 `paginationComplete=false`로 구분합니다.
+4. 통합 `GET /api/v1/me/assets`에는 기존 합산 `assets`와 지갑 목록 `walletAssets`가 함께 나옵니다. 200만으로 모든 잔액 확인이 성공했다고 판단하지 말고 READY/PARTIAL/UNKNOWN을 확인합니다.
 
-1. Confirm the **running backend container** has a non-empty `ETHEREUM_RPC_URL`, without printing the value (provider URLs may contain credentials). Setting only the host shell does not update an existing container.
-2. From the backend container's network, check provider DNS, HTTPS connectivity and `eth_getBalance` for a test wallet. Do not publish private wallet addresses or provider URLs in logs/Jira.
-3. If the provider needs authentication, check its configuration and quota. A public Ethereum provider such as `https://ethereum-rpc.publicnode.com` may be used deliberately, subject to its availability and usage policy.
-4. After an authorized deployment/configuration change, call `GET /api/v1/me/assets` with a test account containing an EVM wallet. A successful balance lookup, including zero, must return HTTP 200. Nonzero balances also need a working price provider.
+연결 지갑이 있는데 키가 없으면 두 조회 API는 503을 반환합니다. 글·댓글 발행은 계속 진행하되 보유 상태는 UNKNOWN이며 최신 캐시도 재인증하지 않습니다. 지갑 없는 거래소 전용 계정은 Alchemy 키가 필요하지 않습니다. 조회 성공한 0잔액만 EMPTY입니다.
 
-## Safe log messages
+실패 로그에는 HTTP 상태 또는 예외 종류만 포함됩니다. 공급자 응답 본문·URL·키·지갑 주소를 로그에 포함하지 않습니다. 테스트와 배포 헬스체크는 실제 운영 계정의 잔액 조회 성공을 대신하지 않습니다.
 
-- Missing configuration: explicit startup warning naming `ETHEREUM_RPC_URL`.
-- HTTP failure: numeric HTTP status (e.g. 429).
-- JSON-RPC failure: numeric RPC error code.
-- Transport/parse failure: exception category, not raw message/stack/body/URL.
-
-Raw exception text and response bodies can contain credentials or wallet addresses and are intentionally not logged. Failed RPC reads produce `RPC_ERROR` with `UNKNOWN/PARTIAL` in the private aggregate asset response (HTTP 200). A successful partial response is not proof that all sources were verified.
-
-Unit tests cover successful zero/nonzero balances, malformed payloads, provider errors and missing configuration. Tests are not proof that production is correctly configured. Production `/me/assets` confirmation requires deployment access and a test account; do not close the operational incident based only on these tests.
-
-## Polygon PoS native POL
-
-The same connected EVM address is queried on Polygon PoS mainnet for its native POL balance, separately from Ethereum ETH. Polygon uses chain ID 137 and 18 decimal places. The client checks `eth_chainId` before `eth_getBalance`; a different chain, malformed response, missing configuration or upstream failure produces UNKNOWN/PARTIAL, never EMPTY. A successful zero balance is EMPTY. Ethereum and Polygon RPC failures are isolated per coin.
-
-Docker Compose supplies `POLYGON_RPC_URL=https://polygon-bor-rpc.publicnode.com` by default. Override this in the deployment root `.env` with a Polygon PoS mainnet JSON-RPC endpoint and recreate the backend container. An application started outside Compose must set `POLYGON_RPC_URL` explicitly. Do not replace `ETHEREUM_RPC_URL` with a Polygon endpoint. Provider reference: https://polygon.publicnode.com/ and network reference: https://support.polygon.technology/support/solutions/articles/82000889434-how-to-add-polygon-mainnet-on-metamask-
-
-`GET /api/v1/me/assets` now includes a POL entry for connected EVM wallets alongside ETH. The response retains its existing aggregate wallet+exchange contract; a failed eligible exchange still makes the aggregate UNKNOWN/PARTIAL even when a successful wallet contribution is positive. Private quantity contains the successful contributions, not a complete total in that case. No new wallet connection is required. This support is for native POL on Polygon PoS; wrapped POL or ERC20 assets on other networks are not included.
-
-POL rooms support WALLET holder proof for posts/comments with existing freshness, immutable snapshot, source-count and disconnect invalidation rules. Publication refresh uses the existing shared time budget and checks the publication coin's chain first.
+상세 계약: [Alchemy 지갑 자산 API](ALCHEMY_WALLET_ASSETS_API.md).

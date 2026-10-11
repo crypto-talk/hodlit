@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cryptalk.coin.Coin;
-import com.cryptalk.asset.EthereumBalanceClient;
+import com.cryptalk.asset.AlchemyPortfolioClient;
 import com.cryptalk.member.MemberRepository;
 import com.cryptalk.wallet.Wallet;
 import com.cryptalk.wallet.WalletRepository;
@@ -50,14 +50,12 @@ class SocialApiTest {
     @Autowired MemberRepository members;
     @Autowired WalletRepository wallets;
     @MockitoBean MarketPriceService marketPrices;
-    @MockitoBean EthereumBalanceClient ethereum;
+    @MockitoBean AlchemyPortfolioClient alchemy;
 
     @BeforeEach
     void prices() {
-        when(ethereum.balanceOf(any(String.class)))
-            .thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("12.5"), "VERIFIED"));
-        when(ethereum.balanceOf(any(String.class), any(Duration.class)))
-            .thenAnswer(invocation -> ethereum.balanceOf(invocation.getArgument(0, String.class)));
+        when(alchemy.isConfigured()).thenReturn(true);
+        walletBalance(new BigDecimal("12.5"));
         when(marketPrices.currentPrice(any(Coin.class), nullable(String.class))).thenAnswer(invocation -> {
             Coin coin = invocation.getArgument(0);
             String requested = invocation.getArgument(1);
@@ -201,7 +199,7 @@ class SocialApiTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"UNAVAILABLE,false", "RPC_ERROR,false", "UNAVAILABLE,true", "RPC_ERROR,true"})
+    @CsvSource({"UNKNOWN,false", "PARTIAL,false", "UNKNOWN,true", "PARTIAL,true"})
     void publicationRefreshesAndReportsUnknownOnAnySourceFailure(String rpcStatus, boolean savedAssets) throws Exception {
         String suffix = rpcStatus.toLowerCase() + (savedAssets ? "-saved" : "-new");
         Account author = signup("rpc-" + suffix, "RPC " + suffix);
@@ -213,11 +211,11 @@ class SocialApiTest {
                 .andExpect(jsonPath("$.assets[0].verified").value(true));
         }
 
-        when(ethereum.balanceOf(any(String.class)))
-            .thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO, rpcStatus));
+        when(alchemy.fetch(anyList(), any(Duration.class)))
+            .thenReturn(new AlchemyPortfolioClient.Result(List.of(), List.of("eth-mainnet"), true, rpcStatus, Instant.now()));
         mvc.perform(get("/api/v1/me/assets").header("Authorization", bearer(author.token())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.assets[0].holderStatus").value("UNKNOWN"));
-        clearInvocations(ethereum);
+        clearInvocations(alchemy);
 
         MvcResult result = mvc.perform(post("/api/v1/posts")
                 .header("Authorization", bearer(author.token()))
@@ -246,7 +244,7 @@ class SocialApiTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(false))
             .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("UNKNOWN"));
-        org.mockito.Mockito.verify(ethereum,org.mockito.Mockito.times(2)).balanceOf(any(String.class));
+        org.mockito.Mockito.verify(alchemy,org.mockito.Mockito.times(2)).fetch(anyList(), any(Duration.class));
     }
 
     @Test
@@ -313,13 +311,22 @@ class SocialApiTest {
             .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("HOLDER"))
             .andReturn();
         long postId = json.readTree(created.getResponse().getContentAsString()).path("id").asLong();
-        when(ethereum.balanceOf(any(String.class))).thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO, "VERIFIED"));
+        walletBalance(BigDecimal.ZERO);
         mvc.perform(post("/api/v1/posts/{id}/comments", postId).header("Authorization", bearer(author.token()))
             .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"after selling\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.holderSnapshot.holderStatus").value("EMPTY"));
         mvc.perform(get("/api/v1/posts/{id}", postId))
             .andExpect(status().isOk()).andExpect(jsonPath("$.holderSnapshot.holderStatus").value("HOLDER"));
-        verify(ethereum, times(2)).balanceOf(any(String.class), any(Duration.class));
+        verify(alchemy, times(2)).fetch(anyList(), any(Duration.class));
+    }
+
+    private void walletBalance(BigDecimal quantity) {
+        when(alchemy.fetch(anyList(), any(Duration.class))).thenAnswer(call -> {
+            List<String> addresses = call.getArgument(0);
+            var tokens = addresses.stream().map(address -> new AlchemyPortfolioClient.Token(address, "eth-mainnet", 1,
+                null, "ETH", "Ethereum", 18, quantity.movePointRight(18).toBigIntegerExact().toString(), quantity, "READY")).toList();
+            return new AlchemyPortfolioClient.Result(tokens, List.of(), true, "READY", Instant.now());
+        });
     }
 
     private PriceQuote quote(Coin coin, String currency) {

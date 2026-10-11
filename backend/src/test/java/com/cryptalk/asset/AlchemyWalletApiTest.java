@@ -38,8 +38,6 @@ class AlchemyWalletApiTest {
     @Autowired JdbcTemplate jdbc;
     @MockitoBean AlchemyPortfolioClient alchemy;
     @MockitoBean ExchangeConnectionService exchanges;
-    @MockitoBean EthereumBalanceClient ethereum;
-    @MockitoBean PolygonBalanceClient polygon;
     @MockitoBean MarketPriceService prices;
     Member owner;
     String address;
@@ -68,7 +66,7 @@ class AlchemyWalletApiTest {
             .andExpect(jsonPath("$.assets[2].quantity").value(2))
             .andExpect(jsonPath("$.syncStatus").value("READY"));
         verify(alchemy).fetch(eq(List.of(address)), any(Duration.class));
-        verifyNoInteractions(exchanges, ethereum, polygon);
+        verifyNoInteractions(exchanges);
     }
 
     @Test void combinedEndpointUsesTheSameBatchAndIncludesPrivateWalletPortfolio() throws Exception {
@@ -78,7 +76,6 @@ class AlchemyWalletApiTest {
             .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].holderStatus").value("HOLDER"))
             .andExpect(jsonPath("$.walletAssets.assets[2].symbol").value("UNLISTED"));
         verify(alchemy, times(1)).fetch(eq(List.of(address)), any(Duration.class));
-        verifyNoInteractions(ethereum, polygon);
     }
 
     @Test void partialNetworkFailureCannotCertifyAnEmptyPolygonWallet() throws Exception {
@@ -110,7 +107,47 @@ class AlchemyWalletApiTest {
         when(alchemy.isConfigured()).thenReturn(false);
         mvc.perform(get("/api/v1/me/wallets/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
             .andExpect(status().isServiceUnavailable());
+        mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
+            .andExpect(status().isServiceUnavailable());
         verify(alchemy, never()).fetch(anyList(), any(Duration.class));
+    }
+
+    @Test void missingKeyCannotReuseFreshCachedHoldingsForPublication() throws Exception {
+        mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
+            .andExpect(status().isOk());
+        when(alchemy.isConfigured()).thenReturn(false);
+        mvc.perform(post("/api/v1/posts").with(jwt().jwt(token -> token.subject(owner.getId().toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"coinSymbol\":\"POL\",\"title\":\"test\",\"content\":\"body\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("UNKNOWN"))
+            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value("CACHED"))
+            .andExpect(jsonPath("$.holderSnapshot.quantityBand").doesNotExist());
+        verify(alchemy, times(1)).fetch(anyList(), any(Duration.class));
+    }
+
+    @Test void polygonProofUsesAlchemyAndCombinesMultipleConnectedWallets() throws Exception {
+        wallets.saveAndFlush(new Wallet(owner, "0x" + UUID.randomUUID().toString().replace("-", "") + "87654321"));
+        when(alchemy.fetch(anyList(), any(Duration.class))).thenAnswer(call -> {
+            List<String> addresses = call.getArgument(0);
+            return result(addresses.stream().map(walletAddress -> new AlchemyPortfolioClient.Token(walletAddress,
+                "matic-mainnet", 137, null, "POL", "Polygon", 18, "5000000000000000000", new BigDecimal("5"), "READY")).toList(), List.of());
+        });
+        mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(token -> token.subject(owner.getId().toString()))))
+            .andExpect(status().isOk())
+            .andExpect(response -> {
+                var body = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.getResponse().getContentAsString());
+                var pol = java.util.stream.StreamSupport.stream(body.path("assets").spliterator(), false)
+                    .filter(asset -> "POL".equals(asset.path("symbol").asText())).findFirst().orElseThrow();
+                org.junit.jupiter.api.Assertions.assertEquals(0, pol.path("quantity").decimalValue().compareTo(BigDecimal.TEN));
+            })
+            .andExpect(jsonPath("$.assets[?(@.symbol == 'POL')].walletCount").value(2));
+        mvc.perform(post("/api/v1/posts").with(jwt().jwt(token -> token.subject(owner.getId().toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"coinSymbol\":\"POL\",\"title\":\"test\",\"content\":\"body\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.holderSnapshot.verificationLevel").value("WALLET"))
+            .andExpect(jsonPath("$.holderSnapshot.quantityBand").value("10~100 POL"));
     }
 
     @Test void oversizedBalanceCannotOverflowSnapshotStorageOrClaimVerifiedHoldings() throws Exception {

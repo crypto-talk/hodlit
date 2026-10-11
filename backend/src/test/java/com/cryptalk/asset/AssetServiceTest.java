@@ -36,7 +36,7 @@ class AssetServiceTest {
         CoinRepository coins = mock(CoinRepository.class);
         MemberRepository members = mock(MemberRepository.class);
         WalletRepository wallets = mock(WalletRepository.class);
-        EthereumBalanceClient ethereum = mock(EthereumBalanceClient.class);
+        AlchemyPortfolioClient alchemy = mock(AlchemyPortfolioClient.class);
         MarketPriceService prices = mock(MarketPriceService.class);
         Member member = mock(Member.class);
         Coin eth = mock(Coin.class);
@@ -48,14 +48,11 @@ class AssetServiceTest {
         when(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH")).thenReturn(Optional.of(eth));
         when(eth.getId()).thenReturn(2L);
         when(eth.getVerificationAvailability()).thenReturn(VerificationAvailability.SUPPORTED);
-        when(ethereum.balanceOf(any(String.class), any(Duration.class)))
-            .thenReturn(new EthereumBalanceClient.BalanceResult(BigDecimal.ZERO, "RPC_ERROR"));
         AssetSnapshot cached = new AssetSnapshot(member, eth);
         cached.capture(BigDecimal.TEN, BigDecimal.TEN, true, "VERIFIED", 1);
         ReflectionTestUtils.setField(cached, "capturedAt", Instant.now().minus(Duration.ofHours(2)));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(cached));
-        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, ethereum, mock(PolygonBalanceClient.class), prices,
-            mock(AlchemyPortfolioClient.class), mock(com.cryptalk.exchange.ExchangeConnectionService.class))
+        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, prices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class))
             .snapshotForPublication(7L, eth);
         assertFalse(published.isVerified());
         assertEquals("STALE", published.getSyncStatus());
@@ -70,7 +67,7 @@ class AssetServiceTest {
         CoinRepository coins = mock(CoinRepository.class);
         MemberRepository members = mock(MemberRepository.class);
         WalletRepository wallets = mock(WalletRepository.class);
-        EthereumBalanceClient ethereum = mock(EthereumBalanceClient.class);
+        AlchemyPortfolioClient alchemy = mock(AlchemyPortfolioClient.class);
         MarketPriceService marketPrices = mock(MarketPriceService.class);
         Member member = mock(Member.class);
         Wallet wallet = mock(Wallet.class);
@@ -85,16 +82,22 @@ class AssetServiceTest {
         when(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH")).thenReturn(Optional.of(eth));
         when(eth.getId()).thenReturn(2L);
         when(eth.getSymbol()).thenReturn("ETH");
-        when(ethereum.balanceOf(wallet.getAddress()))
-            .thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("2"), "VERIFIED"));
-        when(ethereum.balanceOf(secondWallet.getAddress()))
-            .thenReturn(new EthereumBalanceClient.BalanceResult(new BigDecimal("3"), "VERIFIED"));
+        when(alchemy.isConfigured()).thenReturn(true);
+        when(eth.getChainId()).thenReturn(1L);
+        when(eth.getAssetType()).thenReturn("NATIVE");
+        when(eth.getTokenDecimals()).thenReturn(18);
+        when(coins.findByActiveTrueOrderByDisplayOrder()).thenReturn(List.of(eth));
+        when(alchemy.fetch(org.mockito.ArgumentMatchers.anyList(), any(Duration.class))).thenReturn(
+            new AlchemyPortfolioClient.Result(List.of(
+                new AlchemyPortfolioClient.Token("0x1111111111111111111111111111111111111111", "eth-mainnet", 1, null, "ETH", "Ethereum", 18,
+                    "2000000000000000000", new BigDecimal("2"), "READY"),
+                new AlchemyPortfolioClient.Token("0x2222222222222222222222222222222222222222", "eth-mainnet", 1, null, "ETH", "Ethereum", 18,
+                    "3000000000000000000", new BigDecimal("3"), "READY")), List.of(), true, "READY", Instant.now()));
         when(marketPrices.currentPrice(eth, "KRW")).thenReturn(new PriceQuote("ETH", new BigDecimal("3242542"),
             "KRW", new BigDecimal("-3.45"), Instant.parse("2026-09-02T12:49:50Z"), "COINGECKO"));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(snapshot));
         when(snapshots.findByMemberIdOrderByCoinDisplayOrder(7L)).thenReturn(List.of(snapshot));
-        AssetService service = new AssetService(snapshots, coins, members, wallets, ethereum, mock(PolygonBalanceClient.class), marketPrices,
-            mock(AlchemyPortfolioClient.class), mock(com.cryptalk.exchange.ExchangeConnectionService.class));
+        AssetService service = new AssetService(snapshots, coins, members, wallets, marketPrices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class));
 
         AssetService.AssetResponse asset = service.refreshAndList(7L).get(0);
 

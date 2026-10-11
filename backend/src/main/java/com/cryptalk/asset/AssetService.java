@@ -25,8 +25,6 @@ public class AssetService {
     private final CoinRepository coins;
     private final MemberRepository members;
     private final WalletRepository wallets;
-    private final EthereumBalanceClient ethereum;
-    private final PolygonBalanceClient polygon;
     private final MarketPriceService marketPrices;
     private final ExchangeConnectionService exchanges;
     private final AlchemyPortfolioClient alchemy;
@@ -36,14 +34,12 @@ public class AssetService {
     private Duration publicationRefreshBudget = Duration.ofSeconds(3);
 
     public AssetService(AssetSnapshotRepository snapshots, CoinRepository coins, MemberRepository members,
-                        WalletRepository wallets, EthereumBalanceClient ethereum, PolygonBalanceClient polygon, MarketPriceService marketPrices,
+                        WalletRepository wallets, MarketPriceService marketPrices,
                         AlchemyPortfolioClient alchemy, ExchangeConnectionService exchanges) {
         this.snapshots = snapshots;
         this.coins = coins;
         this.members = members;
         this.wallets = wallets;
-        this.ethereum = ethereum;
-        this.polygon = polygon;
         this.marketPrices = marketPrices;
         this.exchanges = exchanges;
         this.alchemy = alchemy;
@@ -51,10 +47,10 @@ public class AssetService {
 
     @Transactional
     public List<AssetResponse> refreshAndList(Long memberId) {
-        return refreshAndList(memberId, false, null).assets();
+        return refreshAndList(memberId, false).assets();
     }
 
-    private RefreshResult refreshAndList(Long memberId, boolean publication, String prioritySymbol) {
+    private RefreshResult refreshAndList(Long memberId, boolean publication) {
         long deadline = System.nanoTime() + publicationRefreshBudget.toNanos();
         var member = members.lockById(memberId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"회원을 찾을 수 없습니다."));
@@ -65,40 +61,13 @@ public class AssetService {
             return new RefreshResult(List.of(), emptyWalletPortfolio());
         }
 
-        var nativeCoins = java.util.stream.Stream.of("ETH", "POL")
-            .flatMap(symbol -> coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).stream())
-            .sorted(java.util.Comparator.comparingInt(coin -> coin.getSymbol().equals(prioritySymbol) ? 0 : 1))
-            .toList();
-        var discovered = alchemy.isConfigured()
-            ? alchemy.fetch(connectedWallets.stream().map(wallet -> wallet.getAddress()).toList(),
-                publication ? Duration.ofNanos(Math.max(0, deadline - System.nanoTime())) : Duration.ofSeconds(15))
-            : null;
-        if (discovered != null) nativeCoins = coins.findByActiveTrueOrderByDisplayOrder().stream()
-            .filter(this::walletSupported).toList();
-        Map<String, WalletBalance> nativeBalances = new HashMap<>();
-        for (var coin : nativeCoins) {
-            if (discovered != null) {
-                nativeBalances.put(coin.getSymbol(), alchemyBalance(coin, discovered));
-                continue;
-            }
-            BigDecimal quantity = BigDecimal.ZERO;
-            boolean complete = true;
-            for (var wallet : connectedWallets) {
-                Duration remaining = Duration.ofNanos(deadline - System.nanoTime());
-                if ("POL".equals(coin.getSymbol())) {
-                    var balance = publication ? polygon.balanceOf(wallet.getAddress(), remaining)
-                        : polygon.balanceOf(wallet.getAddress());
-                    if (!"VERIFIED".equals(balance.status())) complete = false;
-                    else quantity = quantity.add(balance.quantity());
-                } else {
-                    var balance = publication ? ethereum.balanceOf(wallet.getAddress(), remaining)
-                        : ethereum.balanceOf(wallet.getAddress());
-                    if (!"VERIFIED".equals(balance.status())) complete = false;
-                    else quantity = quantity.add(balance.quantity());
-                }
-            }
-            nativeBalances.put(coin.getSymbol(), new WalletBalance(quantity, complete));
-        }
+        if (!connectedWallets.isEmpty() && !alchemy.isConfigured())
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Alchemy API 키를 설정해 주세요.");
+        var discovered = alchemy.fetch(connectedWallets.stream().map(wallet -> wallet.getAddress()).toList(),
+            publication ? Duration.ofNanos(Math.max(0, deadline - System.nanoTime())) : Duration.ofSeconds(15));
+        var walletCoins = coins.findByActiveTrueOrderByDisplayOrder().stream().filter(this::walletSupported).toList();
+        Map<String, WalletBalance> walletBalances = new HashMap<>();
+        for (var coin : walletCoins) walletBalances.put(coin.getSymbol(), alchemyBalance(coin, discovered));
         Map<String,BigDecimal> exchangeQuantities = new HashMap<>();
         boolean exchangeComplete = true;
         for (var connection : connections) {
@@ -111,15 +80,15 @@ public class AssetService {
             }
         }
         var candidates = connections.isEmpty()
-            ? nativeCoins
+            ? walletCoins
             : coins.findByActiveTrueOrderByDisplayOrder();
         for (Coin coin : candidates) {
             String symbol = coin.getSymbol();
-            boolean nativeAsset = nativeBalances.containsKey(symbol);
-            WalletBalance walletBalance = nativeBalances.getOrDefault(symbol, new WalletBalance(BigDecimal.ZERO, true));
-            if (!nativeAsset && coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED
+            boolean walletAsset = walletBalances.containsKey(symbol);
+            WalletBalance walletBalance = walletBalances.getOrDefault(symbol, new WalletBalance(BigDecimal.ZERO, true));
+            if (!walletAsset && coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED
                     && !exchangeQuantities.containsKey(symbol)) continue;
-            if (exchangeQuantities.containsKey(symbol) || (discovered != null && nativeAsset)) coin.enableVerification();
+            if (exchangeQuantities.containsKey(symbol) || walletAsset) coin.enableVerification();
             BigDecimal walletAmount = walletBalance.quantity();
             BigDecimal exchangeAmount = exchangeQuantities.getOrDefault(symbol,BigDecimal.ZERO);
             BigDecimal quantity = walletAmount.add(exchangeAmount);
@@ -142,8 +111,8 @@ public class AssetService {
             }
             var snapshot = snapshots.findByMemberIdAndCoinId(memberId,coin.getId())
                 .orElseGet(() -> new AssetSnapshot(member,coin));
-            String status = complete ? "VERIFIED" : (discovered == null && !walletBalance.complete() && exchangeComplete ? "RPC_ERROR" : "UNKNOWN");
-            snapshot.capture(quantity,value,verified,status,nativeAsset ? connectedWallets.size() : 0);
+            String status = complete ? "VERIFIED" : "UNKNOWN";
+            snapshot.capture(quantity,value,verified,status,walletAsset ? connectedWallets.size() : 0);
             snapshot.captureSources(level,connections.size(),sync);
             snapshots.save(snapshot);
         }
@@ -152,7 +121,7 @@ public class AssetService {
 
     @Transactional
     public AssetPortfolioResponse refreshPortfolio(Long memberId) {
-        var values = refreshAndList(memberId, false, null);
+        var values = refreshAndList(memberId, false);
         return new AssetPortfolioResponse(wallets.findByMemberIdOrderByCreatedAtAsc(memberId).size(),
             exchanges.list(memberId).size(), values.assets(), values.walletAssets());
     }
@@ -163,7 +132,7 @@ public class AssetService {
                 && !(alchemy.isConfigured() && walletSupported(coin)) && exchanges.list(memberId).isEmpty()) return null;
         boolean refreshFailed = false;
         try {
-            refreshAndList(memberId, true, coin.getSymbol());
+            refreshAndList(memberId, true);
         } catch (ApiException exception) {
             if (exception.status() != HttpStatus.SERVICE_UNAVAILABLE) throw exception;
             refreshFailed = true;
