@@ -109,7 +109,7 @@ class ExchangeHolderProofTest {
         final Coin btc = coin(1L,"BTC");
         final AssetSnapshot ethSnapshot = new AssetSnapshot(member,eth);
         final AssetSnapshot btcSnapshot = new AssetSnapshot(member,btc);
-        final AssetService service = new AssetService(snapshots,coins,members,wallets,ethereum,prices,exchanges);
+        final AssetService service = new AssetService(snapshots,coins,members,wallets,ethereum,mock(PolygonBalanceClient.class),prices,exchanges);
         Fixture() {
             when(members.lockById(7L)).thenReturn(Optional.of(member));
             Wallet wallet = mock(Wallet.class);

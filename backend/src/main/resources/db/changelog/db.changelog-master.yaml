@@ -33,3 +33,5 @@ databaseChangeLog:
       file: db/changelog/011-community-news.sql
   - include:
       file: db/changelog/011-community-polls.sql
+  - include:
+      file: db/changelog/013-polygon-native-holder.sql

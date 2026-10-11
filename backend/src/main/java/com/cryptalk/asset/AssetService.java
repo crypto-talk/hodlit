@@ -26,6 +26,7 @@ public class AssetService {
     private final MemberRepository members;
     private final WalletRepository wallets;
     private final EthereumBalanceClient ethereum;
+    private final PolygonBalanceClient polygon;
     private final MarketPriceService marketPrices;
     private final ExchangeConnectionService exchanges;
     @Value("${cryptalk.asset.publication-max-age:PT1H}")
@@ -34,23 +35,24 @@ public class AssetService {
     private Duration publicationRefreshBudget = Duration.ofSeconds(3);
 
     public AssetService(AssetSnapshotRepository snapshots, CoinRepository coins, MemberRepository members,
-                        WalletRepository wallets, EthereumBalanceClient ethereum, MarketPriceService marketPrices,
+                        WalletRepository wallets, EthereumBalanceClient ethereum, PolygonBalanceClient polygon, MarketPriceService marketPrices,
                         ExchangeConnectionService exchanges) {
         this.snapshots = snapshots;
         this.coins = coins;
         this.members = members;
         this.wallets = wallets;
         this.ethereum = ethereum;
+        this.polygon = polygon;
         this.marketPrices = marketPrices;
         this.exchanges = exchanges;
     }
 
     @Transactional
     public List<AssetResponse> refreshAndList(Long memberId) {
-        return refreshAndList(memberId, false);
+        return refreshAndList(memberId, false, null);
     }
 
-    private List<AssetResponse> refreshAndList(Long memberId, boolean publication) {
+    private List<AssetResponse> refreshAndList(Long memberId, boolean publication, String prioritySymbol) {
         long deadline = System.nanoTime() + publicationRefreshBudget.toNanos();
         var member = members.lockById(memberId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"회원을 찾을 수 없습니다."));
@@ -61,14 +63,29 @@ public class AssetService {
             return List.of();
         }
 
-        BigDecimal walletQuantity = BigDecimal.ZERO;
-        boolean walletComplete = true;
-        for (var wallet : connectedWallets) {
-            Duration remaining = Duration.ofNanos(deadline - System.nanoTime());
-            var balance = publication ? ethereum.balanceOf(wallet.getAddress(), remaining)
-                : ethereum.balanceOf(wallet.getAddress());
-            if (!"VERIFIED".equals(balance.status())) walletComplete = false;
-            else walletQuantity = walletQuantity.add(balance.quantity());
+        var nativeCoins = java.util.stream.Stream.of("ETH", "POL")
+            .flatMap(symbol -> coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).stream())
+            .sorted(java.util.Comparator.comparingInt(coin -> coin.getSymbol().equals(prioritySymbol) ? 0 : 1))
+            .toList();
+        Map<String, WalletBalance> nativeBalances = new HashMap<>();
+        for (var coin : nativeCoins) {
+            BigDecimal quantity = BigDecimal.ZERO;
+            boolean complete = true;
+            for (var wallet : connectedWallets) {
+                Duration remaining = Duration.ofNanos(deadline - System.nanoTime());
+                if ("POL".equals(coin.getSymbol())) {
+                    var balance = publication ? polygon.balanceOf(wallet.getAddress(), remaining)
+                        : polygon.balanceOf(wallet.getAddress());
+                    if (!"VERIFIED".equals(balance.status())) complete = false;
+                    else quantity = quantity.add(balance.quantity());
+                } else {
+                    var balance = publication ? ethereum.balanceOf(wallet.getAddress(), remaining)
+                        : ethereum.balanceOf(wallet.getAddress());
+                    if (!"VERIFIED".equals(balance.status())) complete = false;
+                    else quantity = quantity.add(balance.quantity());
+                }
+            }
+            nativeBalances.put(coin.getSymbol(), new WalletBalance(quantity, complete));
         }
         Map<String,BigDecimal> exchangeQuantities = new HashMap<>();
         boolean exchangeComplete = true;
@@ -82,18 +99,19 @@ public class AssetService {
             }
         }
         var candidates = connections.isEmpty()
-            ? List.of(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow())
+            ? nativeCoins
             : coins.findByActiveTrueOrderByDisplayOrder();
         for (Coin coin : candidates) {
             String symbol = coin.getSymbol();
-            boolean eth = "ETH".equals(symbol);
-            if (!eth && coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED
+            boolean nativeAsset = nativeBalances.containsKey(symbol);
+            WalletBalance walletBalance = nativeBalances.getOrDefault(symbol, new WalletBalance(BigDecimal.ZERO, true));
+            if (!nativeAsset && coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED
                     && !exchangeQuantities.containsKey(symbol)) continue;
             if (exchangeQuantities.containsKey(symbol)) coin.enableVerification();
-            BigDecimal walletAmount = eth ? walletQuantity : BigDecimal.ZERO;
+            BigDecimal walletAmount = walletBalance.quantity();
             BigDecimal exchangeAmount = exchangeQuantities.getOrDefault(symbol,BigDecimal.ZERO);
             BigDecimal quantity = walletAmount.add(exchangeAmount);
-            boolean complete = exchangeComplete && (!eth || walletComplete);
+            boolean complete = exchangeComplete && walletBalance.complete();
             boolean verified = complete && quantity.signum() > 0;
             String level = verified ? (walletAmount.signum() > 0 ? "WALLET" : "EXCHANGE") : "UNVERIFIED";
             String sync = complete ? "READY" : "PARTIAL";
@@ -104,8 +122,8 @@ public class AssetService {
             }
             var snapshot = snapshots.findByMemberIdAndCoinId(memberId,coin.getId())
                 .orElseGet(() -> new AssetSnapshot(member,coin));
-            String status = complete ? "VERIFIED" : (!walletComplete && exchangeComplete ? "RPC_ERROR" : "UNKNOWN");
-            snapshot.capture(quantity,value,verified,status,eth ? connectedWallets.size() : 0);
+            String status = complete ? "VERIFIED" : (!walletBalance.complete() && exchangeComplete ? "RPC_ERROR" : "UNKNOWN");
+            snapshot.capture(quantity,value,verified,status,nativeAsset ? connectedWallets.size() : 0);
             snapshot.captureSources(level,connections.size(),sync);
             snapshots.save(snapshot);
         }
@@ -124,7 +142,7 @@ public class AssetService {
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED && exchanges.list(memberId).isEmpty()) return null;
         boolean refreshFailed = false;
         try {
-            refreshAndList(memberId, true);
+            refreshAndList(memberId, true, coin.getSymbol());
         } catch (ApiException exception) {
             if (exception.status() != HttpStatus.SERVICE_UNAVAILABLE) throw exception;
             refreshFailed = true;
@@ -147,6 +165,8 @@ public class AssetService {
             snapshot.getHolderStatus(),snapshot.getExchangeCount());
     }
 
+
+    private record WalletBalance(BigDecimal quantity, boolean complete) {}
 
     public record AssetPortfolioResponse(int walletCount,int exchangeCount,List<AssetResponse> assets) {}
     public record AssetResponse(String symbol,BigDecimal quantity,BigDecimal valueKrw,String quantityBand,
