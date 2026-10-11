@@ -27,6 +27,10 @@ public class AssetSnapshot {
     private Instant capturedAt;
     @Column(name = "wallet_count", nullable = false)
     private int walletCount;
+    @Column(name = "verification_level", nullable = false, length = 20)
+    private String verificationLevel;
+    @Column(name = "exchange_count", nullable = false)
+    private int exchangeCount;
     @Column(name = "holding_since")
     private Instant holdingSince;
     @Column(name = "block_number")
@@ -39,6 +43,38 @@ public class AssetSnapshot {
     public void capture(BigDecimal quantity, BigDecimal valueKrw, boolean verified, String status, int walletCount) {
         this.quantity = quantity; this.valueKrw = valueKrw; this.verified = verified; this.verificationStatus = status;
         this.walletCount = walletCount; this.syncStatus = "READY"; this.capturedAt = Instant.now();
+        this.verificationLevel = verified ? "WALLET" : "UNVERIFIED";
+        this.exchangeCount = 0;
+    }
+    public void captureSources(String level, int exchanges, String sync) {
+        this.verificationLevel = level;
+        this.exchangeCount = exchanges;
+        this.syncStatus = sync;
+    }
+    public String getVerificationLevel() { return verificationLevel; }
+    public int getExchangeCount() { return exchangeCount; }
+    public String getHolderStatus() {
+        if (walletCount == 0 && exchangeCount == 0) return "NOT_CONNECTED";
+        if (!"VERIFIED".equals(verificationStatus) || "STALE".equals(syncStatus) || "CACHED".equals(syncStatus)) return "UNKNOWN";
+        if (isVerified()) return "HOLDER";
+        if ("VERIFIED".equals(verificationStatus) && quantity.signum() == 0) return "EMPTY";
+        return "UNKNOWN";
+    }
+    /** Detached publication view: never rewrite the cached record or earlier post/comment snapshots. */
+    public AssetSnapshot publicationCopy(boolean fresh, boolean refreshFailed) {
+        AssetSnapshot copy = new AssetSnapshot(member, coin);
+        copy.quantity = fresh ? quantity : BigDecimal.ZERO;
+        copy.valueKrw = fresh ? valueKrw : BigDecimal.ZERO;
+        copy.verified = fresh && !refreshFailed && verified;
+        copy.verificationStatus = verificationStatus;
+        copy.walletCount = walletCount;
+        copy.exchangeCount = exchangeCount;
+        copy.verificationLevel = copy.verified ? verificationLevel : "UNVERIFIED";
+        copy.holdingSince = fresh ? holdingSince : null;
+        copy.blockNumber = fresh ? blockNumber : null;
+        copy.capturedAt = capturedAt;
+        copy.syncStatus = !fresh ? "STALE" : refreshFailed ? "CACHED" : syncStatus;
+        return copy;
     }
     public Coin getCoin() { return coin; }
     public BigDecimal getQuantity() { return quantity; }

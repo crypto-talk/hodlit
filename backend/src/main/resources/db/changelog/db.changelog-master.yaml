@@ -17,3 +17,19 @@ databaseChangeLog:
       file: db/changelog/009-exchange-connections.sql
   - include:
       file: db/changelog/010-post-drafts.sql
+  - include:
+      file: db/changelog/011-exchange-holder-proof.sql
+  - include:
+      file: db/changelog/012-exchange-account-identity.sql
+  - include:
+      file: db/changelog/011-holder-status.sql
+  - include:
+      file: db/changelog/011-community-activity.sql
+  - include:
+      file: db/changelog/011-edit-drafts.sql
+  - include:
+      file: db/changelog/011-comment-replies.sql
+  - include:
+      file: db/changelog/011-community-news.sql
+  - include:
+      file: db/changelog/011-community-polls.sql

@@ -21,11 +21,22 @@ public class CommentService {
     }
     @Transactional(readOnly = true)
     public List<CommentResponse> list(Long postId) { posts.post(postId); return comments.findByPostIdOrderByCreatedAt(postId).stream().map(this::response).toList(); }
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<CommentResponse> numberedPage(Long postId, int page, int size) {
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by("createdAt", "id"));
+        posts.post(postId);
+        return com.cryptalk.common.PageResponse.of(comments.findByPostId(postId, request).map(this::response));
+    }
     @Transactional
-    public CommentResponse create(Long memberId, Long postId, String content) {
+    public CommentResponse create(Long memberId, Long postId, String content, Long replyToCommentId) {
         var post = posts.post(postId);
+        Comment target = replyToCommentId == null ? null : comment(replyToCommentId);
+        if (target != null && !target.getPost().getId().equals(postId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "다른 게시글의 댓글에 답글을 달 수 없습니다.");
+        }
         AssetSnapshot asset = assets.snapshotForPublication(memberId, post.getCoin());
-        Comment saved = comments.save(new Comment(post, posts.member(memberId), content));
+        Comment saved = comments.save(new Comment(post, posts.member(memberId), content, target));
         holderSnapshots.save(new CommentHolderSnapshot(saved, asset));
         return response(saved);
     }
@@ -44,13 +55,15 @@ public class CommentService {
         HolderSnapshotResponse snapshot = holderSnapshots.findById(comment.getId()).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getHoldingMonths(), item.getWalletCount(), item.getCapturedAt(),
-                item.getSyncStatus())).orElse(null);
+                item.getSyncStatus(), item.getHolderStatus())).orElse(null);
         return new CommentResponse(comment.getId(), member.getId(), member.getNickname(), member.getAvatarColor(),
-            comment.getContent(), comment.getCreatedAt(), comment.getUpdatedAt(), snapshot);
+            comment.getContent(), comment.getCreatedAt(), comment.getUpdatedAt(), snapshot,
+            comment.getParentCommentId(), comment.getReplyToCommentId(), comment.getReplyToNickname());
     }
     public record HolderSnapshotResponse(String verificationAvailability, String verificationLevel,
                                          boolean verifiedHolder, Integer holdingMonths, int walletCount,
-                                         Instant capturedAt, String syncStatus) {}
+                                         Instant capturedAt, String syncStatus, String holderStatus) {}
     public record CommentResponse(Long id, Long memberId, String nickname, String avatarColor, String content,
-                                  Instant createdAt, Instant updatedAt, HolderSnapshotResponse holderSnapshot) {}
+                                  Instant createdAt, Instant updatedAt, HolderSnapshotResponse holderSnapshot,
+                                  Long parentCommentId, Long replyToCommentId, String replyToNickname) {}
 }

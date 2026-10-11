@@ -1,0 +1,46 @@
+# Exchange holder proof (HODL-50)
+
+## Implemented decision/contract
+
+- Publication runs a fresh server-side balance refresh of connected sources, rather than requiring client `/me/assets` first. Balance calls keep the existing per-provider HTTP timeouts; this independent branch does **not** introduce a total 3-second publication deadline. Merge HODL-45's bounded EVM calls and deadline guidance deliberately.
+- ETH totals combine successful EVM-wallet balances and available+locked exchange balances. Other matching room currencies use exchange balances; EVM wallets are not BTC-capable sources and do not fabricate BTC zero balances.
+- A fully verified positive aggregate has verificationLevel WALLET if a **positive wallet contribution** exists, otherwise EXCHANGE. Wallet 0 + exchange 5 ETH is EXCHANGE / 1~10 ETH; wallet 2 + exchange 5 is WALLET / 1~10 ETH.
+- Every eligible connected source must succeed. Any RPC/expired-key/IP/upstream failure sets UNKNOWN / verified=false / PARTIAL, even if another source returned positive holdings. Only all-success zero is EMPTY. No eligible connected source produces NOT_CONNECTED in public publication metadata. Pricing failure does not negate valid balance ownership but leaves KRW valuation unavailable; partial/unpriced private response valueKrw is null.
+- Public post/comment holderSnapshot adds holderStatus: HOLDER/EMPTY/UNKNOWN/NOT_CONNECTED. Quantity fields remain private; public publication has coarse bands only. Posts involving exchanges suppress exact assetValueKrw as well, because a precise valuation plus a price could reveal the aggregate quantity. Existing wallet-only visibility contracts remain unchanged.
+- `/me/assets` remains authenticated/no-store and adds portfolio exchangeCount and per-asset holderStatus/exchangeCount; exact quantities are still restricted to the owner. Partial known quantities are subtotals, not certified full holdings.
+- Connecting/replacing/disconnecting an exchange clears that member's private aggregate cache. No-source refresh clears it too. Previously published post/comment copies remain immutable.
+- BTC/ETH capability is declared SUPPORTED by migration. Other active room currencies are promoted when a validated exchange currency record is observed (including an explicit zero record). Do not assume an unobserved arbitrary ticker/alias is supported or infer unsupported currencies as EMPTY. Capability is global method support, independent of whether this member currently has a working key.
+
+## Account identity and credential reuse
+
+The exact same API access credential is globally unique through a private SHA-256(exchange + separator + opaque access key) fingerprint. Fingerprints are not API responses; plaintext keys remain AES-GCM encrypted at rest and are not logged by this code. Legacy null fingerprints are backfilled on connect from existing encrypted keys. Corrupt ciphertext fails closed with 503. Legacy duplicates/new uniqueness races yield 409 without reassigning ownership; operators must resolve the duplicate connections explicitly. Optimistic versioning prevents stale backfills from overwriting a concurrent credential replacement; transient lock/version conflicts return retryable 503.
+
+Upbit and Bithumb additionally enforce provider/account uniqueness across different API keys. The server derives a private SHA-256 fingerprint from a domain prefix, provider and provider-returned identity. `012-exchange-account-identity.sql` adds a unique index; no client-supplied account ID is accepted and neither the raw ID nor fingerprint is returned or logged.
+
+- **Upbit:** authenticated `GET /v1/pockets` must return exactly one `type=main` pocket with a valid UUID. Its UUID identifies the account's single main pocket, independent of which main-pocket API key is supplied. A subpocket key, absent/ambiguous main pocket, missing permission or failed lookup cannot create a connection. Require a main-pocket key with asset inquiry and pocket management permissions. Pocket management also permits transfers in the vendor API; this service calls only identity/asset reads, but users must understand the broader provider permission. No transfer/trading/withdrawal API is called. Main-pocket UUID lifecycle must be checked against real key rotation before rollout; this is not a claim of legal-person identity or immutability across account deletion/recreation.
+- **Bithumb:** authenticated API **1.0** `POST /info/account` returns `data.account_id` (member ID). The same API 1.0 credential reads `POST /info/balance` with `currency=ALL`; available and locked quantities must agree with the reported total. API 2.0 keys are a separate provider credential type and are not assumed compatible with the identity endpoint. Users must reconnect with API 1.0 member-info/balance-query permissions. No second identity key can be supplied to combine an ID from one account with balances from another.
+- **Coinone:** account-level uniqueness is explicitly deferred per the user's scope. Existing same-key uniqueness, encrypted storage, balance aggregation and disconnect behavior remain. TODO comments identify the missing stable provider-ID integration. The deprecated `user_info` response has no documented immutable account ID; email/phone/bank details are not used as substitutes. Do not claim different-key account uniqueness for Coinone.
+
+New connections perform identity and balance validation before saving credentials. A different member with the same provider identity receives 409; the existing owner can rotate keys while retaining identity, or replace their connection with another verified account. Successful disconnect releases the account for another connection. Concurrent different-key requests are arbitrated by the unique database index; one succeeds and the other conflicts. Provider failure cannot create/replace a connection.
+
+Legacy rows deliberately start with a null account fingerprint. Their Upbit/Bithumb asset endpoint returns 503 until reconnected or provider-verified by a successful backfill; publication treats that source as UNKNOWN/PARTIAL, never EMPTY/HOLDER. When connecting a new key, other legacy rows for that provider are checked server-side before permitting it. Unverifiable legacy rows (including expired keys or existing Bithumb API 2.0 keys) block new provider connections with 503 until their owners reconnect/disconnect; duplicate legacy IDs fail with 409 and are not reassigned automatically. The acting member's old row is excluded from identity backfill so an expired own key can be replaced. Backfill and new connection are transactional: failures roll back all changes. Legacy cleanup is an operational prerequisite, not a silently completed migration.
+
+Official contracts checked 2026-10-11:
+- https://docs.upbit.com/kr/reference/list-pockets
+- https://docs.upbit.com/kr/reference/pocket-overview
+- https://apidocs.bithumb.com/v1.2.0/reference/회원-정보-조회
+- https://apidocs.bithumb.com/v1.2.0/reference/보유자산-조회
+- https://apidocs.bithumb.com/v1.2.0/docs/인증-헤더-만들기
+- https://docs.coinone.co.kr/reference/user-information
+
+Real provider accounts, key rotation and production IP permissions still need deployment-level verification. API-key possession is weaker than wallet-signature proof and never proves the human's legal ownership of the exchange account; credential sharing/theft is not claimed solved. Jira status is not changed by this implementation.
+
+## Frontend handoff
+
+After integration/deployment run pnpm gen:api. Show EXCHANGE as 거래소연동; mixed-source badge follows the strongest *positive* source. Use holderStatus, never walletCount==0 as a no-assets inference: exchange-only users have walletCount=0 and can be HOLDER. UNKNOWN must not render 미보유. Only EMPTY can do so; NOT_CONNECTED describes no eligible source, not proof of zero. Render only bands in public content. Private PARTIAL/PRICE_UNAVAILABLE valuation must be shown unavailable, not KRW zero, and not included as a complete portfolio total. Preserve historic published snapshots even after disconnect.
+
+## Integration notes
+
+Independent origin/develop branch, not stacked on 45/48/49. They all change AssetService/AssetSnapshot and holder DTOs. Keep all unique migration includes. `011-exchange-holder-proof.sql` adds source levels/counts and connection fingerprints/version; it does **not** add the holder_status columns from HODL-49, avoiding duplicate-column migrations. When integrating 49, persist the source-aware getHolderStatus result at publication and retain legacy backfill; exchange-only HOLDER must not become NOT_CONNECTED due to walletCount=0. With 45, an explicitly failed eligible exchange source must remain UNKNOWN rather than reusing an old cached EMPTY/HOLDER claim. With 48, cache invalidation must account for wallets **and** exchanges, not drop valid exchange proof merely because no EVM wallet is connected.
+
+Tests cover wallet/exchange aggregate level, zero/partial/expired outcomes, BTC and observed SOL capability, private cache clearing, public exact-value suppression, publication-copy immutability, same-key and different-key account rejection, key rotation, legacy rows, concurrent connections, provider signing/parsing and private-data exclusion. No production credentials/configuration, live exchange account or deployment was used.

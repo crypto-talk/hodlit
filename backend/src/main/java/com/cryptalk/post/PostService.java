@@ -71,17 +71,19 @@ public class PostService {
     private final MarketPriceService marketPrices;
     private final FollowRepository follows;
     private final PostHolderSnapshotRepository holderSnapshots;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public PostService(PostRepository posts, PostLikeRepository likes, CommentRepository comments,
                        MemberRepository members, CoinRepository coins,
                        AssetService assets, PostMediaRepository postMedia,
                        PostBookmarkRepository bookmarks, PostRepostRepository reposts,
                        MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows,
-                       PostHolderSnapshotRepository holderSnapshots) {
+                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.posts = posts; this.likes = likes; this.comments = comments; this.members = members;
         this.coins = coins; this.assets = assets; this.postMedia = postMedia;
         this.bookmarks = bookmarks; this.reposts = reposts; this.mediaFiles = mediaFiles;
         this.marketPrices = marketPrices; this.follows = follows; this.holderSnapshots = holderSnapshots;
+        this.jdbc = jdbc;
     }
 
     @Transactional(readOnly = true)
@@ -90,6 +92,27 @@ public class PostService {
             throw new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다.");
         return posts.findByCoinSymbolIgnoreCaseOrderByCreatedAtDesc(symbol, PageRequest.of(0, bounded(size)))
             .stream().map(post -> response(post, viewerId)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<PostResponse> numberedPage(String symbol, Long viewerId,
+                                                                       boolean verified, int page, int size) {
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt", "id"));
+        if (symbol != null && coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).isEmpty()) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다.");
+        }
+        return com.cryptalk.common.PageResponse.of(posts.numberedPage(symbol, verified, request)
+            .map(post -> response(post, viewerId)));
+    }
+
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<PostResponse> bookmarkPage(Long memberId, int page, int size) {
+        member(memberId);
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt", "post.id"));
+        return com.cryptalk.common.PageResponse.of(bookmarks.findByMemberId(memberId, request)
+            .map(bookmark -> response(bookmark.getPost(), memberId)));
     }
 
     @Transactional(readOnly = true)
@@ -103,8 +126,18 @@ public class PostService {
         return feedPage(memberId, cursor, size, follows.findFollowingMemberIds(memberId));
     }
 
+    @Transactional
+    public PostResponse get(Long postId, Long viewerId) {
+        Post post = post(postId);
+        PostResponse result = response(post, viewerId);
+        Long participant = viewerId != null && members.existsById(viewerId) ? viewerId : null;
+        jdbc.update("INSERT INTO post_view_events (post_id, member_id, created_at) VALUES (?, ?, ?)",
+            postId, participant, java.sql.Timestamp.from(Instant.now()));
+        return result;
+    }
+
     @Transactional(readOnly = true)
-    public PostResponse get(Long postId, Long viewerId) { return response(post(postId), viewerId); }
+    public PostResponse pageItem(Long postId, Long viewerId) { return response(post(postId), viewerId); }
 
     @Transactional
     public PostResponse create(Long memberId, CreatePostRequest request) {
@@ -113,7 +146,9 @@ public class PostService {
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
         AssetSnapshot snapshot = assets.snapshotForPublication(memberId, coin);
         boolean verified = snapshot != null && snapshot.isVerified();
-        BigDecimal value = verified ? snapshot.getValueKrw() : null;
+        // Exchange-backed aggregate quantities are public only as bands, never inferable exact valuations.
+        BigDecimal value = verified && snapshot.getExchangeCount() == 0 && "READY".equals(snapshot.getSyncStatus())
+            ? snapshot.getValueKrw() : null;
         YoutubeData youtube = youtube(request.youtubeUrl());
         PriceQuote quote = marketPrices.currentPrice(coin, request.assetPriceCurrency());
         Post saved = posts.save(new Post(member, coin, request.title().trim(), request.content().trim(), value, verified,
@@ -324,7 +359,7 @@ public class PostService {
         HolderSnapshotResponse holderSnapshot = holderSnapshots.findById(post.getId()).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getWalletCount(),
-                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus())).orElse(null);
+                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus())).orElse(null);
         return new PostResponse(post.getId(), post.getCoin().getSymbol(), post.getTitle(), post.getContent(), author(member),
             visible && post.isAuthorVerified(), value, assetDisplay(member.getAssetVisibility(), value),
             likes.countByPostId(post.getId()), comments.countByPostId(post.getId()), liked,

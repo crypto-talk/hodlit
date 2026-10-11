@@ -25,6 +25,8 @@ server:
   port: ${PORT:8080}
 
 cryptalk:
+  admin:
+    member-ids: ${ADMIN_MEMBER_IDS:}
   jwt:
     secret: ${JWT_SECRET:change-this-local-secret-to-at-least-32-bytes}
     access-token-minutes: 15

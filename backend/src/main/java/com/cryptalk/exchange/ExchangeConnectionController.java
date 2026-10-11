@@ -36,7 +36,7 @@ public class ExchangeConnectionController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.list(id(jwt)));
     }
 
-    @Operation(summary = "거래소 API 키 연결", description = "잔고 조회로 키를 확인한 뒤 암호화하여 저장합니다. 추가 권한이 없는지는 검증하지 못하므로 자산조회 전용 키만 사용하세요.")
+    @Operation(summary = "거래소 API 키 연결", description = "업비트 메인포켓 UUID·빗썸 API 1.0 회원 ID로 계정 중복을 검사하고 잔고 조회 후 키를 암호화합니다. 업비트는 자산조회·포켓관리, 빗썸은 API 1.0 회원정보·잔고조회 권한이 필요합니다. 코인원은 동일 키 중복만 검사합니다. 주문·출금 권한은 부여하지 마세요.")
     @PostMapping("/{exchange}")
     ResponseEntity<ExchangeConnectionService.ConnectionResponse> connect(@AuthenticationPrincipal Jwt jwt,
         @PathVariable String exchange, @Valid @RequestBody ConnectRequest request) {

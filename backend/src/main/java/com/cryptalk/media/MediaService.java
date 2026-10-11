@@ -129,6 +129,10 @@ public class MediaService {
     }
 
     public void replaceDraftMedia(Long memberId, Long draftId, Collection<String> urls) {
+        replaceDraftMedia(memberId, draftId, urls, null);
+    }
+
+    public void replaceDraftMedia(Long memberId, Long draftId, Collection<String> urls, Long sourcePostId) {
         Set<String> retained = new java.util.TreeSet<>();
         for (String url : urls) {
             String fileName = managedFileName(url);
@@ -154,8 +158,13 @@ public class MediaService {
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "업로드 기록이 없는 미디어 URL입니다."));
             if (!asset.getMember().getId().equals(memberId))
                 throw new ApiException(HttpStatus.FORBIDDEN, "본인이 업로드한 미디어만 임시저장할 수 있습니다.");
-            if (asset.getPost() != null || (asset.getDraftId() != null && !asset.getDraftId().equals(draftId)))
-                throw new ApiException(HttpStatus.CONFLICT, "이미 다른 글에 연결된 미디어입니다.");
+            if (asset.getPost() != null) {
+                if (sourcePostId == null || !sourcePostId.equals(asset.getPost().getId()))
+                    throw new ApiException(HttpStatus.CONFLICT, "이미 다른 글에 연결된 미디어입니다.");
+                continue; // Existing published media remain attached to the original, never to a draft.
+            }
+            if (asset.getDraftId() != null && !asset.getDraftId().equals(draftId))
+                throw new ApiException(HttpStatus.CONFLICT, "이미 다른 초안에 연결된 미디어입니다.");
             asset.attachDraft(draftId);
         }
     }

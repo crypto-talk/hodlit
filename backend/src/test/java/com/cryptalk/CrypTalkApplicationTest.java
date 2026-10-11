@@ -37,7 +37,7 @@ class CrypTalkApplicationTest {
             .andReturn();
         JsonNode document = json.readTree(result.getResponse().getContentAsString());
         Set<String> expectedTags = Set.of("인증", "코인·커뮤니티", "댓글", "실시간 시세", "미디어",
-            "내 정보·자산", "게시글·피드", "팔로우", "지갑 연결", "거래소 자산", "임시저장");
+            "내 정보·자산", "게시글·피드", "팔로우", "지갑 연결", "거래소 자산", "임시저장", "방 뉴스", "방 투표", "검색");
         Set<String> actualTags = new HashSet<>();
         Set<String> httpMethods = Set.of("get", "post", "put", "patch", "delete", "options", "head");
         int operationCount = 0;
@@ -52,7 +52,9 @@ class CrypTalkApplicationTest {
             }
         }
 
-        assertEquals(51, operationCount);
+        assertEquals(77, operationCount);
+        assertTrue(document.path("paths").has("/api/v1/communities/stats"));
+        assertTrue(document.path("paths").has("/api/v1/communities/{symbol}/stats"));
         assertEquals(expectedTags, actualTags);
         assertFalse(actualTags.stream().anyMatch(tag -> tag.endsWith("-controller")));
     }
@@ -63,7 +65,7 @@ class CrypTalkApplicationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(20))
             .andExpect(jsonPath("$[0].symbol").value("BTC"))
-            .andExpect(jsonPath("$[0].verificationAvailability").value("NOT_SUPPORTED"))
+            .andExpect(jsonPath("$[0].verificationAvailability").value("SUPPORTED"))
             .andExpect(jsonPath("$[1].symbol").value("ETH"))
             .andExpect(jsonPath("$[1].verificationAvailability").value("SUPPORTED"))
             .andExpect(jsonPath("$[19].symbol").value("SUI"));

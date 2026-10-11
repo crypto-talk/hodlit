@@ -7,6 +7,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.cryptalk.member.MemberRepository;
+import com.cryptalk.asset.AssetSnapshot;
+import com.cryptalk.asset.AssetSnapshotRepository;
+import com.cryptalk.coin.CoinRepository;
+import java.math.BigDecimal;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -25,6 +31,8 @@ class WalletApiTest {
     @Autowired MemberRepository members;
     @Autowired WalletRepository wallets;
     @Autowired WalletConnectionEventRepository events;
+    @Autowired AssetSnapshotRepository snapshots;
+    @Autowired CoinRepository coins;
 
     @Test
     void listsOwnWalletsAndOnlyOwnerCanDisconnect() throws Exception {
@@ -32,6 +40,11 @@ class WalletApiTest {
         Account other = signup("wallet-other", "다른회원");
         Wallet wallet = wallets.save(new Wallet(members.findById(owner.id()).orElseThrow(),
             "0x1111111111111111111111111111111111111111"));
+
+        var eth = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow();
+        var cached = new AssetSnapshot(members.findById(owner.id()).orElseThrow(), eth);
+        cached.capture(BigDecimal.TEN, BigDecimal.TEN, true, "VERIFIED", 1);
+        snapshots.save(cached);
 
         mvc.perform(get("/api/v1/me/wallets").header("Authorization", bearer(owner.token())))
             .andExpect(status().isOk())
@@ -42,6 +55,7 @@ class WalletApiTest {
         mvc.perform(delete("/api/v1/me/wallets/{walletId}", wallet.getId())
                 .header("Authorization", bearer(other.token())))
             .andExpect(status().isNotFound());
+        assertTrue(snapshots.findByMemberIdAndCoinId(owner.id(), eth.getId()).isPresent());
 
         mvc.perform(delete("/api/v1/me/wallets/{walletId}", wallet.getId())
                 .header("Authorization", bearer(owner.token())))
@@ -50,6 +64,7 @@ class WalletApiTest {
         mvc.perform(get("/api/v1/me/wallets").header("Authorization", bearer(owner.token())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
         org.junit.jupiter.api.Assertions.assertEquals(1, events.count());
+        assertFalse(snapshots.findByMemberIdAndCoinId(owner.id(), eth.getId()).isPresent());
     }
 
     @Test
