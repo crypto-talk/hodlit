@@ -55,7 +55,7 @@ class AssetServiceTest {
         ReflectionTestUtils.setField(cached, "capturedAt", Instant.now().minus(Duration.ofHours(2)));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(cached));
         AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, ethereum, mock(PolygonBalanceClient.class), prices,
-            mock(com.cryptalk.exchange.ExchangeConnectionService.class))
+            mock(AlchemyPortfolioClient.class), mock(com.cryptalk.exchange.ExchangeConnectionService.class))
             .snapshotForPublication(7L, eth);
         assertFalse(published.isVerified());
         assertEquals("STALE", published.getSyncStatus());
@@ -94,7 +94,7 @@ class AssetServiceTest {
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(snapshot));
         when(snapshots.findByMemberIdOrderByCoinDisplayOrder(7L)).thenReturn(List.of(snapshot));
         AssetService service = new AssetService(snapshots, coins, members, wallets, ethereum, mock(PolygonBalanceClient.class), marketPrices,
-            mock(com.cryptalk.exchange.ExchangeConnectionService.class));
+            mock(AlchemyPortfolioClient.class), mock(com.cryptalk.exchange.ExchangeConnectionService.class));
 
         AssetService.AssetResponse asset = service.refreshAndList(7L).get(0);
 

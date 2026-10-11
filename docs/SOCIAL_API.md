@@ -42,6 +42,9 @@
 | 팔로잉 목록 | GET | `/members/{memberId}/following` | 불필요 | `200` |
 | 현재 자산 가격 | GET | `/market/prices/{symbol}?currency=USD` | 불필요 | `200` |
 | 내 EVM 자산 집계 | GET | `/me/assets` | 필요 | `200` |
+| 내 지갑 기본 자산·ERC20 목록 | GET | `/me/wallets/assets` | 필요 | `200`, 키 미설정 `503` |
+
+Alchemy 설정 시 `/me/assets`는 기존 합산 `assets` 외에 `walletAssets`도 반환합니다. 지갑 전용 조회는 거래소를 호출하지 않습니다. 상세 계약과 운영 설정은 [Alchemy 지갑 자산 API](ALCHEMY_WALLET_ASSETS_API.md)를 참고하세요.
 
 조회 응답의 `liked`, `reposted`, `bookmarked`, `followedByMe`는 로그인 사용자를 기준으로
 계산됩니다. 비로그인 조회에서는 `false`입니다. `size`는 1~100 범위로 보정됩니다.
