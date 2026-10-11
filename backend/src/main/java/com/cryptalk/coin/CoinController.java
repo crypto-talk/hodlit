@@ -19,7 +19,7 @@ public class CoinController {
         this.posts = posts;
         this.statistics = statistics;
     }
-    @Operation(summary = "전체 방 활동 집계", description = "최근 24시간(24h, 기본) 또는 누적(all)의 글·댓글·조회·좋아요·참여자 수를 반환합니다.")
+    @Operation(summary = "전체 방 활동 집계", description = "24h(기본)는 지금 뜨는 방을 hotScore·활동 회원 수·마지막 활동 시각 순으로 반환하고 활동이 없는 방을 제외합니다. 회원별 마지막 글·댓글·좋아요 활동에 1시간 이내 3점, 6시간 이내 2점, 나머지 24시간 1점을 부여합니다. 조회수·인증률은 점수에 포함하지 않습니다. all은 모든 활성 방의 누적 통계를 기존 방 순서로 반환합니다.")
     @GetMapping("/communities/stats")
     CommunityStatisticsService.StatisticsResponse statistics(@RequestParam(defaultValue="24h") String window) {
         return statistics.statistics(window, null);
