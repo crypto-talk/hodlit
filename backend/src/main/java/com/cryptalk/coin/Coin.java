@@ -39,6 +39,7 @@ public class Coin {
     public String getSymbol() { return symbol; }
     public String getName() { return name; }
     public String getChainType() { return chainType; }
+    public String getContractAddress() { return contractAddress; }
     public String getAccentColor() { return accentColor; }
     public String getMarketPriceId() { return marketPriceId; }
     public VerificationAvailability getVerificationAvailability() { return verificationAvailability; }
