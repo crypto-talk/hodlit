@@ -2,7 +2,6 @@ import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { config } from "@/lib/config";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
-import { refreshHoldings } from "@/lib/holdings-refresh";
 import { http } from "@/lib/http";
 import type {
   BookmarkedPost,
@@ -59,16 +58,13 @@ export async function loadWriteRooms(): Promise<WriteRoom[]> {
  *
  * 보내지 않는 것
  *   - `assetPrice` · `assetPriceCurrency`: 서버가 무시하고 직접 시세를 조회한다.
- *   - 보유 정보: 서버가 저장해 둔 보유 기록을 글에 복사한다. 프론트가 보내는
- *     값은 없어서 수량을 위조할 수는 없다. 다만 기록이 오래됐을 수 있어서 발행
- *     직전에 `refreshHoldings()` 로 갱신한다(`lib/holdings-refresh.ts` 참고).
+ *   - 보유 정보: 서버가 저장하면서 보유 기록을 새로 읽어 글에 붙인다(HODL-45).
+ *     프론트가 보내는 값이 없어서 수량을 위조할 수 없다.
  *
  * 제목·본문은 앞뒤 공백을 잘라 보낸다. 백엔드가 `@NotBlank` 로 거르는 기준과
  * 맞춘 것이다.
  */
 export async function publishPost(draft: PostDraft): Promise<PublishedPost> {
-  if (draft.verifiable) await refreshHoldings();
-
   const youtubeUrl = draft.youtubeUrl.trim();
   const body: CreatePostRequest = {
     coinSymbol: draft.coinSymbol,
@@ -165,7 +161,7 @@ export async function loadPost(postId: number): Promise<PostDetail> {
     holder: snapshot
       ? {
           verifiable: isVerifiable(snapshot.verificationAvailability),
-          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.walletCount),
+          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.holderStatus),
           // 서버가 완성해서 주는 문자열이다. 여기서 다시 계산하지 않는다.
           amount: snapshot.quantityBand ?? null,
           holding: holdingPeriodLabel(snapshot.holdingMonths),

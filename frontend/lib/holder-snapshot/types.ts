@@ -2,9 +2,9 @@
  * 보유 표기 등급.
  *
  * - `wallet`   지갑연결 — 연결한 지갑에 그 코인이 있다
- * - `exchange` 거래소연동 — 백엔드에 아직 없어서 지금은 나오지 않는다
- * - `empty`    미보유 — 지갑은 연결했고 잔액 확인도 성공했는데 0개
- * - `none`     미인증 — 연결한 수단이 없거나, 확인이 한 번도 성공하지 못했다
+ * - `exchange` 거래소연동 — 지갑엔 없고 연결한 거래소에만 있다
+ * - `empty`    미보유 — 연결한 수단을 모두 확인했는데 0개 (`holderStatus: EMPTY`)
+ * - `none`     미인증 — 연결한 수단이 없거나, 확인에 실패했거나, 기록이 오래됐다
  *
  * `empty` 와 `none` 은 화면에서 같은 무게로 보인다. 플랫폼은 사실만 보여준다.
  */
@@ -32,7 +32,7 @@ export const VERIFICATION_AVAILABILITY = {
 export type HolderSnapshot = {
   /** 그 코인이 보유 인증을 지원하는지. `SUPPORTED` 외에는 인증 자체가 불가능하다. */
   verificationAvailability: string;
-  /** `WALLET` | `UNVERIFIED`. 거래소 연동 등급은 백엔드에 아직 없다. */
+  /** `WALLET` | `EXCHANGE` | `UNVERIFIED`. */
   verificationLevel: string;
   verifiedHolder: boolean;
   /**
@@ -46,4 +46,6 @@ export type HolderSnapshot = {
   capturedAt: string;
   blockNumber: number | null;
   syncStatus: string;
+  /** `HOLDER` | `EMPTY` | `UNKNOWN` | `NOT_CONNECTED`. 미지원 코인이면 빠져서 온다. */
+  holderStatus: string | null;
 };

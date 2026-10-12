@@ -28,28 +28,34 @@ const TIER_LABEL: Record<Tier, string> = {
 
 const VERIFICATION_LABEL: Record<string, string> = {
   WALLET: TIER_LABEL.wallet,
+  EXCHANGE: TIER_LABEL.exchange,
   UNVERIFIED: TIER_LABEL.none,
 };
 
 /**
  * 서버 값 → 보유 표기 등급. 모르는 값이면 가장 약한 등급으로 떨어뜨린다.
  *
- * 미보유(`empty`)는 서버가 따로 주는 값이 없어서 `walletCount` 로 가른다. 서버는 잔액
- * 확인에 **성공했을 때만** 보유 기록을 저장하고, 그때 연결 지갑 수를 같이 적는다
- * (`AssetService.refreshAndList`). 그래서 `walletCount ≥ 1` 인데 보유자가 아니면
- * "확인했고 0개"다. 확인이 한 번도 성공하지 못했으면 기록이 없어 `walletCount` 가 0 이고
- * 미인증으로 남는다 — 확인하지 못한 것을 미보유라고 말하지 않는다.
+ * 서버가 주는 `holderStatus`(HODL-49)를 먼저 본다.
+ *   - `HOLDER`        연결한 수단을 모두 확인했고 보유 > 0. 등급은 `verificationLevel` 로
+ *                     가른다 — 지갑에 보유가 하나라도 있으면 `WALLET`, 거래소에만 있으면 `EXCHANGE`
+ *   - `EMPTY`         모두 확인했고 0개 → 미보유. **미보유는 이 값일 때만** 쓴다
+ *   - `UNKNOWN`       확인 실패 · 일부만 확인 · 오래된 기록 → 미인증. 미보유라고 말하지 않는다
+ *   - `NOT_CONNECTED` 연결한 수단이 없다 → 미인증
  *
- * ⚠️ 서버가 보유 상태를 직접 내려주게 되면(Jira 요청) 이 추론을 지우고 그 값을 쓴다.
- * 거래소 연동 등급도 그때 들어온다.
+ * `holderStatus` 가 없을 때만 `verifiedHolder` 로 보유자를 가른다. 반대로 `holderStatus` 가
+ * `UNKNOWN` 인데 `verifiedHolder` 가 true 로 오는 경우(오래된 기록 복사본)는 보유자로 보지 않는다.
+ *
+ * `walletCount` 로 미보유를 추론하던 예전 방식은 쓰지 않는다. 거래소만 연결한 사람은
+ * `walletCount` 가 0 인데 보유자일 수 있다.
  */
 export function tierOf(
   verificationLevel: string | null | undefined,
   verifiedHolder: boolean | null | undefined,
-  walletCount?: number | null,
+  holderStatus?: string | null,
 ): Tier {
-  if (verificationLevel === "WALLET" || verifiedHolder) return "wallet";
-  if (typeof walletCount === "number" && walletCount > 0) return "empty";
+  const holder = holderStatus ? holderStatus === "HOLDER" : !!verifiedHolder;
+  if (holder) return verificationLevel === "EXCHANGE" ? "exchange" : "wallet";
+  if (holderStatus === "EMPTY") return "empty";
   return "none";
 }
 

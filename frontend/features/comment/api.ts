@@ -1,6 +1,5 @@
 import type { components } from "@/lib/api-schema";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
-import { refreshHoldings } from "@/lib/holdings-refresh";
 import { http } from "@/lib/http";
 import type { CommentView } from "./types";
 
@@ -32,17 +31,9 @@ export async function loadComments(postId: number): Promise<CommentView[]> {
 /**
  * 댓글 작성.
  *
- * 보유 정보는 보내지 않는다. 서버가 저장해 둔 보유 기록을 댓글에 복사한다. 글과 같은
- * 이유로 인증 지원 방(`verifiable`)이면 보내기 직전에 기록을 갱신한다
- * (`lib/holdings-refresh.ts`, HODL-45 전까지의 임시 조치).
+ * 보유 정보는 보내지 않는다. 서버가 저장하면서 보유 기록을 새로 읽어 댓글에 붙인다(HODL-45).
  */
-export async function createComment(input: {
-  postId: number;
-  content: string;
-  verifiable: boolean;
-}): Promise<void> {
-  if (input.verifiable) await refreshHoldings();
-
+export async function createComment(input: { postId: number; content: string }): Promise<void> {
   const body: CreateCommentRequest = { content: input.content.trim() };
   await http<CommentResponse>(`/api/v1/posts/${input.postId}/comments`, {
     method: "POST",
@@ -82,7 +73,7 @@ function toView(comment: CommentResponse & { id: number }): CommentView {
     holder: snapshot
       ? {
           verifiable: isVerifiable(snapshot.verificationAvailability),
-          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.walletCount),
+          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.holderStatus),
           holding: holdingPeriodLabel(snapshot.holdingMonths),
         }
       : null,

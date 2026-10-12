@@ -66,7 +66,7 @@ export default function CommentForm({ postId, verifiable }: Props) {
     const reason = commentProblem(content);
     setProblem(reason ?? "");
     if (reason) return;
-    create.mutate({ postId, content, verifiable });
+    create.mutate({ postId, content });
   }
 
   const length = content.trim().length;
