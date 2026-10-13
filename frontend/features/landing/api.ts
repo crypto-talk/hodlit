@@ -1,7 +1,8 @@
 import type { components } from "@/lib/api-schema";
+import { coinNameKo } from "@/lib/coin-name-ko";
 import { http } from "@/lib/http";
 import { type IdentifiedPost, toPostSummary } from "@/lib/post-summary";
-import { MARQUEE, TRENDING, VOTES } from "./mock";
+import { MARQUEE, VOTES } from "./mock";
 import type { FeedPost, HotPost, MarqueeItem, TrendingRoom, VoteRow } from "./types";
 
 /**
@@ -18,9 +19,12 @@ import type { FeedPost, HotPost, MarqueeItem, TrendingRoom, VoteRow } from "./ty
 type Schemas = components["schemas"];
 type FeedItemResponse = Schemas["FeedItemResponse"];
 type FeedPageResponse = Schemas["FeedPageResponse"];
+type StatisticsResponse = Schemas["StatisticsResponse"];
 
 const FEED_SIZE = 20;
 const HOT_LIMIT = 5;
+/** 지금 뜨는 방에 보여주는 방 수. 1~3위는 카드, 나머지는 줄. */
+const TRENDING_LIMIT = 6;
 
 /** 전체 글과 핫글. 둘 다 같은 피드 한 번으로 만든다. */
 export async function loadFeed(): Promise<{ posts: FeedPost[]; hot: HotPost[] }> {
@@ -30,8 +34,8 @@ export async function loadFeed(): Promise<{ posts: FeedPost[]; hot: HotPost[] }>
 }
 
 /*
- * 아래 셋은 아직 목데이터를 그대로 돌려준다. 뜨는 방 · 투표는 백엔드 API 가 생겼고
- * 전광판 집계만 아직 없다.
+ * 아래 둘은 아직 목데이터를 그대로 돌려준다. 투표는 백엔드 API 가 생겼고(HODL-64)
+ * 전광판 집계는 아직 없다.
  * 화면이 `./mock` 을 직접 읽지 않게 하려고(구조 규칙 2) 여기를 통과시킨다.
  * API 가 생기면 이 함수만 async 로 바꾸면 화면은 그대로 둘 수 있다.
  */
@@ -41,9 +45,29 @@ export function marqueeItems(): MarqueeItem[] {
   return MARQUEE;
 }
 
-/** ⚠️ 목값. 뜨는 방 통계 API(`/communities/stats?window=24h`)로 바꿀 자리. */
-export function trendingRooms(): TrendingRoom[] {
-  return TRENDING;
+/**
+ * 지금 뜨는 방 (HODL-44, `docs/COMMUNITY_STATISTICS_API.md`).
+ *
+ * 서버가 이미 순위를 매겨 준다. 여기서 다시 정렬하지 않고 앞에서부터 자른다.
+ * 최근 24시간 동안 글 · 댓글 · 좋아요를 남긴 사람 수(최근일수록 점수가 높다)로 매기고
+ * 조회수 · 인증 여부 · 시세는 순위에 안 들어간다. 활동이 있는 방이 없으면 빈 배열이고
+ * 에러가 아니다.
+ */
+export async function loadTrendingRooms(): Promise<TrendingRoom[]> {
+  const stats = await http<StatisticsResponse>("/api/v1/communities/stats?window=24h");
+
+  return (stats.rooms ?? [])
+    .filter((room): room is typeof room & { symbol: string } => !!room.symbol)
+    .slice(0, TRENDING_LIMIT)
+    .map((room, index) => ({
+      rank: index + 1,
+      symbol: room.symbol,
+      // 통계 응답에는 이름이 없다. 한글명 표에 없으면 심볼을 그대로 쓴다.
+      name: coinNameKo(room.symbol, room.symbol),
+      posts: room.postCount ?? 0,
+      comments: room.commentCount ?? 0,
+      participants: room.activeParticipantCount ?? 0,
+    }));
 }
 
 /** ⚠️ 목값. 일일 투표 API(`/communities/{symbol}/poll`)로 바꿀 자리. */

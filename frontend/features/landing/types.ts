@@ -17,14 +17,18 @@ export type MarqueeItem = {
   value?: string;
 };
 
+/**
+ * 지금 뜨는 방 한 줄. `GET /communities/stats?window=24h` 에서 온다(HODL-44).
+ * 순위는 서버가 매긴 순서 그대로다. 숫자는 전부 최근 24시간이다.
+ */
 export type TrendingRoom = {
   rank: number;
   symbol: string;
   name: string;
   posts: number;
   comments: number;
-  hot: boolean;
-  latest: string;
+  /** 최근 24시간 글 · 댓글 · 좋아요를 남긴 회원 수. 순위 기준이 이 사람 수다. */
+  participants: number;
 };
 
 export type VoteRow = {
