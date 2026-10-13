@@ -38,18 +38,10 @@ export const ROOM_POST_LIMIT = 50;
 /**
  * 사이드바 '전체 방'.
  *
- * 등락률은 `GET /market/prices` 에서 온다. 시세 조회가 실패해도 방 목록은
- * 보여야 하므로 등락률만 대시로 떨어뜨린다.
+ * 등락률은 뺐다(HODL-59). 그래서 시세(`GET /market/prices`)를 같이 부르지 않는다.
  */
 export async function loadRooms(): Promise<SidebarRoom[]> {
-  const [coins, prices] = await Promise.all([
-    http<CoinResponse[]>("/api/v1/coins"),
-    http<PriceQuote[]>("/api/v1/market/prices?currency=KRW").catch(() => [] as PriceQuote[]),
-  ]);
-
-  const changeBySymbol = new Map(
-    prices.filter(hasSymbol).map((quote) => [quote.symbol, quote.change24h ?? null]),
-  );
+  const coins = await http<CoinResponse[]>("/api/v1/coins");
 
   return coins
     .filter(hasSymbol)
@@ -58,7 +50,6 @@ export async function loadRooms(): Promise<SidebarRoom[]> {
       symbol: coin.symbol,
       // 백엔드는 영문명만 준다. 한글명 필드가 생기면 coinNameKo 를 지운다(D-4).
       name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
-      change: formatChangeRate(changeBySymbol.get(coin.symbol)),
     }));
 }
 

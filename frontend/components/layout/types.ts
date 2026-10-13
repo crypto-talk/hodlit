@@ -10,8 +10,6 @@
 export type SidebarRoom = {
   symbol: string;
   name: string;
-  /** 24h 등락률 문자열. 시세 조회가 실패하면 `-`. */
-  change: string;
   /** 지금 보고 있는 방이면 true. 방 게시판에서 쓴다. */
   current?: boolean;
 };
