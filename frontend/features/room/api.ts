@@ -4,8 +4,8 @@ import { formatChangeRate } from "@/lib/format/number";
 import { isVerifiable } from "@/lib/holder-snapshot/label";
 import { http } from "@/lib/http";
 import { coinNameKo } from "@/lib/coin-name-ko";
-import { type PostSummary, hasPostId, toPostSummary } from "@/lib/post-summary";
-import type { RoomInfo, RoomPrice } from "./types";
+import { hasPostId, toPostSummary } from "@/lib/post-summary";
+import type { RoomInfo, RoomPostPage, RoomPrice } from "./types";
 
 /**
  * 방 목록과 방 게시판 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -21,19 +21,13 @@ import type { RoomInfo, RoomPrice } from "./types";
 type Schemas = components["schemas"];
 type CoinResponse = Schemas["CoinResponse"];
 type CommunityResponse = Schemas["CommunityResponse"];
-type PostResponse = Schemas["PostResponse"];
+type PostPageResponse = Schemas["PageResponsePostResponse"];
 type PriceQuote = Schemas["PriceQuote"];
 
 const ROOM_LIMIT = 10;
 
-/**
- * 방 게시판에 한 번에 받는 글 수.
- *
- * `/communities/{symbol}/posts` 는 `size` 만 받아 최신순 배열을 돌려준다(상한 100).
- * 그래서 지금은 더보기 없이 최신 N개만 보여준다.
- * 백엔드에 번호 페이지 목록(`docs/NUMBERED_PAGINATION_API.md`)이 생겼으나 아직 붙이지 않았다.
- */
-export const ROOM_POST_LIMIT = 50;
+/** 방 게시판 한 쪽에 보여주는 글 수. 백엔드 번호 페이지의 기본값과 같다. */
+export const ROOM_PAGE_SIZE = 20;
 
 /**
  * 사이드바 '전체 방'.
@@ -111,12 +105,34 @@ export async function loadRoomPrice(symbol: string): Promise<RoomPrice | null> {
   };
 }
 
-/** 방 글 목록. 최신순 `ROOM_POST_LIMIT` 개. */
-export async function loadRoomPosts(symbol: string): Promise<PostSummary[]> {
-  const posts = await http<PostResponse[]>(
-    `/api/v1/communities/${encodeURIComponent(symbol)}/posts?size=${ROOM_POST_LIMIT}`,
+/**
+ * 방 글 목록 한 쪽 (HODL-66, `docs/NUMBERED_PAGINATION_API.md`).
+ *
+ * `page` 는 화면 기준 1부터다. API 는 0부터라 여기서 하나 뺀다.
+ * 인증 탭은 서버가 거른다(`verified=true`). 서버 기준은 발행 때 보유자로 확인된 글
+ * (`authorVerified`)이라, 미보유 · 미인증 글은 인증 탭에 나오지 않는다.
+ * 범위를 넘는 쪽은 에러가 아니라 빈 목록과 실제 총수가 온다.
+ */
+export async function loadRoomPostPage(
+  symbol: string,
+  tab: "all" | "verified",
+  page: number,
+): Promise<RoomPostPage> {
+  const query = new URLSearchParams({
+    page: String(Math.max(0, page - 1)),
+    size: String(ROOM_PAGE_SIZE),
+  });
+  if (tab === "verified") query.set("verified", "true");
+
+  const result = await http<PostPageResponse>(
+    `/api/v1/communities/${encodeURIComponent(symbol)}/posts/page?${query}`,
   );
-  return (posts ?? []).filter(hasPostId).map(toPostSummary);
+
+  return {
+    posts: (result.items ?? []).filter(hasPostId).map(toPostSummary),
+    totalPages: result.totalPages ?? 0,
+    totalPosts: result.totalElements ?? 0,
+  };
 }
 
 function hasSymbol<T extends { symbol?: string }>(value: T): value is T & { symbol: string } {
