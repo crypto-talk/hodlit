@@ -4,10 +4,10 @@
  * ⚠️ 여기 있는 값이 랜딩의 가짜 데이터 전부다.
  *
  * 방 목록·전체 글·핫글은 실제 API 에서 온다(`features/room/api.ts`,
- * `./api.ts`). 남은 것은 백엔드에 API 자체가 없는 세 가지뿐이다.
- *   - MARQUEE   상단 전광판. 랜딩 집계 API 없음
- *   - TRENDING  방별 24h 집계 없음 (G-3 미합의)
- *   - VOTES     일일 투표 기능 자체가 없음 (G-5)
+ * `./api.ts`). 남은 것은 아래 세 가지다.
+ *   - MARQUEE   상단 전광판. 랜딩 전체 집계 API 는 아직 없다
+ *   - TRENDING  뜨는 방. `GET /communities/stats?window=24h` 가 생겼다(HODL-44). 아직 안 붙였다
+ *   - VOTES     일일 투표. `/communities/{symbol}/poll` 이 생겼다(HODL-64). 아직 안 붙였다
  *
  * 구조 규칙 2 에 따라 이 파일은 `./api.ts` 밖으로 새지 않는다. 화면은
  * `api.ts` 의 함수를 통해서만 이 값을 본다.
@@ -31,7 +31,7 @@ export const MARQUEE: MarqueeItem[] = [
   { text: "지갑 연결한 사용자 ", value: "128명" },
 ];
 
-/** 대기 중인 API: 방별 24h 글·댓글 집계 */
+/** 붙일 API: `GET /communities/stats?window=24h` (`docs/COMMUNITY_STATISTICS_API.md`) */
 export const TRENDING: TrendingRoom[] = [
   {
     rank: 1,
@@ -125,7 +125,7 @@ export const TRENDING: TrendingRoom[] = [
   },
 ];
 
-/** 대기 중인 API: 일일 투표. 기능 자체가 백엔드에 없습니다. */
+/** 붙일 API: 일일 투표 `/communities/{symbol}/poll` (`docs/DAILY_ROOM_POLLS_API.md`) */
 export const VOTES: VoteRow[] = [
   {
     symbol: "ETH",

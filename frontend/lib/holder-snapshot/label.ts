@@ -42,8 +42,10 @@ const VERIFICATION_LABEL: Record<string, string> = {
  *   - `UNKNOWN`       확인 실패 · 일부만 확인 · 오래된 기록 → 미인증. 미보유라고 말하지 않는다
  *   - `NOT_CONNECTED` 연결한 수단이 없다 → 미인증
  *
- * `holderStatus` 가 없을 때만 `verifiedHolder` 로 보유자를 가른다. 반대로 `holderStatus` 가
- * `UNKNOWN` 인데 `verifiedHolder` 가 true 로 오는 경우(오래된 기록 복사본)는 보유자로 보지 않는다.
+ * `holderStatus` 가 있으면 그것만 본다. 없을 때(필드가 생기기 전 응답)만 `verifiedHolder` 로
+ * 보유자를 가른다. 지금 백엔드는 오래되거나(`STALE`) 갱신에 실패한(`CACHED`) 기록을 발행할 때
+ * `verifiedHolder` 도 false 로 내리므로 `UNKNOWN` + `verifiedHolder: true` 조합은 정상 흐름에서
+ * 나오지 않는다. 나와도 보유자로 보지 않는다.
  *
  * `walletCount` 로 미보유를 추론하던 예전 방식은 쓰지 않는다. 거래소만 연결한 사람은
  * `walletCount` 가 0 인데 보유자일 수 있다.
@@ -83,7 +85,8 @@ export function isVerifiable(availability: string | null | undefined): boolean {
  * 인증을 지원하지 않는 코인의 글에 붙는 문구.
  *
  * `미인증` 을 쓰지 않는 이유: 미인증은 "인증할 수 있는데 안 했다"로 읽힌다.
- * 지갑을 연결한 사람이 BTC 방에 쓴 글까지 미인증으로 보이면 오해다.
+ * 지갑을 연결한 사람이 인증 수단이 없는 방에 쓴 글까지 미인증으로 보이면 오해다.
+ * (BTC 는 거래소 연동이 들어오며 2026-10-11 부터 `SUPPORTED` 다.)
  */
 export const UNSUPPORTED_LABEL = "인증 미지원 코인";
 

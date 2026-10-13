@@ -30,7 +30,8 @@ export async function loadFeed(): Promise<{ posts: FeedPost[]; hot: HotPost[] }>
 }
 
 /*
- * 아래 셋은 백엔드에 API 자체가 없어서 목데이터를 그대로 돌려준다.
+ * 아래 셋은 아직 목데이터를 그대로 돌려준다. 뜨는 방 · 투표는 백엔드 API 가 생겼고
+ * 전광판 집계만 아직 없다.
  * 화면이 `./mock` 을 직접 읽지 않게 하려고(구조 규칙 2) 여기를 통과시킨다.
  * API 가 생기면 이 함수만 async 로 바꾸면 화면은 그대로 둘 수 있다.
  */
@@ -40,12 +41,12 @@ export function marqueeItems(): MarqueeItem[] {
   return MARQUEE;
 }
 
-/** ⚠️ 목값. 방별 24h 글·댓글 집계 API 없음 (G-3 미합의). */
+/** ⚠️ 목값. 뜨는 방 통계 API(`/communities/stats?window=24h`)로 바꿀 자리. */
 export function trendingRooms(): TrendingRoom[] {
   return TRENDING;
 }
 
-/** ⚠️ 목값. 일일 투표 기능 자체가 백엔드에 없음 (G-5). */
+/** ⚠️ 목값. 일일 투표 API(`/communities/{symbol}/poll`)로 바꿀 자리. */
 export function dailyVotes(): VoteRow[] {
   return VOTES;
 }

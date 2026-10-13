@@ -50,7 +50,11 @@ export async function updateComment(input: { commentId: number; content: string 
   });
 }
 
-/** 댓글 삭제. 서버는 기록을 남기지 않고 지운다(답글이 없어서 자리를 남길 이유가 없다). */
+/**
+ * 댓글 삭제. 서버는 기록을 남기지 않고 지운다.
+ * ⚠️ 백엔드에 답글(1단, `parentCommentId`)이 생겼고 루트 댓글을 지우면 답글도 함께 지워진다.
+ * 프론트는 아직 답글을 만들거나 묶어 그리지 않는다.
+ */
 export async function deleteComment(commentId: number): Promise<void> {
   await http<void>(`/api/v1/comments/${commentId}`, { method: "DELETE" });
 }
