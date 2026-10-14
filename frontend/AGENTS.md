@@ -129,8 +129,10 @@ import-direction rule.
 
 Deliberately not done yet, do not treat these as oversights:
 
-- `features/landing/mock.ts` still holds the three sections the backend has no API for at
-  all: the marquee aggregate, trending rooms (G-3) and the daily vote (G-5). They reach the
+- `features/landing/mock.ts` still holds three sections: the marquee aggregate (no API yet),
+  trending rooms (G-3) and the daily vote (G-5). Trending rooms and the vote now have backend
+  APIs (`/communities/stats?window=24h`, `/communities/{symbol}/poll`) that are not wired yet.
+  They reach the
   screen through `features/landing/api.ts` (`marqueeItems()`, `trendingRooms()`,
   `dailyVotes()`) so that structure rule 2 holds and only those functions change when the
   APIs land. Rooms come from `features/room/api.ts`; the feed and hot posts from
@@ -155,7 +157,7 @@ go up first.
    connected wallets — every screen in step 3 gets them for free. The bottom tab (<900px)
    is not built yet; the fab covers that width for now.
 2. ✅ `styles/hd.css` is gone. Screen styles now live in exactly two places: the tokens in
-   `styles/tokens.css` (colors, type scale, radii, the 900px breakpoint, animations — exposed
+   `styles/tokens.css` (colors, type scale, radii, the 900px and 1320px breakpoints, animations — exposed
    as Tailwind utilities by the `@theme` block in `app/globals.css`) and Tailwind classes on
    the components. The dead block at the bottom of `app/globals.css` is deleted too.
    Inline `style` is left only for runtime values: the podium's per-rank palette, vote bar
@@ -229,10 +231,11 @@ had no posts, so every list screen could only be checked empty; writing first fi
 3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header
    (`GET /communities/{symbol}`), price box (`GET /market/prices/{symbol}?currency=KRW`, polled
    every minute with a countdown), news and vote boxes marked "준비 중", and the 전체/인증 tabs
-   as `?tab=verified`. The post list is the latest `ROOM_POST_LIMIT` (50) posts only — the room
-   endpoint has no cursor, so there is no "더 보기"; the 인증 tab filters inside those 50.
-   No price chart: there is no price-history API. `postCount` from the backend stops at 100
-   (it counts the latest 100), so the header says "100개 이상" at that value.
+   as `?tab=verified`. The post list is the latest `ROOM_POST_LIMIT` (50) posts only; the 인증
+   tab filters inside those 50. The backend now has numbered pages (`…/page`,
+   `docs/NUMBERED_PAGINATION_API.md`) and room news / poll APIs; none of them is wired yet.
+   No price chart: there is no price-history API. `postCount` is the room's real total (it
+   used to stop at 100; the "100개 이상" label is gone).
    The landing's post card and its mapper moved down to `components/post/post-card.tsx` and
    `lib/post-summary.ts` because the room board draws the same card.
    The sidebar room names, the post detail room chip, and the header/FAB 글쓰기 now point at the
@@ -273,9 +276,7 @@ becomes the spec.
 ## Never minify or collapse source
 
 Write one statement per line. Do not collapse a component, a rule set, or a JSX subtree
-onto a single line to save space. (The legacy block at the bottom of `app/globals.css` still
-packs ~22 KB onto a handful of lines. It is dead code and gets deleted in step 2 ②, so do not
-spend effort reformatting it.)
+onto a single line to save space.
 
 ## Contract with the backend
 
@@ -283,10 +284,17 @@ spend effort reformatting it.)
   changes, update the type in the same commit as the code that reads it.
 - Runtime response validation (zod) only for money/PII responses: `/me/assets`, snapshots,
   wallet. Everything else trusts the type.
-- `GET /api/v1/me/assets` returns `AssetPortfolio` (`{ walletCount, assets }`), not an array.
-- Posts and comments carry `holderSnapshot` (`HolderSnapshotResponse`): `verificationLevel`
-  is `WALLET` or `UNVERIFIED` (no exchange tier exists yet), `quantityBand` is a finished
-  string or null, `holdingMonths` is an already-floored integer or null.
+- `GET /api/v1/me/assets` returns an object, not an array: `walletCount`, `exchangeCount`,
+  `assets`, `unresolvedAssets` and `walletAssets` (Swagger `AssetPortfolioResponse`). It returns
+  200 with `syncStatus: PARTIAL` when one source fails; the quantities are then a subtotal.
+- Posts and comments carry `holderSnapshot` (`HolderSnapshotResponse`). The badge tier comes from
+  `holderStatus` (`HOLDER` | `EMPTY` | `UNKNOWN` | `NOT_CONNECTED`) and, for `HOLDER`,
+  `verificationLevel` (`WALLET` | `EXCHANGE`) — see `tierOf()` in `lib/holder-snapshot/label.ts`.
+  Do not infer anything from `walletCount`. Check `verificationAvailability` first; only
+  `SUPPORTED` rooms get a badge. `quantityBand` is a finished string or null (posts only;
+  comments have none), `holdingMonths` is an already-floored integer or null.
+- The server refreshes holdings itself when a post or comment is saved (HODL-45). The client
+  does not call `/me/assets` before publishing.
 - OpenAPI spec: https://cryptalk-api.hojun.xyz/v3/api-docs — the accurate endpoint list.
   `pnpm gen:api` writes it to `lib/api-schema.ts`; run it after any backend change and commit
   the result. `GET /feed` (cursor + size, returns `{items, nextCursor, hasMore}`) already
@@ -309,9 +317,8 @@ spend effort reformatting it.)
 
 ## Fonts
 
-Pretendard is self-hosted through `next/font/local` (subset woff2). Do not load fonts from
-Google Fonts or a CDN `<link>`; the CDN link currently in `app/page.tsx` is removed in the
-restructure.
+Pretendard is self-hosted through `next/font/local` (subset woff2, `app/fonts.ts`). Do not load
+fonts from Google Fonts or a CDN `<link>`.
 
 ## Verification
 

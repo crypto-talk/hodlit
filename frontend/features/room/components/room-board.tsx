@@ -28,10 +28,12 @@ type Props = {
  * 왕복 한 번을 감수했다.
  *
  * 아직 없는 것
- *   - 뉴스 · 투표: 백엔드 API 가 없다. 그럴듯한 목값 대신 "준비 중"을 둔다(G-5)
+ *   - 뉴스 · 투표: 백엔드 API 는 생겼다(`/communities/{symbol}/news` · `/communities/{symbol}/poll`).
+ *     붙이기 전까지 그럴듯한 목값 대신 "준비 중"을 둔다(G-5)
  *   - 가격 차트: 과거 시세 API 가 없다
- *   - 더보기: 방 글 목록에 커서가 없다
- *   - 인증 사용자 수 · 평균 보유 기간: 집계 API 가 없다
+ *   - 더보기: 번호 페이지 목록 API 는 생겼다. 아직 붙이지 않았다
+ *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
+ *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
  */
 export default function RoomBoard({ symbol, tab }: Props) {
   const room = useQuery({ queryKey: ["room", symbol], queryFn: () => loadRoom(symbol) });
@@ -94,9 +96,7 @@ export default function RoomBoard({ symbol, tab }: Props) {
 }
 
 function RoomHeader({ info }: { info: RoomInfo }) {
-  const count = info.postCountCapped
-    ? `글 ${info.postCount}개 이상`
-    : `글 ${info.postCount.toLocaleString("ko-KR")}개`;
+  const count = `글 ${info.postCount.toLocaleString("ko-KR")}개`;
 
   return (
     <header className="flex flex-wrap items-end gap-x-4 gap-y-2 border-l-4 border-l-room-accent pl-4">

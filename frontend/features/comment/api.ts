@@ -1,6 +1,5 @@
 import type { components } from "@/lib/api-schema";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
-import { refreshHoldings } from "@/lib/holdings-refresh";
 import { http } from "@/lib/http";
 import type { CommentView } from "./types";
 
@@ -32,17 +31,9 @@ export async function loadComments(postId: number): Promise<CommentView[]> {
 /**
  * 댓글 작성.
  *
- * 보유 정보는 보내지 않는다. 서버가 저장해 둔 보유 기록을 댓글에 복사한다. 글과 같은
- * 이유로 인증 지원 방(`verifiable`)이면 보내기 직전에 기록을 갱신한다
- * (`lib/holdings-refresh.ts`, HODL-45 전까지의 임시 조치).
+ * 보유 정보는 보내지 않는다. 서버가 저장하면서 보유 기록을 새로 읽어 댓글에 붙인다(HODL-45).
  */
-export async function createComment(input: {
-  postId: number;
-  content: string;
-  verifiable: boolean;
-}): Promise<void> {
-  if (input.verifiable) await refreshHoldings();
-
+export async function createComment(input: { postId: number; content: string }): Promise<void> {
   const body: CreateCommentRequest = { content: input.content.trim() };
   await http<CommentResponse>(`/api/v1/posts/${input.postId}/comments`, {
     method: "POST",
@@ -59,7 +50,11 @@ export async function updateComment(input: { commentId: number; content: string 
   });
 }
 
-/** 댓글 삭제. 서버는 기록을 남기지 않고 지운다(답글이 없어서 자리를 남길 이유가 없다). */
+/**
+ * 댓글 삭제. 서버는 기록을 남기지 않고 지운다.
+ * ⚠️ 백엔드에 답글(1단, `parentCommentId`)이 생겼고 루트 댓글을 지우면 답글도 함께 지워진다.
+ * 프론트는 아직 답글을 만들거나 묶어 그리지 않는다.
+ */
 export async function deleteComment(commentId: number): Promise<void> {
   await http<void>(`/api/v1/comments/${commentId}`, { method: "DELETE" });
 }
@@ -82,7 +77,7 @@ function toView(comment: CommentResponse & { id: number }): CommentView {
     holder: snapshot
       ? {
           verifiable: isVerifiable(snapshot.verificationAvailability),
-          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.walletCount),
+          tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.holderStatus),
           holding: holdingPeriodLabel(snapshot.holdingMonths),
         }
       : null,

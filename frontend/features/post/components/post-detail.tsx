@@ -103,7 +103,7 @@ export default function PostDetailView({ postId, symbol }: Props) {
             ) : null}
             {data.holder.tier === "empty" ? (
               <span className="text-sm text-text-muted">
-                작성 시점에 연결한 지갑의 {room} 잔액이 0이었습니다.
+                작성 시점에 연결한 지갑 · 거래소를 모두 확인했고 {room} 잔액이 0이었습니다.
               </span>
             ) : null}
             {data.holder.amount ? (

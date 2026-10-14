@@ -11,12 +11,8 @@ export type RoomInfo = {
   /** 한글명. 매핑표에 없으면 백엔드 영문명. */
   name: string;
   description: string;
-  /**
-   * 글 수. ⚠️ 백엔드가 최신 100개까지만 세서 100 에서 멈춘다.
-   * 화면은 `postCountCapped` 가 true 면 "100개 이상"으로 쓴다.
-   */
+  /** 글 수. 서버가 방의 글 전체를 센 값이다(예전엔 100 에서 멈췄다). */
   postCount: number;
-  postCountCapped: boolean;
   /** 보유 인증 지원 여부. 서버의 `verificationAvailability` 를 따른다. */
   verifiable: boolean;
   /** 방 강조색. 없으면 null 이고 화면은 브랜드색을 쓴다. */

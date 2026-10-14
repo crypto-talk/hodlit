@@ -65,7 +65,7 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
   const snapshot = post.holderSnapshot;
   const verifiable = isVerifiable(snapshot?.verificationAvailability);
 
-  const tier = tierOf(snapshot?.verificationLevel, post.verifiedHolder, snapshot?.walletCount);
+  const tier = tierOf(snapshot?.verificationLevel, post.verifiedHolder, snapshot?.holderStatus);
 
   return {
     id: post.id,

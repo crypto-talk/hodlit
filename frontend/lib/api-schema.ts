@@ -29,6 +29,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/posts/{postId}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 글 수정 초안 복원
+         * @description 원문 소유자만 조회 가능합니다. 초안이 없으면 404.
+         */
+        get: operations["get_1"];
+        /**
+         * 내 글 수정 초안 자동저장
+         * @description 글당 한 초안을 생성/덮어씁니다. 공개 원문/스냅샷/원문 미디어는 변경하지 않습니다.
+         */
+        put: operations["save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/news/{newsId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 관리자 뉴스 수정 */
+        put: operations["update_1"];
+        post?: never;
+        /** 관리자 뉴스 삭제 */
+        delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/drafts/{draftId}": {
         parameters: {
             query?: never;
@@ -37,18 +79,18 @@ export interface paths {
             cookie?: never;
         };
         /** 내 임시저장 상세 */
-        get: operations["get_1"];
+        get: operations["get_2"];
         /**
          * 임시저장 덮어쓰기
          * @description 전체 교체입니다. 생략한 필드는 null로 저장합니다.
          */
-        put: operations["update_1"];
+        put: operations["update_2"];
         post?: never;
         /**
          * 임시저장 삭제
          * @description 발행 성공 후 프론트에서 호출합니다. 발행된 미디어는 보존됩니다.
          */
-        delete: operations["delete_1"];
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -65,7 +107,7 @@ export interface paths {
         put?: never;
         /**
          * 게시글 작성
-         * @description 로그인 회원이 커뮤니티에 게시글을 작성하고 현재 가격 스냅샷을 저장합니다. 보유 인증은 DB에 저장된 자산 정보를 사용하며 잔액 조회·인증 여부는 작성 권한과 무관합니다.
+         * @description 로그인 회원이 커뮤니티에 게시글을 작성하고 현재 가격 스냅샷을 저장합니다. 보유 인증 지원 코인은 서버에서 잔액을 갱신하며, 조회 실패 시 최신성 제한 내의 캐시만 인증에 사용합니다. 잔액 조회·인증 여부는 작성 권한과 무관합니다.
          */
         post: operations["create"];
         delete?: never;
@@ -122,7 +164,7 @@ export interface paths {
         put?: never;
         /**
          * 댓글 작성
-         * @description 로그인 회원이 게시글에 댓글을 작성합니다.
+         * @description replyToCommentId로 답글 대상을 지정할 수 있습니다. 대댓글에 답해도 동일한 1단계 깊이에 추가됩니다.
          */
         post: operations["create_1"];
         delete?: never;
@@ -144,6 +186,46 @@ export interface paths {
         post: operations["bookmark"];
         /** 게시글 북마크 취소 */
         delete: operations["unbookmark"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/polls/{pollId}/votes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 오늘 투표 참여
+         * @description 사용자·투표·KST 날짜별 한 번, 변경 불가. 다음 날 다시 참여 가능합니다.
+         */
+        post: operations["vote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/polls/{pollId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 운영자 투표 종료
+         * @description 기록 삭제 없이 추가 참여를 차단합니다. 자정에 자동 종료되지 않습니다.
+         */
+        post: operations["close"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -238,7 +320,7 @@ export interface paths {
         put?: never;
         /**
          * 거래소 API 키 연결
-         * @description 잔고 조회로 키를 확인한 뒤 암호화하여 저장합니다. 추가 권한이 없는지는 검증하지 못하므로 자산조회 전용 키만 사용하세요.
+         * @description 업비트 메인포켓 UUID·빗썸 API 1.0 회원 ID로 계정 중복을 검사하고 잔고 조회 후 키를 암호화합니다. 업비트는 자산조회·포켓관리, 빗썸은 API 1.0 회원정보·잔고조회 권한이 필요합니다. 코인원은 동일 키 중복만 검사합니다. 주문·출금 권한은 부여하지 마세요.
          */
         post: operations["connect_1"];
         /**
@@ -269,6 +351,44 @@ export interface paths {
          * @description 빈 필드를 허용합니다. 지갑·시세 조회나 스냅샷 기록을 수행하지 않습니다.
          */
         post: operations["create_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communities/{symbol}/polls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 운영자 방 투표 생성
+         * @description 새 질문 생성 시 기존 활성 질문은 종료하고 기록은 유지합니다.
+         */
+        post: operations["create_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communities/{symbol}/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 방 뉴스 페이지 조회 */
+        get: operations["list_2"];
+        put?: never;
+        /** 관리자 방 뉴스 등록 */
+        post: operations["create_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -373,7 +493,7 @@ export interface paths {
          * 내 프로필 수정
          * @description 닉네임과 아바타 색상을 변경합니다.
          */
-        patch: operations["update_2"];
+        patch: operations["update_3"];
         trace?: never;
     };
     "/api/v1/me/asset-visibility": {
@@ -407,14 +527,94 @@ export interface paths {
          * 댓글 삭제
          * @description 작성자 본인의 댓글을 삭제합니다.
          */
-        delete: operations["delete_2"];
+        delete: operations["delete_3"];
         options?: never;
         head?: never;
         /**
          * 댓글 수정
          * @description 작성자 본인의 댓글 내용을 수정합니다.
          */
-        patch: operations["update_3"];
+        patch: operations["update_4"];
+        trace?: never;
+    };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 전체 검색
+         * @description 제목/본문/작성자 포함 검색, 관련도순. page 0부터, size 기본 20.
+         */
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/posts/{postId}/comments/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 댓글 페이지 조회
+         * @description 댓글은 작성 시각·ID 오름차순이며 기본 20개씩 반환합니다.
+         */
+        get: operations["comments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/posts/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 전체 글 페이지 조회
+         * @description page는 0부터, size 기본 20. 재게시 이벤트가 아닌 고유 게시글 목록입니다.
+         */
+        get: operations["posts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/polls/{pollId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 투표 조회
+         * @description 결과는 해당 KST 날짜에 참여한 사용자만 볼 수 있습니다.
+         */
+        get: operations["get_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/members/{memberId}/social": {
@@ -454,6 +654,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/members/{memberId}/following/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 팔로잉 회원 페이지 조회 */
+        get: operations["following_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/members/{memberId}/followers": {
         parameters: {
             query?: never;
@@ -471,6 +688,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/members/{memberId}/followers/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 팔로워 페이지 조회 */
+        get: operations["followers_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/{fileName}": {
         parameters: {
             query?: never;
@@ -479,14 +713,14 @@ export interface paths {
             cookie?: never;
         };
         /** 미디어 파일 조회 */
-        get: operations["get_2"];
+        get: operations["get_4"];
         put?: never;
         post?: never;
         /**
          * 미디어 파일 삭제
          * @description 업로드한 회원이 아직 게시글에 연결되지 않은 파일을 삭제합니다.
          */
-        delete: operations["delete_3"];
+        delete: operations["delete_4"];
         options?: never;
         head?: never;
         patch?: never;
@@ -509,6 +743,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/wallets/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 지갑 페이지 조회 */
+        get: operations["wallets_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/wallets/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 지갑 자산 목록 조회
+         * @description 잔액이 양수인 지갑 기본 자산 및 ERC20만 반환합니다. 확인 불가 토큰은 unresolvedAssets에 반환하며 거래소를 조회하지 않습니다. Alchemy API 키가 필요합니다.
+         */
+        get: operations["walletAssets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/exchanges": {
         parameters: {
             query?: never;
@@ -520,7 +791,7 @@ export interface paths {
          * 연결된 거래소 목록
          * @description API 키는 응답에 포함하지 않습니다.
          */
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -549,6 +820,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/exchanges/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 거래소 연결 페이지 조회 */
+        get: operations["exchanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/bookmarks": {
         parameters: {
             query?: never;
@@ -566,6 +854,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/bookmarks/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 북마크 페이지 조회 */
+        get: operations["bookmarks_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/assets": {
         parameters: {
             query?: never;
@@ -575,7 +880,7 @@ export interface paths {
         };
         /**
          * 내 자산 조회 및 갱신
-         * @description 연결된 지갑의 블록체인 잔액과 현재 KRW 시세를 조회해 자산 스냅샷을 갱신합니다.
+         * @description assets와 walletAssets.assets에는 잔액이 양수인 자산만 반환합니다. 확인 불가 항목은 unresolvedAssets 및 네트워크 실패 상태로 구분합니다. 연결 지갑이 있으면 Alchemy API 키가 필요합니다.
          */
         get: operations["assets_1"];
         put?: never;
@@ -646,6 +951,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feed/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 전체 활동 피드 페이지 조회
+         * @description 글과 재게시를 함께 번호 페이지로 조회합니다. 기존 cursor 계약은 유지됩니다.
+         */
+        get: operations["global"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/feed/following": {
         parameters: {
             query?: never;
@@ -658,6 +983,26 @@ export interface paths {
          * @description 로그인 회원이 팔로우한 회원의 게시글을 커서 기반으로 조회합니다.
          */
         get: operations["followingFeed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/feed/following/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 팔로잉 활동 피드 페이지 조회
+         * @description 인증 회원이 팔로우한 작성자/재게시자의 활동만 조회합니다.
+         */
+        get: operations["following_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -686,6 +1031,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/communities/{symbol}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 방별 활동 집계
+         * @description 지정한 활성 코인 방의 활동 지표 및 참여자 보유 인증률을 반환합니다.
+         */
+        get: operations["statistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communities/{symbol}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 방 내 글·댓글 검색
+         * @description 현재 활성 방에만 한정한 제목/본문/작성자 포함 검색, 관련도순. page 0부터, size 기본 20.
+         */
+        get: operations["search_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/communities/{symbol}/posts": {
         parameters: {
             query?: never;
@@ -697,7 +1082,67 @@ export interface paths {
          * 커뮤니티 게시글 목록 조회
          * @description 코인 커뮤니티의 게시글을 최신순으로 조회합니다.
          */
-        get: operations["list_3"];
+        get: operations["list_4"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communities/{symbol}/posts/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 방 글 페이지 조회
+         * @description verified=true이면 인증 글만 서버에서 필터링하며 해당 필터 기준 전체 개수를 반환합니다.
+         */
+        get: operations["room"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communities/{symbol}/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 방 현재 투표 조회
+         * @description 미참여자/익명에게 집계값을 반환하지 않습니다.
+         */
+        get: operations["current_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communities/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 전체 방 활동 집계
+         * @description 24h(기본)는 지금 뜨는 방을 hotScore·활동 회원 수·마지막 활동 시각 순으로 반환하고 활동이 없는 방을 제외합니다. 회원별 마지막 글·댓글·좋아요 활동에 1시간 이내 3점, 6시간 이내 2점, 나머지 24시간 1점을 부여합니다. 조회수·인증률은 점수에 포함하지 않습니다. all은 모든 활성 방의 누적 통계를 기존 방 순서로 반환합니다.
+         */
+        get: operations["statistics_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -718,6 +1163,26 @@ export interface paths {
          * @description 현재 활성화된 코인을 화면 표시 순서대로 반환합니다.
          */
         get: operations["coins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coins/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 방 목록 페이지 조회
+         * @description 활성 코인 방만 표시 순서·ID 순으로 조회합니다. page 0부터, size 기본 20.
+         */
+        get: operations["coinPage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -787,6 +1252,7 @@ export interface components {
             /** Format: int64 */
             blockNumber?: number;
             syncStatus?: string;
+            holderStatus?: string;
         };
         MediaResponse: {
             /** Format: int64 */
@@ -871,6 +1337,27 @@ export interface components {
             assetPrice?: number;
             assetPriceCurrency?: string;
             youtubeUrl?: string;
+            /** Format: int64 */
+            sourcePostId?: number;
+        };
+        SaveNewsRequest: {
+            title: string;
+            summary: string;
+            sourceName: string;
+            sourceUrl: string;
+        };
+        NewsResponse: {
+            /** Format: int64 */
+            id?: number;
+            coinSymbol?: string;
+            title?: string;
+            summary?: string;
+            sourceName?: string;
+            sourceUrl?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         CreatePostRequest: {
             coinSymbol: string;
@@ -886,6 +1373,8 @@ export interface components {
         };
         CreateCommentRequest: {
             content: string;
+            /** Format: int64 */
+            replyToCommentId?: number;
         };
         CommentResponse: {
             /** Format: int64 */
@@ -900,6 +1389,37 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
             holderSnapshot?: components["schemas"]["HolderSnapshotResponse"];
+            /** Format: int64 */
+            parentCommentId?: number;
+            /** Format: int64 */
+            replyToCommentId?: number;
+            replyToNickname?: string;
+        };
+        VoteRequest: {
+            /** Format: int64 */
+            choiceId: number;
+        };
+        ChoiceResponse: {
+            /** Format: int64 */
+            id?: number;
+            label?: string;
+            /** Format: int64 */
+            voteCount?: number;
+        };
+        PollResponse: {
+            /** Format: int64 */
+            id?: number;
+            coinSymbol?: string;
+            question?: string;
+            active?: boolean;
+            /** Format: date */
+            day?: string;
+            participatedToday?: boolean;
+            /** Format: int64 */
+            userChoiceId?: number;
+            /** Format: int64 */
+            totalVotes?: number;
+            choices?: components["schemas"]["ChoiceResponse"][];
         };
         FollowStats: {
             /** Format: int64 */
@@ -951,6 +1471,10 @@ export interface components {
             /** Format: date-time */
             connectedAt?: string;
         };
+        CreatePollRequest: {
+            question: string;
+            choices: string[];
+        };
         SignupRequest: {
             loginId: string;
             password: string;
@@ -976,11 +1500,78 @@ export interface components {
         UpdateCommentRequest: {
             content: string;
         };
+        PageResponseSearchItem: {
+            items?: components["schemas"]["SearchItem"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
+        SearchItem: {
+            type?: string;
+            /** Format: int64 */
+            id?: number;
+            label?: string;
+            excerpt?: string;
+            authorNickname?: string;
+            roomSymbol?: string;
+            /** Format: int64 */
+            postId?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int32 */
+            relevance?: number;
+        };
+        PageResponseCommentResponse: {
+            items?: components["schemas"]["CommentResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
+        PageResponsePostResponse: {
+            items?: components["schemas"]["PostResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
         MemberSummary: {
             /** Format: int64 */
             id?: number;
             nickname?: string;
             avatarColor?: string;
+        };
+        PageResponseMemberSummary: {
+            items?: components["schemas"]["MemberSummary"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
         };
         WalletResponse: {
             /** Format: int64 */
@@ -989,6 +1580,42 @@ export interface components {
             address?: string;
             /** Format: date-time */
             connectedAt?: string;
+        };
+        PageResponseWalletResponse: {
+            items?: components["schemas"]["WalletResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
+        Token: {
+            walletAddress?: string;
+            network?: string;
+            /** Format: int64 */
+            chainId?: number;
+            contractAddress?: string;
+            symbol?: string;
+            name?: string;
+            /** Format: int32 */
+            decimals?: number;
+            rawBalance?: string;
+            quantity?: number;
+            status?: string;
+        };
+        WalletAssetPortfolioResponse: {
+            assets?: components["schemas"]["Token"][];
+            unresolvedAssets?: components["schemas"]["Token"][];
+            failedNetworks?: string[];
+            paginationComplete?: boolean;
+            syncStatus?: string;
+            /** Format: date-time */
+            capturedAt?: string;
         };
         AssetResponse: {
             /** @enum {string} */
@@ -1003,10 +1630,33 @@ export interface components {
             locked?: number;
             total?: number;
         };
+        PageResponseConnectionResponse: {
+            items?: components["schemas"]["ConnectionResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
+        AssetIssueResponse: {
+            symbol?: string;
+            status?: string;
+            syncStatus?: string;
+            holderStatus?: string;
+        };
         AssetPortfolioResponse: {
             /** Format: int32 */
             walletCount?: number;
+            /** Format: int32 */
+            exchangeCount?: number;
             assets?: components["schemas"]["AssetResponse"][];
+            unresolvedAssets?: components["schemas"]["AssetIssueResponse"][];
+            walletAssets?: components["schemas"]["WalletAssetPortfolioResponse"];
         };
         PriceQuote: {
             symbol?: string;
@@ -1029,6 +1679,19 @@ export interface components {
             nextCursor?: string;
             hasMore?: boolean;
         };
+        PageResponseFeedItemResponse: {
+            items?: components["schemas"]["FeedItemResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
         CoinResponse: {
             /** Format: int64 */
             id?: number;
@@ -1046,6 +1709,63 @@ export interface components {
             /** Format: int64 */
             postCount?: number;
             description?: string;
+        };
+        RoomStatistics: {
+            symbol?: string;
+            /** Format: int64 */
+            postCount?: number;
+            /** Format: int64 */
+            commentCount?: number;
+            /** Format: int64 */
+            viewCount?: number;
+            /** Format: int64 */
+            likeCount?: number;
+            /** Format: int64 */
+            participantCount?: number;
+            /** Format: int64 */
+            verifiedParticipantCount?: number;
+            /** Format: double */
+            verifiedParticipantRate?: number;
+            /** Format: int64 */
+            hotScore?: number;
+            /** Format: int64 */
+            activeParticipantCount?: number;
+            /** Format: date-time */
+            lastActivityAt?: string;
+        };
+        StatisticsResponse: {
+            window?: string;
+            /** Format: date-time */
+            from?: string;
+            /** Format: date-time */
+            until?: string;
+            rooms?: components["schemas"]["RoomStatistics"][];
+        };
+        PageResponseNewsResponse: {
+            items?: components["schemas"]["NewsResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
+        PageResponseCoinResponse: {
+            items?: components["schemas"]["CoinResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
         };
     };
     responses: never;
@@ -1129,6 +1849,100 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                postId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftResponse"];
+                };
+            };
+        };
+    };
+    save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                postId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftResponse"];
+                };
+            };
+        };
+    };
+    update_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                newsId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveNewsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NewsResponse"];
+                };
+            };
+        };
+    };
+    delete_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                newsId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
                 draftId: number;
             };
             cookie?: never;
@@ -1146,7 +1960,7 @@ export interface operations {
             };
         };
     };
-    update_1: {
+    update_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1172,7 +1986,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    delete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1396,6 +2210,52 @@ export interface operations {
             };
         };
     };
+    vote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pollId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PollResponse"];
+                };
+            };
+        };
+    };
+    close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pollId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     follow: {
         parameters: {
             query?: never;
@@ -1605,6 +2465,83 @@ export interface operations {
             };
         };
     };
+    create_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePollRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PollResponse"];
+                };
+            };
+        };
+    };
+    list_2: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseNewsResponse"];
+                };
+            };
+        };
+    };
+    create_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveNewsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NewsResponse"];
+                };
+            };
+        };
+    };
     signup: {
         parameters: {
             query?: never;
@@ -1711,7 +2648,7 @@ export interface operations {
             };
         };
     };
-    update_2: {
+    update_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -1759,7 +2696,7 @@ export interface operations {
             };
         };
     };
-    delete_2: {
+    delete_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -1779,7 +2716,7 @@ export interface operations {
             };
         };
     };
-    update_3: {
+    update_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -1801,6 +2738,101 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CommentResponse"];
+                };
+            };
+        };
+    };
+    search: {
+        parameters: {
+            query: {
+                q: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseSearchItem"];
+                };
+            };
+        };
+    };
+    comments: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                postId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseCommentResponse"];
+                };
+            };
+        };
+    };
+    posts: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                verified?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponsePostResponse"];
+                };
+            };
+        };
+    };
+    get_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pollId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PollResponse"];
                 };
             };
         };
@@ -1849,6 +2881,31 @@ export interface operations {
             };
         };
     };
+    following_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseMemberSummary"];
+                };
+            };
+        };
+    };
     followers: {
         parameters: {
             query?: never;
@@ -1871,7 +2928,32 @@ export interface operations {
             };
         };
     };
-    get_2: {
+    followers_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseMemberSummary"];
+                };
+            };
+        };
+    };
+    get_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -1893,7 +2975,7 @@ export interface operations {
             };
         };
     };
-    delete_3: {
+    delete_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -1933,7 +3015,50 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    wallets_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseWalletResponse"];
+                };
+            };
+        };
+    };
+    walletAssets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WalletAssetPortfolioResponse"];
+                };
+            };
+        };
+    };
+    list_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -1975,6 +3100,29 @@ export interface operations {
             };
         };
     };
+    exchanges: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseConnectionResponse"];
+                };
+            };
+        };
+    };
     bookmarks: {
         parameters: {
             query?: never;
@@ -1991,6 +3139,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PostResponse"][];
+                };
+            };
+        };
+    };
+    bookmarks_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponsePostResponse"];
                 };
             };
         };
@@ -2084,6 +3255,29 @@ export interface operations {
             };
         };
     };
+    global: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseFeedItemResponse"];
+                };
+            };
+        };
+    };
     followingFeed: {
         parameters: {
             query?: {
@@ -2103,6 +3297,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["FeedPageResponse"];
+                };
+            };
+        };
+    };
+    following_2: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseFeedItemResponse"];
                 };
             };
         };
@@ -2129,7 +3346,57 @@ export interface operations {
             };
         };
     };
-    list_3: {
+    statistics: {
+        parameters: {
+            query?: {
+                window?: string;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StatisticsResponse"];
+                };
+            };
+        };
+    };
+    search_1: {
+        parameters: {
+            query: {
+                q: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseSearchItem"];
+                };
+            };
+        };
+    };
+    list_4: {
         parameters: {
             query?: {
                 size?: number;
@@ -2153,6 +3420,76 @@ export interface operations {
             };
         };
     };
+    room: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                verified?: boolean;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponsePostResponse"];
+                };
+            };
+        };
+    };
+    current_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PollResponse"];
+                };
+            };
+        };
+    };
+    statistics_1: {
+        parameters: {
+            query?: {
+                window?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StatisticsResponse"];
+                };
+            };
+        };
+    };
     coins: {
         parameters: {
             query?: never;
@@ -2169,6 +3506,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CoinResponse"][];
+                };
+            };
+        };
+    };
+    coinPage: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseCoinResponse"];
                 };
             };
         };

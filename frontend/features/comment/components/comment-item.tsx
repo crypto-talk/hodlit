@@ -26,10 +26,10 @@ type Props = {
  * 댓글 한 줄 — 닉네임 · 인증 배지 · 보유 기간 · 시각 · 내용, 본인 댓글이면 수정 · 삭제.
  *
  * 수량 구간은 그리지 않는다(`types.ts` 의 `CommentHolderView` 참고).
- * 인증을 지원하지 않는 방(BTC 등)의 댓글에는 배지도 붙이지 않는다. 모든 댓글에
+ * 인증을 지원하지 않는 방의 댓글에는 배지도 붙이지 않는다. 모든 댓글에
  * "인증 미지원 코인" 이 반복되면 소음이고, 그 사실은 글의 보유 정보 칸이 이미 말한다.
  *
- * 와이어프레임에서 아직 없는 것: 좋아요 · 답글 · 신고 (API 없음).
+ * 와이어프레임에서 아직 없는 것: 좋아요 · 신고 (API 없음), 답글 (API 는 생겼고 아직 안 붙였다).
  */
 export default function CommentItem({ postId, symbol, comment, byPostAuthor, mine }: Props) {
   const queryClient = useQueryClient();

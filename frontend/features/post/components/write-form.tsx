@@ -193,8 +193,7 @@ function WriteFields({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const verifiable = rooms.data?.find((room) => room.symbol === coinSymbol)?.verifiable ?? false;
-    const draft = { coinSymbol, title, content, youtubeUrl, images: images.uploaded, verifiable };
+    const draft = { coinSymbol, title, content, youtubeUrl, images: images.uploaded };
     const found = draftProblem(draft);
     setProblem(found ?? "");
     if (found) return;

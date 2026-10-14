@@ -22,7 +22,8 @@ function snapshot(overrides: Partial<HolderSnapshot> = {}): HolderSnapshot {
     walletCount: 1,
     capturedAt: "2026-09-19T00:00:00Z",
     blockNumber: null,
-    syncStatus: "SYNCED",
+    syncStatus: "READY",
+    holderStatus: "HOLDER",
     ...overrides,
   };
 }
@@ -33,9 +34,12 @@ describe("verificationLabel", () => {
     expect(verificationLabel(snapshot({ verificationLevel: "UNVERIFIED" }))).toBe("미인증");
   });
 
+  it("거래소 연동 등급", () => {
+    expect(verificationLabel(snapshot({ verificationLevel: "EXCHANGE" }))).toBe("거래소연동");
+  });
+
   it("모르는 등급은 가장 약한 쪽으로 떨어뜨린다", () => {
-    // 백엔드가 거래소 연동 등급을 추가하면 여기서 먼저 드러난다.
-    expect(verificationLabel(snapshot({ verificationLevel: "EXCHANGE" }))).toBe("미인증");
+    expect(verificationLabel(snapshot({ verificationLevel: "SOMETHING_NEW" }))).toBe("미인증");
     expect(verificationLabel(snapshot({ verificationLevel: "" }))).toBe("미인증");
   });
 });
@@ -90,26 +94,33 @@ describe("holdingLabel", () => {
 });
 
 describe("tierOf · tierLabel", () => {
-  it("WALLET 은 지갑연결, 그 밖은 미인증", () => {
-    expect(tierLabel(tierOf("WALLET", true))).toBe("지갑연결");
-    expect(tierLabel(tierOf("UNVERIFIED", false))).toBe("미인증");
-    expect(tierLabel(tierOf(undefined, undefined))).toBe("미인증");
+  it("HOLDER 는 등급에 따라 지갑연결 · 거래소연동", () => {
+    expect(tierOf("WALLET", true, "HOLDER")).toBe("wallet");
+    expect(tierOf("EXCHANGE", true, "HOLDER")).toBe("exchange");
+    expect(tierLabel(tierOf("EXCHANGE", true, "HOLDER"))).toBe("거래소연동");
   });
 
-  it("지갑을 연결했는데 보유자가 아니면 미보유", () => {
-    // 서버는 잔액 확인에 성공했을 때만 walletCount 를 채운다. 1 이상이면 "확인했고 0개"다.
-    expect(tierOf("UNVERIFIED", false, 1)).toBe("empty");
-    expect(tierOf("UNVERIFIED", false, 2)).toBe("empty");
+  it("미보유는 EMPTY 일 때만", () => {
+    expect(tierOf("UNVERIFIED", false, "EMPTY")).toBe("empty");
   });
 
-  it("확인 기록이 없으면 미보유가 아니라 미인증", () => {
-    expect(tierOf("UNVERIFIED", false, 0)).toBe("none");
-    expect(tierOf("UNVERIFIED", false, null)).toBe("none");
-    expect(tierOf(undefined, undefined)).toBe("none");
+  it("확인 실패 · 연결 없음은 미보유가 아니라 미인증", () => {
+    expect(tierOf("UNVERIFIED", false, "UNKNOWN")).toBe("none");
+    expect(tierOf("UNVERIFIED", false, "NOT_CONNECTED")).toBe("none");
   });
 
-  it("보유자면 walletCount 와 상관없이 지갑연결", () => {
-    expect(tierOf("WALLET", true, 1)).toBe("wallet");
+  it("오래된 기록 복사본(UNKNOWN)은 verifiedHolder 가 true 여도 보유자가 아니다", () => {
+    expect(tierOf("WALLET", true, "UNKNOWN")).toBe("none");
+  });
+
+  it("holderStatus 가 없으면 verifiedHolder 로 가른다", () => {
+    expect(tierOf("WALLET", true)).toBe("wallet");
+    expect(tierOf("UNVERIFIED", false)).toBe("none");
+    expect(tierOf(undefined, undefined, null)).toBe("none");
+  });
+
+  it("모르는 holderStatus 는 미인증", () => {
+    expect(tierOf("WALLET", true, "SOMETHING_NEW")).toBe("none");
   });
 
   it("미보유 문구는 코인을 붙인다", () => {

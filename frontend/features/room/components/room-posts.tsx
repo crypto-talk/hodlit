@@ -26,9 +26,8 @@ const TAB_ACTIVE = "border-b-brand text-text-primary";
  * 탭은 쿼리스트링이다(구조 규칙 8). 새로고침하거나 링크를 보내도 같은 탭이 열린다.
  * 탭 이동은 같은 데이터를 거르기만 하므로 다시 요청하지 않는다.
  *
- * ⚠️ 커서가 없어서 최신 `ROOM_POST_LIMIT` 개만 받는다. 인증 탭도 그 안에서
- * 거른 것이라 오래된 인증 글은 안 보일 수 있다. 백엔드에 커서와 인증 필터가
- * 생기면 서버에서 거른다.
+ * ⚠️ 최신 `ROOM_POST_LIMIT` 개만 받는다. 인증 탭도 그 안에서 거른 것이라 오래된
+ * 인증 글은 안 보일 수 있다. 번호 페이지 목록 API 는 생겼지만 인증 필터는 아직 없다.
  */
 export default function RoomPosts({ symbol, tab, verifiable }: Props) {
   const posts = useQuery({

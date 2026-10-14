@@ -29,14 +29,11 @@ const ROOM_LIMIT = 10;
 /**
  * 방 게시판에 한 번에 받는 글 수.
  *
- * ⚠️ `/communities/{symbol}/posts` 에 커서가 없다. `size` 만 받아 최신순 배열을
- * 돌려주므로 "그다음 N개"를 달라고 할 방법이 없다. 그래서 더보기 없이 최신
- * N개만 보여준다. 백엔드 상한이 100 이다. 커서가 생기면 피드형으로 바꾼다.
+ * `/communities/{symbol}/posts` 는 `size` 만 받아 최신순 배열을 돌려준다(상한 100).
+ * 그래서 지금은 더보기 없이 최신 N개만 보여준다.
+ * 백엔드에 번호 페이지 목록(`docs/NUMBERED_PAGINATION_API.md`)이 생겼으나 아직 붙이지 않았다.
  */
 export const ROOM_POST_LIMIT = 50;
-
-/** 백엔드가 방 글 수를 셀 때 쓰는 상한. 이 값이면 "이상"으로 읽는다. */
-const POST_COUNT_CAP = 100;
 
 /**
  * 사이드바 '전체 방'.
@@ -81,8 +78,6 @@ export async function loadRoom(symbol: string): Promise<RoomInfo> {
     name: coinNameKo(resolved, coin?.name ?? resolved),
     description: community.description ?? "",
     postCount,
-    // 백엔드가 최신 100개만 세서 100 에서 멈춘다. 진짜 총수가 아니다.
-    postCountCapped: postCount >= POST_COUNT_CAP,
     verifiable: isVerifiable(coin?.verificationAvailability),
     accentColor: coin?.accentColor || null,
   };
