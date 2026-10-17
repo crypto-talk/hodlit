@@ -28,10 +28,15 @@ export function safeSymbol(value: string | undefined): string | null {
   return SYMBOL_PATTERN.test(upper) ? upper : null;
 }
 
-/** 방 게시판. 탭은 쿼리스트링이다(구조 규칙 8). */
-export function roomHref(symbol: string, tab?: "verified"): string {
+/** 방 게시판. 탭과 쪽 번호는 쿼리스트링이다(구조 규칙 8). `page` 는 1부터 센다. */
+export function roomHref(symbol: string, tab?: "verified", page?: number): string {
   const base = `/subhodl/${encodeURIComponent(symbol)}`;
-  return tab ? `${base}?tab=${tab}` : base;
+  const query = new URLSearchParams();
+  if (tab) query.set("tab", tab);
+  // 화면의 쪽 번호는 1부터다. 1쪽은 주소에 적지 않는다.
+  if (page && page > 1) query.set("page", String(page));
+  const search = query.toString();
+  return search ? `${base}?${search}` : base;
 }
 
 /** 글 상세. */
