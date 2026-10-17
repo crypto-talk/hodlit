@@ -62,3 +62,12 @@ export function roomSymbolOf(pathname: string | null): string | null {
   const match = /^\/subhodl\/([^/]+)/.exec(pathname ?? "");
   return match ? safeSymbol(match[1]) : null;
 }
+
+/**
+ * 마이페이지. 본인만 보는 화면이라 닉네임이 주소에 들어가지 않는다. 남에게 보여 주는
+ * 공개 프로필(`/@닉네임`, HODL-75)과는 다른 화면이다.
+ */
+export const MYPAGE_HREF = "/mypage";
+
+/** 마이페이지 지갑 탭. 지갑 추가 · 해제와 거래소 연결 해제가 여기 있다. */
+export const MYPAGE_WALLET_HREF = "/mypage/wallet";

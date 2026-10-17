@@ -1,8 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
 import Fab from "@/components/layout/fab";
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
@@ -13,10 +12,9 @@ import { marqueeItems } from "@/features/landing/api";
 import BookmarkedPosts from "@/features/post/components/bookmarked-posts";
 import Marquee from "@/features/landing/components/marquee";
 import { loadRooms } from "@/features/room/api";
-import { loadWallets, type ConnectedWallet } from "@/features/wallet/api";
+import { useConnectWallet } from "@/features/wallet/hooks/use-connect-wallet";
+import { useWallets } from "@/features/wallet/hooks/use-wallets";
 import { roomSymbolOf, writeHref } from "@/lib/routes";
-import { useRequireLogin, useSession } from "@/lib/session";
-import { WalletLinkCancelled } from "@/lib/wallet-link";
 
 /**
  * 헤더 + 사이드바(≥900px) / 하단 탭(<900px) 화면군 (A-3).
@@ -31,14 +29,10 @@ import { WalletLinkCancelled } from "@/lib/wallet-link";
  * 부분만 잘라낼 수 있다.
  */
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
-  const { member, connectWallet } = useSession();
-  const requireLogin = useRequireLogin();
   // 방 게시판·글 상세 안이면 그 방. 사이드바 표시와 FAB 글쓰기가 쓴다.
   const currentRoom = roomSymbolOf(usePathname());
 
   const [rooms, setRooms] = useState<SidebarRoom[]>([]);
-  const [wallets, setWallets] = useState<ConnectedWallet[]>([]);
-  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
     // 방 목록은 로그인과 무관하다. 실패해도 사이드바의 나머지는 떠야 한다.
@@ -48,48 +42,15 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   }, []);
 
   /**
-   * 연결된 지갑 목록. 로그인 상태에서만 부를 수 있다.
+   * 연결된 지갑 목록. 로그인 상태에서만 부르고, 마이페이지와 같은 쿼리 키를 쓴다.
    *
    * member.walletAddress 하나로 판단하지 않는 이유는, 백엔드가 한 회원에 여러
    * 지갑을 붙일 수 있고 자산도 합산해서 계산하기 때문이다.
    */
-  useEffect(() => {
-    // 로그아웃 때 비우려고 effect 안에서 바로 setState 하지 않는다. 아래
-    // visibleWallets 가 member 로 걸러 주므로 남은 값이 화면에 새지 않는다.
-    if (!member) return;
+  const wallets = useWallets();
+  const { connect, connecting } = useConnectWallet();
 
-    let alive = true;
-    loadWallets()
-      .then((next) => {
-        if (alive) setWallets(next);
-      })
-      .catch(() => {
-        if (alive) setWallets([]);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [member]);
-
-  const visibleWallets = member ? wallets : [];
   const sidebarRooms = rooms.map((room) => ({ ...room, current: room.symbol === currentRoom }));
-
-  const onConnectWallet = useCallback(async () => {
-    // 로그인 전이면 /login 으로 보낸다. 거기서 돌아오면 다시 누르면 된다.
-    if (requireLogin()) return;
-    setConnecting(true);
-    try {
-      // member 가 새 객체로 바뀌면 위 effect 가 지갑 목록을 다시 불러온다.
-      await connectWallet();
-    } catch (reason) {
-      // 실패 · 취소 문구는 lib/wallet-link.ts 가 만든다. 다시 누르면 처음부터 다시 시도한다.
-      // 취소는 사용자가 고른 것이라 빨간 오류가 아니라 일반 토스트로 띄운다.
-      if (reason instanceof WalletLinkCancelled) toast(reason.message);
-      else toast.error(reason instanceof Error ? reason.message : "지갑 연결에 실패했습니다.");
-    } finally {
-      setConnecting(false);
-    }
-  }, [connectWallet, requireLogin]);
 
   return (
     <div className="min-h-screen">
@@ -115,8 +76,8 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       <div className="mx-auto flex max-w-[1320px] items-start gap-8 px-6 pt-8 pb-12">
         <Sidebar
           rooms={sidebarRooms}
-          wallets={visibleWallets}
-          onConnectWallet={onConnectWallet}
+          wallets={wallets.data ?? []}
+          onConnectWallet={connect}
           connecting={connecting}
           extra={<BookmarkedPosts />}
         />
