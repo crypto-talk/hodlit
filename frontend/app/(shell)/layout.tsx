@@ -36,6 +36,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   const [rooms, setRooms] = useState<SidebarRoom[]>([]);
   const [wallets, setWallets] = useState<ConnectedWallet[]>([]);
   const [notice, setNotice] = useState("");
+  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
     // 방 목록은 로그인과 무관하다. 실패해도 사이드바의 나머지는 떠야 한다.
@@ -75,11 +76,15 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     // 로그인 전이면 /login 으로 보낸다. 거기서 돌아오면 다시 누르면 된다.
     if (requireLogin()) return;
     setNotice("");
+    setConnecting(true);
     try {
       // member 가 새 객체로 바뀌면 위 effect 가 지갑 목록을 다시 불러온다.
       await connectWallet();
     } catch (reason) {
+      // 실패 · 취소 문구는 lib/wallet-link.ts 가 만든다. 다시 누르면 처음부터 다시 시도한다.
       setNotice(reason instanceof Error ? reason.message : "지갑 연결에 실패했습니다.");
+    } finally {
+      setConnecting(false);
     }
   }, [connectWallet, requireLogin]);
 
@@ -108,6 +113,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
           rooms={sidebarRooms}
           wallets={visibleWallets}
           onConnectWallet={onConnectWallet}
+          connecting={connecting}
           extra={<BookmarkedPosts />}
         />
 

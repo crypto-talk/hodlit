@@ -3,7 +3,7 @@ import { http } from "@/lib/http";
 
 /**
  * 구조 개편 전부터 남은 마지막 API 모음. `lib/session.tsx` 만 쓴다 —
- * 로그인 · 회원가입 · 로그아웃 · 세션 복원 · 지갑 연결.
+ * 로그인 · 회원가입 · 로그아웃 · 세션 복원. 지갑 연결은 `lib/wallet-link.ts` 로 옮겼다(HODL-55).
  *
  * 전송은 `lib/http.ts` 를 거친다. 타입은 손으로 적은 `Member` 하나뿐이다.
  *
@@ -38,40 +38,6 @@ export async function refreshSession(): Promise<Member | null> {
     clearAccessToken();
     return null;
   }
-}
-
-type InjectedProvider = {
-  request(args: { method: string; params?: unknown[] }): Promise<unknown>;
-};
-
-async function injectedWallet() {
-  const ethereum = (window as typeof window & { ethereum?: InjectedProvider }).ethereum;
-  if (!ethereum) throw new Error("EVM 지갑 확장 프로그램을 설치해 주세요.");
-
-  const accounts = (await ethereum.request({ method: "eth_requestAccounts" })) as string[];
-  const walletAddress = accounts[0];
-  if (!walletAddress) throw new Error("지갑 계정을 선택해 주세요.");
-
-  return { ethereum, walletAddress };
-}
-
-export async function linkInjectedWallet(): Promise<Member> {
-  const { ethereum, walletAddress } = await injectedWallet();
-
-  const nonce = await http<{ nonceId: string; message: string }>("/api/v1/me/wallet/nonce", {
-    method: "POST",
-    body: JSON.stringify({ walletAddress }),
-  });
-
-  const signature = (await ethereum.request({
-    method: "personal_sign",
-    params: [nonce.message, walletAddress],
-  })) as string;
-
-  return http<Member>("/api/v1/me/wallet", {
-    method: "POST",
-    body: JSON.stringify({ walletAddress, nonceId: nonce.nonceId, signature }),
-  });
 }
 
 export const api = {

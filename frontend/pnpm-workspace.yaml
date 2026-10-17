@@ -7,6 +7,7 @@
 
 # 설치 스크립트 실행이 실제로 필요한 의존성만 허용한다.
 allowBuilds:
+  "@reown/appkit": false # postinstall 은 버전 확인 스크립트뿐이라 막아 둔다
   sharp: true # next/image 최적화용 네이티브 바인딩
   unrs-resolver: true # eslint-config-next의 import 해석기
 
@@ -25,3 +26,10 @@ trustPolicyExclude:
   - eslint-import-resolver-typescript@3.10.1
   - semver@6.3.1
   - undici-types@6.21.0
+  # 아래 넷은 Reown AppKit · ethers 가 끌고 오는 하위 의존성이다(HODL-55).
+  # 넷 다 같은 메인테이너의 앞뒤 버전에는 npm provenance 가 있는데 이 버전에만 없거나(noble · slow-redact),
+  # 위 undici-types 처럼 서명 체계 이전 버전이다. 직접 고른 패키지가 아니다.
+  - "@noble/curves@1.8.0" # @walletconnect/relay-auth
+  - "@noble/hashes@1.7.0" # @noble/curves@1.8.0
+  - "slow-redact@0.3.2" # pino ← @walletconnect/logger
+  - "undici-types@6.19.8" # @types/node@22.7.5 ← ethers
