@@ -6,6 +6,7 @@ import Fab from "@/components/layout/fab";
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
+import WalletBox from "@/components/layout/wallet-box";
 import type { SidebarRoom } from "@/components/layout/types";
 import { marqueeItems } from "@/features/landing/api";
 import BookmarkedPosts from "@/features/post/components/bookmarked-posts";
@@ -98,9 +99,10 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
        * 화면 정가운데에 온다(양옆 칸 폭이 같다).
        *
        * 본문이 화면 끝까지 늘어나면 한 줄이 너무 길어 읽기 힘들어 폭을 막았다.
-       * 오른쪽 칸에는 임시로 북마크한 글(마이페이지 전까지)만 둔다. 지갑 카드는 사이드바
-       * '내 코인'으로 옮겼다(HODL-58). 나중에 광고·보조 정보가 들어갈 자리다.
-       * 1320px 미만에서는 오른쪽 칸이 숨고 북마크한 글은 사이드바로 돌아간다.
+       * 오른쪽 칸에는 예전 지갑 카드 자리의 빈 박스와 임시 북마크한 글(마이페이지 전까지)을
+       * 둔다. 지갑 연결은 사이드바 '내 코인'으로 옮겼고, 박스는 회의 결정대로 내용만 비운 채
+       * 남긴다(HODL-58). 나중에 광고·보조 정보가 들어갈 자리다.
+       * 1320px 미만에서는 오른쪽 칸이 숨고 빈 박스와 북마크한 글은 사이드바로 돌아간다.
        * 900px 미만에서는 사이드바도 숨는다.
        */}
       <div className="mx-auto flex max-w-[1320px] items-start gap-8 px-6 pt-8 pb-12">
@@ -122,6 +124,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
         </div>
 
         <aside aria-label="내 정보" className="hidden w-60 flex-none flex-col gap-4 wide:flex">
+          <WalletBox />
           <BookmarkedPosts />
         </aside>
       </div>

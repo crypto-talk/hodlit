@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { roomHref } from "@/lib/routes";
 import MyCoins from "./my-coins";
+import WalletBox from "./wallet-box";
 import type { SidebarRoom, SidebarWallet } from "./types";
 
 type Props = {
@@ -50,8 +51,9 @@ export default function Sidebar({ rooms, wallets, onConnectWallet, extra }: Prop
         ))}
       </div>
 
-      {/* 넓은 화면(≥1320px)에서는 오른쪽 칸으로 옮겨 가고 여기서는 숨는다. */}
-      {extra ? <div className="mt-8 wide:hidden">{extra}</div> : null}
+      {/* 넓은 화면(≥1320px)에서는 둘 다 오른쪽 칸으로 옮겨 가고 여기서는 숨는다. */}
+      <WalletBox className="mt-8 wide:hidden" />
+      {extra ? <div className="mt-4 wide:hidden">{extra}</div> : null}
 
       <div className="mt-6 flex flex-col gap-2">
         <a href="#" className="text-xs text-text-muted">
