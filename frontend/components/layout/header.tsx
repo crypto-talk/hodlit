@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { roomSymbolOf, writeHref } from "@/lib/routes";
+import { MYPAGE_HREF, roomSymbolOf, writeHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import Logo from "./logo";
 
@@ -52,9 +52,14 @@ export default function Header() {
       <div className="flex flex-none items-center gap-2">
         {member ? (
           <>
-            <span className="max-w-35 truncate text-sm font-semibold text-text-primary">
+            {/* 마이페이지 입구. 좁은 화면에서는 사이드바가 숨어서 여기가 유일한 길이다. */}
+            <Link
+              href={MYPAGE_HREF}
+              title="마이페이지"
+              className="max-w-35 truncate text-sm font-semibold text-text-primary hover:text-brand"
+            >
               {member.nickname}
-            </span>
+            </Link>
             <WriteButton href={write} />
             <Button type="button" onClick={logout}>
               로그아웃
