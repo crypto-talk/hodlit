@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import Fab from "@/components/layout/fab";
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
@@ -14,6 +15,7 @@ import { loadRooms } from "@/features/room/api";
 import { loadWallets, type ConnectedWallet } from "@/features/wallet/api";
 import { roomSymbolOf, writeHref } from "@/lib/routes";
 import { useRequireLogin, useSession } from "@/lib/session";
+import { WalletLinkCancelled } from "@/lib/wallet-link";
 
 /**
  * 헤더 + 사이드바(≥900px) / 하단 탭(<900px) 화면군 (A-3).
@@ -35,7 +37,6 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
   const [rooms, setRooms] = useState<SidebarRoom[]>([]);
   const [wallets, setWallets] = useState<ConnectedWallet[]>([]);
-  const [notice, setNotice] = useState("");
   const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
@@ -75,14 +76,15 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   const onConnectWallet = useCallback(async () => {
     // 로그인 전이면 /login 으로 보낸다. 거기서 돌아오면 다시 누르면 된다.
     if (requireLogin()) return;
-    setNotice("");
     setConnecting(true);
     try {
       // member 가 새 객체로 바뀌면 위 effect 가 지갑 목록을 다시 불러온다.
       await connectWallet();
     } catch (reason) {
       // 실패 · 취소 문구는 lib/wallet-link.ts 가 만든다. 다시 누르면 처음부터 다시 시도한다.
-      setNotice(reason instanceof Error ? reason.message : "지갑 연결에 실패했습니다.");
+      // 취소는 사용자가 고른 것이라 빨간 오류가 아니라 일반 토스트로 띄운다.
+      if (reason instanceof WalletLinkCancelled) toast(reason.message);
+      else toast.error(reason instanceof Error ? reason.message : "지갑 연결에 실패했습니다.");
     } finally {
       setConnecting(false);
     }
@@ -118,12 +120,6 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
         />
 
         <div className="flex min-w-0 flex-[0_1_720px] flex-col gap-12 max-shell:flex-1">
-          {notice ? (
-            <p role="alert" className="text-sm text-danger">
-              {notice}
-            </p>
-          ) : null}
-
           {children}
         </div>
 

@@ -37,7 +37,15 @@ type AppKitLike = {
   subscribeState(callback: (state: { open: boolean }) => void): () => void;
 };
 
-const CANCELLED = "지갑에서 연결이나 서명을 취소했습니다. 다시 시도해 주세요.";
+/**
+ * 사용자가 모달을 닫거나 지갑에서 거절한 경우. 오류가 아니라서 셸이 일반 토스트로 띄운다.
+ */
+export class WalletLinkCancelled extends Error {
+  constructor() {
+    super("지갑에서 연결이나 서명을 취소했습니다. 다시 시도해 주세요.");
+    this.name = "WalletLinkCancelled";
+  }
+}
 
 /** 모달이 닫힌 뒤 연결 결과를 기다리는 시간. 연결 직후 모달이 닫히는 것과 순서가 엇갈릴 수 있다. */
 const CLOSE_GRACE_MS = 500;
@@ -98,7 +106,7 @@ function waitForConnection(appKit: AppKitLike): Promise<string> {
       window.setTimeout(() => {
         const address = appKit.getAddress();
         if (appKit.getIsConnectedState() && address) finish(() => resolve(address));
-        else finish(() => reject(new Error(CANCELLED)));
+        else finish(() => reject(new WalletLinkCancelled()));
       }, CLOSE_GRACE_MS);
     });
 
@@ -197,7 +205,7 @@ function loadAppKit(): Promise<AppKitLike> {
 /**
  * 지갑이 던지는 오류를 화면 문구로.
  *
- * 사용자가 거절하면 EIP-1193 표준 코드 4001 이 온다. 모달을 닫으면 위에서 CANCELLED 로 바꿔
+ * 사용자가 거절하면 EIP-1193 표준 코드 4001 이 온다. 모달을 닫으면 위에서 WalletLinkCancelled 로 바꿔
  * 던진다. 서버 오류(`ApiError`)는 서버 문구를 그대로 둔다 — 이미 다른 회원에 붙은 지갑 등.
  */
 function friendlyError(reason: unknown): Error {
@@ -206,7 +214,7 @@ function friendlyError(reason: unknown): Error {
   const code = (reason as { code?: unknown } | null)?.code;
   const message = reason instanceof Error ? reason.message : String(reason ?? "");
 
-  if (code === 4001 || /reject|denied|cancel/i.test(message)) return new Error(CANCELLED);
+  if (code === 4001 || /reject|denied|cancel/i.test(message)) return new WalletLinkCancelled();
   return reason instanceof Error && message
     ? reason
     : new Error("지갑 연결에 실패했습니다. 다시 시도해 주세요.");
