@@ -19,9 +19,17 @@ function required(name: string, value: string | undefined): string {
  */
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
+/**
+ * WalletConnect(Reown) projectId. 공개해도 되는 값이다(브라우저가 relay 에 붙을 때 쓴다).
+ * 비어 있으면 QR · 모바일 지갑 연결만 막히고 나머지는 그대로 돈다. 그래서 빌드를 깨지 않는다.
+ */
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "";
+
 export const config = {
   /** Spring Boot 백엔드 주소. 개발 기본값은 로컬 8080. */
   apiUrl,
+  /** 없으면 빈 문자열. `lib/wallet-link.ts` 가 쓴다. */
+  walletConnectProjectId,
 } as const;
 
 /**

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { roomHref } from "@/lib/routes";
+import type { WalletMethod } from "@/lib/wallet-link";
 import MyCoins from "./my-coins";
 import type { SidebarRoom, SidebarWallet } from "./types";
 
@@ -8,7 +9,9 @@ type Props = {
   rooms: SidebarRoom[];
   /** 연결된 지갑 목록. 로그인 전이거나 연결 전이면 빈 배열이다. */
   wallets: SidebarWallet[];
-  onConnectWallet: () => void;
+  onConnectWallet: (method: WalletMethod) => void;
+  /** 지갑 연결이 진행 중이면 true. */
+  connecting: boolean;
   /**
    * 전체 방 아래에 붙는 칸. 지금은 "북마크한 글"(임시)이다. 넓은 화면(≥1320px)에서는
    * 오른쪽 칸에 그려지고 여기서는 숨는다.
@@ -22,11 +25,11 @@ type Props = {
 /** 섹션 제목. 사이드바 안에서만 쓰는 작은 조각이라 여기 둔다. */
 const LABEL = "text-xs font-semibold tracking-[0.06em] text-text-muted";
 
-export default function Sidebar({ rooms, wallets, onConnectWallet, extra }: Props) {
+export default function Sidebar({ rooms, wallets, onConnectWallet, connecting, extra }: Props) {
   return (
     <div className="flex w-60 flex-none flex-col max-shell:hidden">
       <div className={LABEL}>내 코인</div>
-      <MyCoins wallets={wallets} onConnectWallet={onConnectWallet} />
+      <MyCoins wallets={wallets} onConnectWallet={onConnectWallet} connecting={connecting} />
 
       {/*
        * 등락률은 뺐다(HODL-59). 10-08 회의: 다른 것으로 채울 게 아니면 아예 없앤다.

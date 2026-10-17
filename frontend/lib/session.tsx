@@ -10,7 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { api, linkInjectedWallet, refreshSession, type Member } from "@/lib/api";
+import { api, refreshSession, type Member } from "@/lib/api";
+import { linkWallet, type WalletMethod } from "@/lib/wallet-link";
 
 /**
  * 로그인 상태.
@@ -34,8 +35,11 @@ type SessionValue = {
   login: (loginId: string, password: string) => Promise<Member>;
   signup: (loginId: string, password: string, nickname: string) => Promise<Member>;
   logout: () => Promise<void>;
-  /** 주입형 지갑(메타마스크 등) 연결. 성공하면 member 가 새 객체로 바뀐다. */
-  connectWallet: () => Promise<Member>;
+  /**
+   * 지갑 연결. 브라우저 확장(`injected`) 또는 QR · 모바일(`walletconnect`).
+   * 성공하면 member 가 새 객체로 바뀐다.
+   */
+  connectWallet: (method: WalletMethod) => Promise<Member>;
 };
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -77,8 +81,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await api.logout().catch(() => undefined);
         setMember(null);
       },
-      connectWallet: async () => {
-        const next = await linkInjectedWallet();
+      connectWallet: async (method) => {
+        const next = await linkWallet(method);
         setMember(next);
         return next;
       },

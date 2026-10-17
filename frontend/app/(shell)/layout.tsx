@@ -14,6 +14,7 @@ import { loadRooms } from "@/features/room/api";
 import { loadWallets, type ConnectedWallet } from "@/features/wallet/api";
 import { roomSymbolOf, writeHref } from "@/lib/routes";
 import { useRequireLogin, useSession } from "@/lib/session";
+import type { WalletMethod } from "@/lib/wallet-link";
 
 /**
  * 헤더 + 사이드바(≥900px) / 하단 탭(<900px) 화면군 (A-3).
@@ -36,6 +37,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   const [rooms, setRooms] = useState<SidebarRoom[]>([]);
   const [wallets, setWallets] = useState<ConnectedWallet[]>([]);
   const [notice, setNotice] = useState("");
+  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
     // 방 목록은 로그인과 무관하다. 실패해도 사이드바의 나머지는 떠야 한다.
@@ -71,17 +73,24 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   const visibleWallets = member ? wallets : [];
   const sidebarRooms = rooms.map((room) => ({ ...room, current: room.symbol === currentRoom }));
 
-  const onConnectWallet = useCallback(async () => {
-    // 로그인 전이면 /login 으로 보낸다. 거기서 돌아오면 다시 누르면 된다.
-    if (requireLogin()) return;
-    setNotice("");
-    try {
-      // member 가 새 객체로 바뀌면 위 effect 가 지갑 목록을 다시 불러온다.
-      await connectWallet();
-    } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "지갑 연결에 실패했습니다.");
-    }
-  }, [connectWallet, requireLogin]);
+  const onConnectWallet = useCallback(
+    async (method: WalletMethod) => {
+      // 로그인 전이면 /login 으로 보낸다. 거기서 돌아오면 다시 누르면 된다.
+      if (requireLogin()) return;
+      setNotice("");
+      setConnecting(true);
+      try {
+        // member 가 새 객체로 바뀌면 위 effect 가 지갑 목록을 다시 불러온다.
+        await connectWallet(method);
+      } catch (reason) {
+        // 실패 · 취소 문구는 lib/wallet-link.ts 가 만든다. 다시 누르면 처음부터 다시 시도한다.
+        setNotice(reason instanceof Error ? reason.message : "지갑 연결에 실패했습니다.");
+      } finally {
+        setConnecting(false);
+      }
+    },
+    [connectWallet, requireLogin],
+  );
 
   return (
     <div className="min-h-screen">
@@ -108,6 +117,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
           rooms={sidebarRooms}
           wallets={visibleWallets}
           onConnectWallet={onConnectWallet}
+          connecting={connecting}
           extra={<BookmarkedPosts />}
         />
 
