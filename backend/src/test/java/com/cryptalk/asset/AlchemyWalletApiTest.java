@@ -121,7 +121,7 @@ class AlchemyWalletApiTest {
                 .content("{\"coinSymbol\":\"POL\",\"title\":\"test\",\"content\":\"body\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("UNKNOWN"))
-            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value("CACHED"))
+            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value("PARTIAL"))
             .andExpect(jsonPath("$.holderSnapshot.quantityBand").doesNotExist());
         verify(alchemy, times(1)).fetch(anyList(), any(Duration.class));
     }
@@ -217,7 +217,8 @@ class AlchemyWalletApiTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH' && @.quantity > 0)].symbol").value("ETH"))
             .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].syncStatus").value("PARTIAL"))
-            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'ETH')].holderStatus").value("UNKNOWN"));
+            .andExpect(jsonPath("$.assets[?(@.symbol == 'ETH')].verified").value(true))
+            .andExpect(jsonPath("$.unresolvedAssets[?(@.symbol == 'ETH')].holderStatus").value("HOLDER"));
     }
 
     private AlchemyPortfolioClient.Result result(List<AlchemyPortfolioClient.Token> tokens, List<String> failed) {

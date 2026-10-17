@@ -5,6 +5,7 @@ import com.cryptalk.asset.AssetService;
 import com.cryptalk.asset.AssetSnapshot;
 import com.cryptalk.member.Member;
 import com.cryptalk.post.PostService;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -60,6 +61,7 @@ public class CommentService {
             comment.getContent(), comment.getCreatedAt(), comment.getUpdatedAt(), snapshot,
             comment.getParentCommentId(), comment.getReplyToCommentId(), comment.getReplyToNickname());
     }
+    @Schema(description = "작성 당시 확인된 잔액 기준의 불변 보유 기록. 일부 조회 실패 시에도 양수 부분합은 HOLDER로 인증하며 PARTIAL을 유지합니다. 댓글은 수량을 공개하지 않습니다.")
     public record HolderSnapshotResponse(String verificationAvailability, String verificationLevel,
                                          boolean verifiedHolder, Integer holdingMonths, int walletCount,
                                          Instant capturedAt, String syncStatus, String holderStatus) {}

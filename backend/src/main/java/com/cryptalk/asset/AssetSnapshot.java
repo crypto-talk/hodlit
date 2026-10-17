@@ -55,8 +55,9 @@ public class AssetSnapshot {
     public int getExchangeCount() { return exchangeCount; }
     public String getHolderStatus() {
         if (walletCount == 0 && exchangeCount == 0) return "NOT_CONNECTED";
-        if (!"VERIFIED".equals(verificationStatus) || "STALE".equals(syncStatus) || "CACHED".equals(syncStatus)) return "UNKNOWN";
+        if ("STALE".equals(syncStatus) || "CACHED".equals(syncStatus)) return "UNKNOWN";
         if (isVerified()) return "HOLDER";
+        if (!"VERIFIED".equals(verificationStatus)) return "UNKNOWN";
         if ("VERIFIED".equals(verificationStatus) && quantity.signum() == 0) return "EMPTY";
         return "UNKNOWN";
     }

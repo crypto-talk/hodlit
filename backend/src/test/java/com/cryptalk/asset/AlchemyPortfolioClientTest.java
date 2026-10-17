@@ -116,6 +116,47 @@ class AlchemyPortfolioClientTest {
         assertEquals(0, requests.size());
     }
 
+    @Test void failureOfOneWalletKeepsAnotherWalletsConfirmedBalance() {
+        String second = "0x2222222222222222222222222222222222222222";
+        pages = List.of("{\"data\":{\"tokens\":["
+            + token("eth-mainnet", null, "0xde0b6b3a7640000", 18, "ETH") + ","
+            + token("eth-mainnet", null, "0x4563918244f40000", 18, "ETH").replace(ADDRESS, second)
+            + "]},\"error\":{\"partialErrors\":[{\"address\":\"" + second + "\",\"network\":\"eth-mainnet\"}]}}");
+        var result = client.fetch(List.of(ADDRESS, second), Duration.ofSeconds(3));
+        assertEquals(1, result.assets().size());
+        assertEquals(ADDRESS, result.assets().getFirst().walletAddress());
+        assertEquals(BigDecimal.ONE, result.assets().getFirst().quantity().stripTrailingZeros());
+        assertFalse(result.completeFor(1));
+    }
+
+    @Test void networkFailureWithoutWalletIdentityExcludesItsBalances() {
+        pages = List.of("{\"data\":{\"tokens\":["
+            + token("eth-mainnet", null, "0x1", 18, "ETH") + ","
+            + token("matic-mainnet", null, "0x2", 18, "POL")
+            + "]},\"error\":{\"partialErrors\":[{\"network\":\"eth-mainnet\"}]}}");
+        var result = fetch();
+        assertEquals(1, result.assets().size());
+        assertEquals("matic-mainnet", result.assets().getFirst().network());
+        assertTrue(result.completeFor(137));
+    }
+
+    @Test void conflictingBalancesAreExcludedEvenWhenRepeatedAgain() {
+        pages = List.of(page(token("eth-mainnet", null, "0x1", 18, "ETH"),
+            token("eth-mainnet", null, "0x2", 18, "ETH"),
+            token("eth-mainnet", null, "0x1", 18, "ETH")));
+        var result = fetch();
+        assertTrue(result.assets().isEmpty());
+        assertFalse(result.completeFor(1));
+    }
+
+    @Test void malformedRowDoesNotDiscardFollowingValidWallet() {
+        pages = List.of(page("{\"address\":\"" + ADDRESS + "\",\"network\":\"eth-mainnet\"}",
+            token("eth-mainnet", null, "0x1", 18, "ETH")));
+        var result = fetch();
+        assertEquals(1, result.assets().size());
+        assertFalse(result.completeFor(1));
+    }
+
     private AlchemyPortfolioClient.Result fetch() { return client.fetch(List.of(ADDRESS), Duration.ofSeconds(3)); }
     private String page(String... rows) { return "{\"data\":{\"tokens\":[" + String.join(",", rows) + "]}}"; }
     private String token(String network, String contract, String balance, int decimals, String symbol) {
