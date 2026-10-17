@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatRelativeTime } from "@/lib/format/time";
+import { formatClock, formatDate, formatRelativeTime } from "@/lib/format/time";
 
 const NOW = new Date("2026-09-19T12:00:00Z");
 
@@ -28,6 +28,18 @@ describe("formatRelativeTime", () => {
     expect(formatRelativeTime(undefined, NOW)).toBe("");
     expect(formatRelativeTime("", NOW)).toBe("");
     expect(formatRelativeTime("어제", NOW)).toBe("");
+  });
+});
+
+describe("formatClock", () => {
+  it("24시간제 시:분만 보여준다", () => {
+    const at = new Date(2026, 9, 18, 18, 2, 30).getTime();
+    expect(formatClock(at)).toBe("18:02");
+  });
+
+  it("값이 없으면 빈 문자열", () => {
+    expect(formatClock(null)).toBe("");
+    expect(formatClock(Number.NaN)).toBe("");
   });
 });
 

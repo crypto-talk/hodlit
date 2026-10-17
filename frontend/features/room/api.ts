@@ -1,11 +1,10 @@
 import type { SidebarRoom } from "@/components/layout/types";
 import type { components } from "@/lib/api-schema";
-import { formatChangeRate } from "@/lib/format/number";
 import { isVerifiable } from "@/lib/holder-snapshot/label";
 import { http } from "@/lib/http";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { hasPostId, toPostSummary } from "@/lib/post-summary";
-import type { RoomInfo, RoomPostPage, RoomPrice } from "./types";
+import type { RoomInfo, RoomPostPage } from "./types";
 
 /**
  * 방 목록과 방 게시판 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -16,13 +15,15 @@ import type { RoomInfo, RoomPostPage, RoomPrice } from "./types";
  * ⚠️ `lib/api-schema.ts` 의 응답 타입은 모든 필드가 선택(`?`)이다. 백엔드가
  * 응답 스키마에 required 를 안 내보내서다. 여기서 한 번 좁히고, 화면은 좁혀진
  * 뷰 모델만 받는다.
+ *
+ * 방 시세는 여기서 가져오지 않는다. 브라우저가 CoinGecko 를 직접 부르고(HODL-61), 랜딩 티커와
+ * 같은 요청을 나눠 쓰므로 `lib/market-price/` 에 있다.
  */
 
 type Schemas = components["schemas"];
 type CoinResponse = Schemas["CoinResponse"];
 type CommunityResponse = Schemas["CommunityResponse"];
 type PostPageResponse = Schemas["PageResponsePostResponse"];
-type PriceQuote = Schemas["PriceQuote"];
 
 const ROOM_LIMIT = 10;
 
@@ -32,7 +33,7 @@ export const ROOM_PAGE_SIZE = 20;
 /**
  * 사이드바 '전체 방'.
  *
- * 등락률은 뺐다(HODL-59). 그래서 시세(`GET /market/prices`)를 같이 부르지 않는다.
+ * 등락률은 뺐다(HODL-59). 그래서 시세를 같이 부르지 않는다.
  */
 export async function loadRooms(): Promise<SidebarRoom[]> {
   const coins = await http<CoinResponse[]>("/api/v1/coins");
@@ -65,34 +66,6 @@ export async function loadRoom(symbol: string): Promise<RoomInfo> {
     postCount,
     verifiable: isVerifiable(coin?.verificationAvailability),
     accentColor: coin?.accentColor || null,
-  };
-}
-
-/**
- * 방 시세. 응답에 가격이 없으면 null 이다. 요청 실패는 화면이 시세 칸 안에서만
- * 처리한다 — 시세가 안 와도 게시판은 읽을 수 있어야 한다.
- *
- * 과거 시세 API 가 없어서 차트는 그리지 않는다. 현재가와 24시간 등락률만이다.
- */
-export async function loadRoomPrice(symbol: string): Promise<RoomPrice | null> {
-  const quote = await http<PriceQuote>(
-    `/api/v1/market/prices/${encodeURIComponent(symbol)}?currency=KRW`,
-  );
-  if (typeof quote?.price !== "number" || !Number.isFinite(quote.price)) return null;
-
-  const change = quote.change24h;
-  const direction =
-    typeof change !== "number" || Math.round(change * 10) === 0
-      ? "flat"
-      : change > 0
-        ? "up"
-        : "down";
-
-  return {
-    price: quote.price,
-    change: formatChangeRate(change),
-    direction,
-    capturedAt: quote.capturedAt ?? "",
   };
 }
 

@@ -15,6 +15,18 @@ const OTHER_YEAR = new Intl.DateTimeFormat("ko-KR", {
 
 const DATE = new Intl.DateTimeFormat("ko-KR");
 
+const CLOCK = new Intl.DateTimeFormat("ko-KR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+/** 시각만. `18:02` 시세처럼 오늘 안에서 계속 바뀌는 값의 기준 시각에 쓴다. */
+export function formatClock(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || !Number.isFinite(ms)) return "";
+  return CLOCK.format(new Date(ms));
+}
+
 /** 날짜. `2026. 9. 19.` 상대 시각이 어색한 기록성 표기에 쓴다. */
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "";

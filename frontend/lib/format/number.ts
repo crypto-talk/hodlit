@@ -17,6 +17,21 @@ export function formatKrw(value: number): string {
 }
 
 /**
+ * 코인 원화 시세. 1,000원 미만 코인은 소수 둘째 자리까지 보여준다.
+ * `formatKrw` 는 소수를 버려서 POL(₩122.49) 같은 코인의 움직임이 안 보인다.
+ * `₩108,489,011` / `₩122.49` / `₩0.12`
+ */
+export function formatCoinKrw(value: number): string {
+  if (Math.abs(value) >= 1000) return KRW.format(value);
+  return new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency: "KRW",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+/**
  * 코인 수량. 코인마다 의미 있는 자릿수가 달라 소수 자릿수를 받는다.
  *
  * ⚠️ 글에 붙는 보유 수량에는 쓰지 않는다. 그쪽은 지갑 특정을 막기 위해
