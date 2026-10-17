@@ -40,7 +40,7 @@ test("server-renders the Hodlit application", async (t) => {
     // 아래 문구는 app/(shell)/layout.tsx 와 app/(shell)/page.tsx 의 마크업 기준이다.
     assert.match(html, /Hodlit/);
     assert.match(html, /지금 뜨는 방/);
-    assert.match(html, /이더리움/);
+    // 뜨는 방은 이제 브라우저에서 통계 API 로 받는다(HODL-44). 서버 HTML 에는 방 이름이 없다.
     assert.doesNotMatch(html, /Your site is taking shape/);
 
     // 셸이 레이아웃으로 올라갔다. 사이드바와 푸터가 랜딩에도 그대로 있어야 한다.
