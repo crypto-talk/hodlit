@@ -1,7 +1,8 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { dailyVotes, loadFeed, trendingRooms } from "@/features/landing/api";
+import { dailyVotes, loadFeed, loadTrendingRooms } from "@/features/landing/api";
 import HotPosts from "@/features/landing/components/hot-posts";
 import PostFeed from "@/features/landing/components/post-feed";
 import TrendingRooms from "@/features/landing/components/trending-rooms";
@@ -15,8 +16,10 @@ import { useRequireLogin } from "@/lib/session";
  * 셸(헤더·전광판·사이드바·푸터·FAB)은 `app/(shell)/layout.tsx` 가 그린다.
  * 이 파일은 가운데 칼럼의 섹션만 들고 있다.
  *
- * 백엔드에서 오는 것 — 전체 글과 핫글 (`GET /feed`)
- * 아직 목데이터인 것 — 지금 뜨는 방(G-3), 오늘의 투표(G-5). API 자체가 없다.
+ * 백엔드에서 오는 것 — 전체 글과 핫글 (`GET /feed`), 지금 뜨는 방 (`GET /communities/stats`)
+ * 아직 목데이터인 것 — 오늘의 투표(G-5). API 는 생겼고(HODL-64) 아직 안 붙였다.
+ *
+ * 뜨는 방은 피드와 따로 받고 따로 실패한다. 한쪽이 안 와도 다른 쪽은 보여야 한다.
  *
  * 불러오기에 실패하면 목데이터로 가리지 않고 화면에 알린다. 배포본에서
  * 백엔드가 안 붙은 것을 바로 알아야 하기 때문이다.
@@ -28,6 +31,7 @@ export default function Landing() {
   const [hot, setHot] = useState<HotPost[]>([]);
   const [notice, setNotice] = useState("");
   const [loadFailed, setLoadFailed] = useState(false);
+  const trending = useQuery({ queryKey: ["trending-rooms"], queryFn: loadTrendingRooms });
 
   useEffect(() => {
     let alive = true;
@@ -67,7 +71,11 @@ export default function Landing() {
 
       {/* 인기글 → 인기 게시판 → 투표 → 전체 글. 읽을거리를 먼저 보여준다. */}
       <HotPosts posts={hot} />
-      <TrendingRooms rooms={trendingRooms()} />
+      <TrendingRooms
+        rooms={trending.data ?? null}
+        failed={trending.isError}
+        onRetry={() => trending.refetch()}
+      />
       <VotePanel votes={dailyVotes()} onVote={onVote} />
       <PostFeed posts={posts} />
     </>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { roomHref } from "@/lib/routes";
-import WalletCard from "./wallet-card";
+import MyCoins from "./my-coins";
 import type { SidebarRoom, SidebarWallet } from "./types";
 
 type Props = {
@@ -10,8 +10,8 @@ type Props = {
   wallets: SidebarWallet[];
   onConnectWallet: () => void;
   /**
-   * 지갑 카드 아래에 붙는 칸. 지금은 "북마크한 글"(임시)이다. 지갑 카드처럼 넓은
-   * 화면에서는 오른쪽 칸에 그려지고 여기서는 숨는다.
+   * 전체 방 아래에 붙는 칸. 지금은 "북마크한 글"(임시)이다. 넓은 화면(≥1320px)에서는
+   * 오른쪽 칸에 그려지고 여기서는 숨는다.
    *
    * `components/` 는 `features/` 를 참조할 수 없어서(구조 규칙 1) 셸 레이아웃이
    * 만들어 넘긴다.
@@ -19,32 +19,20 @@ type Props = {
   extra?: ReactNode;
 };
 
-const changeColor = (change: string) => {
-  if (change.startsWith("-")) return "var(--danger)";
-  if (change.startsWith("+")) return "var(--success)";
-  return "var(--text-muted)";
-};
-
 /** 섹션 제목. 사이드바 안에서만 쓰는 작은 조각이라 여기 둔다. */
 const LABEL = "text-xs font-semibold tracking-[0.06em] text-text-muted";
-const CARD = "rounded-lg border border-border-subtle bg-surface p-4";
 
 export default function Sidebar({ rooms, wallets, onConnectWallet, extra }: Props) {
-  const connected = wallets.length > 0;
-
   return (
     <div className="flex w-60 flex-none flex-col max-shell:hidden">
       <div className={LABEL}>내 코인</div>
-      <div className={`${CARD} mt-2 text-sm text-text-muted`}>
-        {connected
-          ? "보유 중인 코인의 방이 여기 고정됩니다"
-          : "지갑을 연결하면 보유 중인 코인의 방이 여기 고정됩니다"}
-      </div>
+      <MyCoins wallets={wallets} onConnectWallet={onConnectWallet} />
 
-      <div className="mt-8 flex items-baseline gap-2">
-        <div className={`${LABEL} flex-1`}>전체 방</div>
-        <div className="text-xs text-text-muted">24h</div>
-      </div>
+      {/*
+       * 등락률은 뺐다(HODL-59). 10-08 회의: 다른 것으로 채울 게 아니면 아예 없앤다.
+       * 시세는 방 게시판 안에서 본다.
+       */}
+      <div className={`${LABEL} mt-8`}>전체 방</div>
 
       <div className="mt-2 flex flex-col">
         {rooms.map((room) => (
@@ -58,23 +46,12 @@ export default function Sidebar({ rooms, wallets, onConnectWallet, extra }: Prop
           >
             <span className="flex-none text-sm font-semibold">{room.symbol}</span>
             <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{room.name}</span>
-            <span
-              className="flex-none text-sm tabular-nums"
-              style={{ color: changeColor(room.change) }}
-            >
-              {room.change}
-            </span>
           </Link>
         ))}
       </div>
 
       {/* 넓은 화면(≥1320px)에서는 오른쪽 칸으로 옮겨 가고 여기서는 숨는다. */}
-      <WalletCard
-        wallets={wallets}
-        onConnectWallet={onConnectWallet}
-        className="mt-8 wide:hidden"
-      />
-      {extra ? <div className="mt-4 wide:hidden">{extra}</div> : null}
+      {extra ? <div className="mt-8 wide:hidden">{extra}</div> : null}
 
       <div className="mt-6 flex flex-col gap-2">
         <a href="#" className="text-xs text-text-muted">

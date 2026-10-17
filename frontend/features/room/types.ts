@@ -1,3 +1,5 @@
+import type { PostSummary } from "@/lib/post-summary";
+
 /**
  * 방 게시판 뷰 모델.
  *
@@ -17,6 +19,15 @@ export type RoomInfo = {
   verifiable: boolean;
   /** 방 강조색. 없으면 null 이고 화면은 브랜드색을 쓴다. */
   accentColor: string | null;
+};
+
+/** 방 글 목록 한 쪽. `GET /communities/{symbol}/posts/page` 에서 온다. */
+export type RoomPostPage = {
+  posts: PostSummary[];
+  /** 전체 쪽 수. 글이 없으면 0. */
+  totalPages: number;
+  /** 이 탭 기준 전체 글 수. */
+  totalPosts: number;
 };
 
 /** 방 시세. `GET /market/prices/{symbol}?currency=KRW` 에서 온다. */

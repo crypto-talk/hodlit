@@ -14,6 +14,8 @@ import RoomPrice from "./room-price";
 type Props = {
   symbol: string;
   tab: RoomTab;
+  /** 글 목록 쪽. 1부터. */
+  page: number;
 };
 
 /**
@@ -31,11 +33,10 @@ type Props = {
  *   - 뉴스 · 투표: 백엔드 API 는 생겼다(`/communities/{symbol}/news` · `/communities/{symbol}/poll`).
  *     붙이기 전까지 그럴듯한 목값 대신 "준비 중"을 둔다(G-5)
  *   - 가격 차트: 과거 시세 API 가 없다
- *   - 더보기: 번호 페이지 목록 API 는 생겼다. 아직 붙이지 않았다
  *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
  *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
  */
-export default function RoomBoard({ symbol, tab }: Props) {
+export default function RoomBoard({ symbol, tab, page }: Props) {
   const room = useQuery({ queryKey: ["room", symbol], queryFn: () => loadRoom(symbol) });
 
   if (room.isError) {
@@ -90,7 +91,7 @@ export default function RoomBoard({ symbol, tab }: Props) {
         />
       </div>
 
-      <RoomPosts symbol={info.symbol} tab={tab} verifiable={info.verifiable} />
+      <RoomPosts symbol={info.symbol} tab={tab} page={page} verifiable={info.verifiable} />
     </div>
   );
 }
