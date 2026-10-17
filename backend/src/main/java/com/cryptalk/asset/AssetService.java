@@ -8,6 +8,7 @@ import com.cryptalk.exchange.ExchangeConnectionService;
 import com.cryptalk.market.MarketPriceService;
 import com.cryptalk.member.MemberRepository;
 import com.cryptalk.wallet.WalletRepository;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -61,10 +62,13 @@ public class AssetService {
             return new RefreshResult(List.of(), emptyWalletPortfolio());
         }
 
-        if (!connectedWallets.isEmpty() && !alchemy.isConfigured())
+        if (!publication && !connectedWallets.isEmpty() && !alchemy.isConfigured())
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Alchemy API 키를 설정해 주세요.");
-        var discovered = alchemy.fetch(connectedWallets.stream().map(wallet -> wallet.getAddress()).toList(),
-            publication ? Duration.ofNanos(Math.max(0, deadline - System.nanoTime())) : Duration.ofSeconds(15));
+        var discovered = !connectedWallets.isEmpty() && !alchemy.isConfigured()
+            ? new AlchemyPortfolioClient.Result(List.of(), AlchemyPortfolioClient.NETWORKS.keySet().stream().sorted().toList(),
+                false, "NOT_CONFIGURED", Instant.now())
+            : alchemy.fetch(connectedWallets.stream().map(wallet -> wallet.getAddress()).toList(),
+                publication ? Duration.ofNanos(Math.max(0, deadline - System.nanoTime())) : Duration.ofSeconds(15));
         var walletCoins = coins.findByActiveTrueOrderByDisplayOrder().stream().filter(this::walletSupported).toList();
         Map<String, WalletBalance> walletBalances = new HashMap<>();
         for (var coin : walletCoins) walletBalances.put(coin.getSymbol(), alchemyBalance(coin, discovered));
@@ -97,7 +101,8 @@ public class AssetService {
                 quantity = BigDecimal.ZERO;
                 complete = false;
             }
-            boolean verified = complete && quantity.signum() > 0;
+            // A positive confirmed subtotal proves ownership even when another source failed.
+            boolean verified = quantity.signum() > 0;
             String level = verified ? (walletAmount.signum() > 0 ? "WALLET" : "EXCHANGE") : "UNVERIFIED";
             String sync = complete ? "READY" : "PARTIAL";
             BigDecimal value = BigDecimal.ZERO;
@@ -123,7 +128,8 @@ public class AssetService {
     public AssetPortfolioResponse refreshPortfolio(Long memberId) {
         var values = refreshAndList(memberId, false);
         var held = values.assets().stream().filter(asset -> asset.quantity().signum() > 0).toList();
-        var unresolved = values.assets().stream().filter(asset -> "UNKNOWN".equals(asset.holderStatus()))
+        var unresolved = values.assets().stream().filter(asset -> "UNKNOWN".equals(asset.holderStatus())
+                || "PARTIAL".equals(asset.syncStatus()))
             .map(asset -> new AssetIssueResponse(asset.symbol(), asset.status(), asset.syncStatus(), asset.holderStatus()))
             .toList();
         return new AssetPortfolioResponse(wallets.findByMemberIdOrderByCreatedAtAsc(memberId).size(),
@@ -190,7 +196,7 @@ public class AssetService {
                 && (coin.getContractAddress() == null ? token.contractAddress() == null
                     : coin.getContractAddress().equalsIgnoreCase(token.contractAddress()));
             if (!matches) continue;
-            if (token.rawBalance() == null) { complete = false; continue; }
+            if (token.rawBalance() == null || !"READY".equals(token.status())) { complete = false; continue; }
             BigDecimal amount = new BigDecimal(new java.math.BigInteger(token.rawBalance()), coin.getTokenDecimals());
             quantity = quantity.add(amount);
         }
@@ -205,6 +211,7 @@ public class AssetService {
     public record AssetPortfolioResponse(int walletCount,int exchangeCount,List<AssetResponse> assets,
                                          List<AssetIssueResponse> unresolvedAssets, WalletAssetPortfolioResponse walletAssets) {}
     public record AssetIssueResponse(String symbol, String status, String syncStatus, String holderStatus) {}
+    @Schema(description = "성공적으로 확인된 수단의 잔액 합계. PARTIAL에서도 양수 부분합은 verified=true/HOLDER이며 전체 잔액을 의미하지 않습니다.")
     public record AssetResponse(String symbol,BigDecimal quantity,BigDecimal valueKrw,String quantityBand,
                                 boolean verified,String verificationLevel,String status,int walletCount,
                                 java.time.Instant holdingSince,Integer holdingMonths,java.time.Instant capturedAt,

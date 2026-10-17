@@ -38,7 +38,10 @@ public class AlchemyPortfolioClient {
         long deadline = System.nanoTime() + Math.max(0, budget.toNanos());
         Map<String, Token> tokens = new LinkedHashMap<>();
         Set<String> failed = new HashSet<>();
+        Set<String> rejectedSources = new HashSet<>();
+        Set<String> conflictingTokens = new HashSet<>();
         int pages = 0;
+        boolean invalidRows = false;
         try {
             for (int offset = 0; offset < addresses.size(); offset += 10) {
                 var batch = addresses.subList(offset, Math.min(offset + 10, addresses.size()));
@@ -67,20 +70,39 @@ public class AlchemyPortfolioClient {
                         throw new IllegalStateException("invalid payload");
                     JsonNode error = page.get("error");
                     if (error != null && !error.isNull()) {
-                        if (!error.path("partialErrors").isArray() || error.path("partialErrors").isEmpty())
+                        if (!error.path("partialErrors").isArray() || error.path("partialErrors").isEmpty()) {
                             failed.addAll(NETWORKS.keySet());
-                        else for (var failure : error.path("partialErrors")) {
+                            for (String address : batch) for (String network : NETWORKS.keySet())
+                                rejectedSources.add(address + ":" + network);
+                        } else for (var failure : error.path("partialErrors")) {
                             String network = failure.path("network").asText();
-                            if (NETWORKS.containsKey(network)) failed.add(network);
-                            else failed.addAll(NETWORKS.keySet());
+                            var networks = NETWORKS.containsKey(network) ? Set.of(network) : NETWORKS.keySet();
+                            failed.addAll(networks);
+                            String address = failure.path("address").asText().toLowerCase(Locale.ROOT);
+                            var affected = batch.contains(address) ? List.of(address) : batch;
+                            for (String wallet : affected) for (String chain : networks)
+                                rejectedSources.add(wallet + ":" + chain);
                         }
                     }
                     for (var row : page.path("data").path("tokens")) {
-                        Token token = parse(row, batch);
+                        Token token;
+                        try {
+                            token = parse(row, batch);
+                        } catch (IllegalStateException invalidRow) {
+                            invalidRows = true;
+                            String network = row.path("network").asText();
+                            if (NETWORKS.containsKey(network)) failed.add(network);
+                            else failed.addAll(NETWORKS.keySet());
+                            continue;
+                        }
                         String identity = token.walletAddress() + ":" + token.network() + ":" + token.contractAddress();
+                        if (conflictingTokens.contains(identity)) continue;
                         Token previous = tokens.putIfAbsent(identity, token);
-                        if (previous != null && !Objects.equals(previous.rawBalance(), token.rawBalance()))
+                        if (previous != null && !Objects.equals(previous.rawBalance(), token.rawBalance())) {
                             failed.add(token.network());
+                            conflictingTokens.add(identity);
+                            tokens.remove(identity);
+                        }
                         if (tokens.size() > 5000) throw new IllegalStateException("token limit");
                     }
                     JsonNode next = page.path("data").get("pageKey");
@@ -93,8 +115,11 @@ public class AlchemyPortfolioClient {
                         throw new IllegalStateException("invalid pagination");
                 } while (cursor != null);
             }
+            tokens.values().removeIf(token -> rejectedSources.contains(token.walletAddress() + ":" + token.network()));
             boolean rowFailure = tokens.values().stream().anyMatch(token -> "UNKNOWN".equals(token.status()));
-            return result(tokens.values(), failed, true, failed.isEmpty() && !rowFailure ? "READY" : "PARTIAL");
+            String status = tokens.isEmpty() && invalidRows ? "UNKNOWN"
+                : failed.isEmpty() && !rowFailure ? "READY" : "PARTIAL";
+            return result(tokens.values(), failed, true, status);
         } catch (RestClientResponseException exception) {
             // The URL contains the API key; never log the URL, exception text, headers or response body.
             log.warn("Alchemy portfolio HTTP failure: status={}", exception.getStatusCode().value());
@@ -102,6 +127,7 @@ public class AlchemyPortfolioClient {
             log.warn("Alchemy portfolio failed: category={}", exception.getClass().getSimpleName());
         }
         failed.addAll(NETWORKS.keySet());
+        tokens.values().removeIf(token -> rejectedSources.contains(token.walletAddress() + ":" + token.network()));
         return result(tokens.values(), failed, false, tokens.isEmpty() ? "UNKNOWN" : "PARTIAL");
     }
 

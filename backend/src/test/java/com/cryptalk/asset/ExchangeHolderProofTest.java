@@ -53,15 +53,16 @@ class ExchangeHolderProofTest {
     }
 
     @Test
-    void anyFailedEligibleSourceIsUnknownEvenWithPositiveOtherHoldings() {
+    void failedWalletDoesNotCancelConfirmedExchangeHoldings() {
         var f = new Fixture();
         f.exchange("ETH",new BigDecimal("5"));
         f.walletEth("0", false);
         var asset = f.service.refreshAndList(7L).getFirst();
-        assertFalse(asset.verified());
-        assertEquals("UNKNOWN",asset.holderStatus());
+        assertTrue(asset.verified());
+        assertEquals("HOLDER",asset.holderStatus());
+        assertEquals("EXCHANGE",asset.verificationLevel());
         assertEquals("PARTIAL",asset.syncStatus());
-        assertNull(asset.quantityBand());
+        assertEquals("1~10 ETH",asset.quantityBand());
         assertNull(asset.valueKrw());
     }
 
