@@ -1,10 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { formatChangeRate, formatCompact, formatKrw, formatQuantity } from "./number";
+import {
+  formatChangeRate,
+  formatCoinKrw,
+  formatCompact,
+  formatKrw,
+  formatQuantity,
+} from "./number";
 
 describe("formatKrw", () => {
   it("천 단위를 끊고 소수점을 버린다", () => {
     expect(formatKrw(53_000_000)).toBe("₩53,000,000");
     expect(formatKrw(0)).toBe("₩0");
+  });
+});
+
+describe("formatCoinKrw", () => {
+  it("1,000원 이상은 정수, 미만은 소수 둘째 자리까지", () => {
+    expect(formatCoinKrw(108_489_011.4)).toBe("₩108,489,011");
+    expect(formatCoinKrw(1000)).toBe("₩1,000");
+    expect(formatCoinKrw(122.49)).toBe("₩122.49");
+    expect(formatCoinKrw(300)).toBe("₩300");
+    expect(formatCoinKrw(0.123)).toBe("₩0.12");
   });
 });
 

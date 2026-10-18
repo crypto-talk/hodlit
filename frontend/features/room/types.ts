@@ -29,14 +29,3 @@ export type RoomPostPage = {
   /** 이 탭 기준 전체 글 수. */
   totalPosts: number;
 };
-
-/** 방 시세. `GET /market/prices/{symbol}?currency=KRW` 에서 온다. */
-export type RoomPrice = {
-  /** 원화 가격. */
-  price: number;
-  /** 24시간 등락률 문자열. `+2.4%` / `-` */
-  change: string;
-  direction: "up" | "down" | "flat";
-  /** 서버가 시세를 찍은 시각(ISO). 없으면 빈 문자열. */
-  capturedAt: string;
-};

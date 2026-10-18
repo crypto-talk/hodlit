@@ -1,17 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { formatKrw } from "@/lib/format/number";
-import { loadRoomPrice } from "../api";
+import { formatChangeRate, formatCoinKrw } from "@/lib/format/number";
+import { formatClock } from "@/lib/format/time";
+import { useMarketQuote } from "@/lib/market-price/use-market-price";
+import { cn } from "@/lib/utils";
 
 type Props = {
   symbol: string;
   name: string;
 };
-
-/** 시세 갱신 주기 (B-5: 실시간 없음, 시세는 1분 폴링). */
-const REFRESH_MS = 60_000;
 
 const DIRECTION_COLOR = {
   up: "text-success",
@@ -22,17 +19,16 @@ const DIRECTION_COLOR = {
 /**
  * 방 대문 위칸 — 코인 · 현재가 · 24시간 등락률.
  *
- * 1분마다 다시 받고 남은 시간을 보여준다. 과거 시세 API 가 없어서 와이어프레임의
- * 가격 차트(1D·1W·1M·1Y)는 그리지 않는다. 비슷해 보이는 가짜 선을 그리지 않는다.
+ * 브라우저가 CoinGecko 를 직접 불러 30초마다 다시 받는다(HODL-61, `lib/market-price/`).
+ * "몇 초 후 갱신" 카운트다운은 없앴다(HODL-63). 자동 갱신은 그대로다.
+ * 다시 받는 동안에는 가격 줄만 흐리게 한다. 화면 전체를 덮지 않는다.
  *
- * 실패해도 이 칸 안에서만 알린다(구조 규칙 9). 게시판은 그대로 읽힌다.
+ * 갱신이 실패해도 마지막 값을 그대로 두고 그 아래에 작게 알린다. 처음부터 못 받았을 때만
+ * "다시 시도"를 둔다. 실패는 이 칸 안에서만 알린다(구조 규칙 9). 게시판은 그대로 읽힌다.
  */
 export default function RoomPrice({ symbol, name }: Props) {
-  const price = useQuery({
-    queryKey: ["room-price", symbol],
-    queryFn: () => loadRoomPrice(symbol),
-    refetchInterval: REFRESH_MS,
-  });
+  const price = useMarketQuote(symbol);
+  const quote = price.data;
 
   return (
     <section
@@ -42,59 +38,63 @@ export default function RoomPrice({ symbol, name }: Props) {
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
         <span className="text-sm font-semibold text-text-muted">{name} 시세</span>
         <span className="flex-1" />
-        {price.isSuccess ? <Countdown updatedAt={price.dataUpdatedAt} /> : null}
+        {quote ? (
+          <span className="text-xs text-text-muted tabular-nums">
+            CoinGecko{quote.updatedAt ? ` · ${formatClock(quote.updatedAt)} 기준` : ""}
+          </span>
+        ) : null}
       </div>
 
-      {price.isPending ? <p className="mt-2 text-sm text-text-muted">시세를 불러오는 중…</p> : null}
+      {price.loading ? <p className="mt-2 text-sm text-text-muted">시세를 불러오는 중…</p> : null}
 
-      {price.isError ? (
+      {quote === undefined && !price.loading && price.failure ? (
         <p className="mt-2 text-sm text-text-muted">
-          시세를 불러오지 못했습니다.{" "}
-          <button
-            type="button"
-            className="font-semibold text-brand"
-            onClick={() => price.refetch()}
-          >
+          {price.failure === "rate-limited"
+            ? "시세 요청이 많아 잠시 후 다시 불러옵니다."
+            : "시세를 불러오지 못했습니다."}{" "}
+          <button type="button" className="font-semibold text-brand" onClick={price.retry}>
             다시 시도
           </button>
         </p>
       ) : null}
 
-      {price.isSuccess && !price.data ? (
+      {quote === null ? (
         <p className="mt-2 text-sm text-text-muted">이 코인은 시세 정보가 없습니다.</p>
       ) : null}
 
-      {price.isSuccess && price.data ? (
-        <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+      {quote ? (
+        <div
+          className={cn(
+            "mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 transition-opacity duration-300",
+            price.refreshing && "opacity-50",
+          )}
+          aria-busy={price.refreshing || undefined}
+        >
           <span className="text-h1 font-semibold text-text-primary tabular-nums">
-            {formatKrw(price.data.price)}
+            {formatCoinKrw(quote.price)}
           </span>
           <span
-            className={`text-body font-semibold tabular-nums ${DIRECTION_COLOR[price.data.direction]}`}
+            className={`text-body font-semibold tabular-nums ${DIRECTION_COLOR[directionOf(quote.change24h)]}`}
           >
-            {price.data.change}
+            {formatChangeRate(quote.change24h)}
           </span>
           <span className="text-xs text-text-muted">24시간</span>
         </div>
+      ) : null}
+
+      {quote && price.failure ? (
+        <p className="mt-1 text-xs text-text-muted">
+          {price.failure === "rate-limited"
+            ? "요청이 많아 잠시 쉬었다가 다시 갱신합니다. 마지막으로 받은 값입니다."
+            : "갱신하지 못해 마지막으로 받은 값을 보여 줍니다."}
+        </p>
       ) : null}
     </section>
   );
 }
 
-/** 다음 갱신까지 남은 초. 1초마다 다시 그린다. */
-function Countdown({ updatedAt }: { updatedAt: number }) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const left = Math.max(0, Math.ceil((updatedAt + REFRESH_MS - now) / 1000));
-
-  return (
-    <span className="text-xs text-text-muted tabular-nums" aria-live="off">
-      {left > 0 ? `${left}초 후 갱신` : "갱신 중…"}
-    </span>
-  );
+/** 소수 첫째 자리에서 0 이면 보합. `formatChangeRate` 와 같은 기준이다. */
+function directionOf(change: number | null): keyof typeof DIRECTION_COLOR {
+  if (change === null || Math.round(change * 10) === 0) return "flat";
+  return change > 0 ? "up" : "down";
 }

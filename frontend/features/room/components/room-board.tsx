@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/http";
 import { writeHref } from "@/lib/routes";
 import { loadRoom } from "../api";
 import type { RoomInfo } from "../types";
+import RoomChart from "./room-chart";
 import RoomPosts, { type RoomTab } from "./room-posts";
 import RoomPrice from "./room-price";
 
@@ -21,18 +22,17 @@ type Props = {
 /**
  * 방 게시판 `/subhodl/[symbol]`.
  *
- * 구조 결정 G 군: 위에 [코인·시세], 그 아래 [뉴스 | 투표] 2분할, 그 아래 전체/인증
+ * 구조 결정 G 군: 위에 [코인·시세 + 차트], 그 아래 [뉴스 | 투표] 2분할, 그 아래 전체/인증
  * 2탭 글 목록.
  *
  * 데이터는 클라이언트에서 가져온다. 글 상세와 같은 이유로, access 토큰이 쿠키로
  * 옮겨지기 전(B-3)에는 서버가 로그인 상태를 알 수 없다. 방 정보를 먼저 받고,
- * 있는 방일 때만 시세와 글을 받는다. 없는 방(404)에 요청을 두 번 더 보내지 않으려고
+ * 있는 방일 때만 시세 · 차트와 글을 받는다. 없는 방(404)에 요청을 두 번 더 보내지 않으려고
  * 왕복 한 번을 감수했다.
  *
  * 아직 없는 것
  *   - 뉴스 · 투표: 백엔드 API 는 생겼다(`/communities/{symbol}/news` · `/communities/{symbol}/poll`).
  *     붙이기 전까지 그럴듯한 목값 대신 "준비 중"을 둔다(G-5)
- *   - 가격 차트: 과거 시세 API 가 없다
  *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
  *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
  */
@@ -81,7 +81,10 @@ export default function RoomBoard({ symbol, tab, page }: Props) {
     >
       <RoomHeader info={info} />
 
-      <RoomPrice symbol={info.symbol} name={info.name} />
+      <div className="flex flex-col gap-4">
+        <RoomPrice symbol={info.symbol} name={info.name} />
+        <RoomChart symbol={info.symbol} name={info.name} />
+      </div>
 
       <div className="grid grid-cols-2 gap-4 max-shell:grid-cols-1">
         <ComingSoon title="뉴스" body={`${info.name} 관련 뉴스를 모아 보여줄 자리입니다.`} />

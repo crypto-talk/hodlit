@@ -27,7 +27,7 @@ to a cookie (B-3).
 
 - Notion "구조 고민하기" — the structure decisions A~G with their reasoning, the settled
   folder tree, and the open questions for the backend. This is the source of truth for
-  *why* something is the way it is.
+  _why_ something is the way it is.
   https://app.notion.com/p/3dc64d6951428066a501d5da4a774997
 - Claude project `claude/프로젝트_컨텍스트.md` — current state, branch status, repository
   conventions and their rationale, open issues, session setup.
@@ -70,6 +70,9 @@ lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3).
                         down to lib/ when the post detail screen became its second user
 lib/routes.ts           screen URLs (room, post, write) + `safeSymbol()` + `roomSymbolOf()`
 lib/post-summary.ts     PostResponse -> list card view model, shared by landing and room board
+lib/market-price/       coin prices fetched by the browser straight from CoinGecko (HODL-61):
+                        the symbol -> CoinGecko id / TradingView symbol table, the fetch, and
+                        `useMarketQuote()`; shared by the room price box and the landing ticker
 components/holder/      tier-badge.tsx — the shape of the 인증 badge; wording from lib
 components/post/        post-card.tsx — the list card used by the landing feed and the room board
 styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
@@ -215,7 +218,7 @@ had no posts, so every list screen could only be checked empty; writing first fi
    Drafts are saved on the server (`/drafts`, HODL-43), not in localStorage: the 임시저장
    button creates one and then overwrites it, `?draft=<id>` reopens it, publishing deletes it.
 2. ✅ Post detail `/subhodl/[symbol]/[postId]`, first pass (`features/post/components/
-   post-detail.tsx`): title, author, Markdown body, images, YouTube embed
+post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    (youtube-nocookie), the price captured at publish time. The body is rendered by Tiptap in
    read-only mode (`post-body.tsx`) rather than a separate Markdown renderer — same schema and
    same styles as the editor, and anything outside the schema (raw HTML) is not rendered.
@@ -229,13 +232,21 @@ had no posts, so every list screen could only be checked empty; writing first fi
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header
-   (`GET /communities/{symbol}`), price box (`GET /market/prices/{symbol}?currency=KRW`, polled
-   every minute with a countdown), news and vote boxes marked "준비 중", and the 전체/인증 tabs
+   (`GET /communities/{symbol}`), price box, candle chart, news and vote boxes marked "준비 중",
+   and the 전체/인증 tabs
    as `?tab=verified`. The post list is the latest `ROOM_POST_LIMIT` (50) posts only; the 인증
    tab filters inside those 50. The backend now has numbered pages (`…/page`,
    `docs/NUMBERED_PAGINATION_API.md`) and room news / poll APIs; none of them is wired yet.
-   No price chart: there is no price-history API. `postCount` is the room's real total (it
-   used to stop at 100; the "100개 이상" label is gone).
+   `postCount` is the room's real total (it used to stop at 100; the "100개 이상" label is gone).
+   **Prices (HODL-61):** the browser calls CoinGecko's keyless `/simple/price` itself, not the
+   backend `GET /market/prices`. No API key — there is nothing secret to ship. One request for
+   every coin in `lib/market-price/coins.ts`, one query key, refetched every 30 seconds (Jira
+   asked for 5; the keyless values change about once a minute and the limit is ~10-30 calls/min
+   per IP — reasoning on HODL-61), paused while the tab is hidden. On 429 it waits 60 seconds and
+   does not retry. Only the price line dims while refetching; a failed refresh keeps the last value.
+   **Chart (HODL-63):** the TradingView advanced-chart embed (chart and data both TradingView),
+   1-hour candles, Upbit KRW markets where Upbit lists the coin. It can differ slightly from the
+   CoinGecko price above it, so the market is named under the chart. No countdown.
    The landing's post card and its mapper moved down to `components/post/post-card.tsx` and
    `lib/post-summary.ts` because the room board draws the same card.
    The sidebar room names, the post detail room chip, and the header/FAB 글쓰기 now point at the
