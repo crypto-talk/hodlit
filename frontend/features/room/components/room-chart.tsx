@@ -37,8 +37,9 @@ function marketLabel(tradingView: string): string {
  * 그동안 문구가 보이고, 차트가 그려지면 가려진다. 스크립트가 안 오면(차단 · 네트워크)
  * "다시 시도"를 보여 준다. iframe 안쪽 오류(심볼 없음 등)는 위젯이 자기 화면에 알린다.
  *
- * ⚠️ 차트는 거래소 시세(업비트 원화 등)라 위 시세 칸(CoinGecko 원화 환산)과 값이 조금 다를 수
- * 있다. 그래서 아래에 어느 마켓인지 적는다.
+ * 위 시세 칸도 업비트 원화 현재가라 두 숫자가 맞는다(시세 칸은 30초마다라 잠깐 어긋날 수 있다).
+ * 업비트에 없는 BNB · LTC · TON 은 차트가 해외 USDT 마켓, 시세 칸은 CoinGecko 원화 환산이라
+ * 값이 다르다. 그래서 아래에 어느 마켓인지 적는다.
  */
 export default function RoomChart({ symbol, name }: Props) {
   const tradingView = marketCoinOf(symbol)?.tradingView ?? null;

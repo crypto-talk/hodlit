@@ -70,8 +70,9 @@ lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3).
                         down to lib/ when the post detail screen became its second user
 lib/routes.ts           screen URLs (room, post, write) + `safeSymbol()` + `roomSymbolOf()`
 lib/post-summary.ts     PostResponse -> list card view model, shared by landing and room board
-lib/market-price/       coin prices fetched by the browser straight from CoinGecko (HODL-61):
-                        the symbol -> CoinGecko id / TradingView symbol table, the fetch, and
+lib/market-price/       coin prices fetched by the browser straight from Upbit, or CoinGecko for
+                        coins Upbit does not list (HODL-61): the symbol -> Upbit market /
+                        CoinGecko id / TradingView symbol table, the fetches, and
                         `useMarketQuote()`; shared by the room price box and the landing ticker
 components/holder/      tier-badge.tsx — the shape of the 인증 badge; wording from lib
 components/post/        post-card.tsx — the list card used by the landing feed and the room board
@@ -238,15 +239,20 @@ post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    tab filters inside those 50. The backend now has numbered pages (`…/page`,
    `docs/NUMBERED_PAGINATION_API.md`) and room news / poll APIs; none of them is wired yet.
    `postCount` is the room's real total (it used to stop at 100; the "100개 이상" label is gone).
-   **Prices (HODL-61):** the browser calls CoinGecko's keyless `/simple/price` itself, not the
-   backend `GET /market/prices`. No API key — there is nothing secret to ship. One request for
-   every coin in `lib/market-price/coins.ts`, one query key, refetched every 30 seconds (Jira
-   asked for 5; the keyless values change about once a minute and the limit is ~10-30 calls/min
-   per IP — reasoning on HODL-61), paused while the tab is hidden. On 429 it waits 60 seconds and
-   does not retry. Only the price line dims while refetching; a failed refresh keeps the last value.
+   **Prices (HODL-61):** the browser fetches prices itself, not the backend `GET /market/prices`.
+   Coins with an Upbit KRW market use Upbit's public `/v1/ticker` (last trade price, change vs the
+   previous day's close) so the number matches the Upbit chart below it; BNB, LTC and TON, which
+   Upbit does not list, use CoinGecko's keyless `/simple/price` (KRW conversion, 24h change).
+   The price box names the source and the change basis. No API key — there is nothing secret to
+   ship. One query per source (`["market-quotes", "upbit" | "coingecko"]`), each one request for
+   all of its coins, refetched every 30 seconds (Jira asked for 5; Upbit allows a browser — a
+   request with an Origin header — one call per 10 seconds and blocks repeat offenders with 418,
+   and the keyless CoinGecko values change about once a minute — reasoning on HODL-61), paused
+   while the tab is hidden. On 429/418 it waits 60 seconds and does not retry. Only the price line
+   dims while refetching; a failed refresh keeps the last value.
    **Chart (HODL-63):** the TradingView advanced-chart embed (chart and data both TradingView),
-   1-hour candles, Upbit KRW markets where Upbit lists the coin. It can differ slightly from the
-   CoinGecko price above it, so the market is named under the chart. No countdown.
+   1-hour candles, Upbit KRW markets where Upbit lists the coin, otherwise a USDT market (BNB, LTC
+   on Binance, TON on OKX), named under the chart. No countdown.
    The landing's post card and its mapper moved down to `components/post/post-card.tsx` and
    `lib/post-summary.ts` because the room board draws the same card.
    The sidebar room names, the post detail room chip, and the header/FAB 글쓰기 now point at the

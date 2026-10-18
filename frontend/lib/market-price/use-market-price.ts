@@ -1,29 +1,32 @@
-import { useQuery } from "@tanstack/react-query";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
-import {
-  fetchMarketQuotes,
-  type MarketQuote,
-  type MarketQuotes,
-  PriceRateLimited,
-} from "./coingecko";
+import { fetchGeckoQuotes } from "./coingecko";
+import { marketCoinOf } from "./coins";
+import { type MarketQuote, type MarketQuotes, PriceRateLimited, type QuoteSource } from "./quote";
+import { fetchUpbitQuotes } from "./upbit";
 
 /**
  * 시세 갱신 주기. 30초.
  *
- * Jira 요구는 5초였다. CoinGecko 키 없는 API 의 값은 약 60초마다 바뀌고, 응답에
- * `max-age=30` 이 붙으며, 한도가 IP당 분당 약 10~30회라 5초는 요청만 늘리고 429 위험이
- * 있다. 30초로 하고 HODL-61 에 근거를 남겼다(2026-10-18).
+ * Jira 요구는 5초였다. 처음 출처였던 CoinGecko 키 없는 API 는 값이 약 60초마다 바뀌고 한도가
+ * IP당 분당 약 10~30회라 30초로 했다(HODL-61 코멘트). 업비트로 바꾼 뒤에도 그대로 둔다 —
+ * 업비트는 브라우저 요청(Origin 헤더)을 10초당 1회로 제한하고 넘기면 일시 차단한다.
  */
 export const MARKET_PRICE_REFRESH_MS = 30_000;
 
-/** 429 를 받으면 이만큼 쉬었다가 다시 부른다. */
+/** 429 · 418 을 받으면 이만큼 쉬었다가 다시 부른다. */
 const RATE_LIMITED_WAIT_MS = 60_000;
 
 /**
- * 시세 쿼리 키. 하나뿐이다 — 방 시세 칸과 랜딩 티커가 같은 요청을 나눠 쓴다.
- * 동시에 마운트돼도 TanStack Query 가 요청 하나로 합친다.
+ * 출처마다 쿼리 하나. 업비트에 원화 마켓이 있는 코인은 업비트, 없는 코인(BNB · LTC · TON)은
+ * CoinGecko 다. 각 쿼리는 그 출처의 코인을 한 요청에 묶어 받고, 방 시세 칸과 랜딩 티커가
+ * 같은 키를 나눠 쓴다 — 동시에 마운트돼도 TanStack Query 가 요청 하나로 합친다.
+ * 출처를 나눠 두면 한쪽이 실패해도 다른 쪽 코인은 그대로 보인다.
  */
-const QUERY_KEY = ["market-quotes"] as const;
+const FETCHERS: Record<QuoteSource, (signal?: AbortSignal) => Promise<MarketQuotes>> = {
+  upbit: fetchUpbitQuotes,
+  coingecko: fetchGeckoQuotes,
+};
 
 export type MarketPriceState<T> = {
   /** 마지막으로 받은 값. 실패해도 이전 값을 그대로 둔다. */
@@ -38,18 +41,23 @@ export type MarketPriceState<T> = {
 };
 
 /**
- * 시세를 주기적으로 받는다.
+ * 한 출처의 시세를 주기적으로 받는다.
  *
  * - 30초마다 다시 받는다. 탭이 안 보이면 멈추고(`refetchIntervalInBackground` 기본값 false),
  *   이 훅을 쓰는 화면이 모두 사라지면 타이머도 사라진다
- * - 한 화면에 여러 곳이 써도 요청은 하나다(같은 키, `staleTime` = 주기)
- * - 429 는 재시도하지 않고 60초 쉰다. 다른 실패는 한 번만 재시도한다
+ * - 한 화면에 여러 곳이 써도 출처마다 요청은 하나다(같은 키, `staleTime` = 주기)
+ * - 429 · 418 은 재시도하지 않고 60초 쉰다. 다른 실패는 한 번만 재시도한다
  */
-export function useMarketQuotes<T>(select: (quotes: MarketQuotes) => T): MarketPriceState<T> {
-  const query = useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: ({ signal }) => fetchMarketQuotes(signal),
+function useSourceQuotes<T>(
+  source: QuoteSource,
+  select: (quotes: MarketQuotes) => T,
+  enabled = true,
+): UseQueryResult<T> {
+  return useQuery({
+    queryKey: ["market-quotes", source],
+    queryFn: ({ signal }) => FETCHERS[source](signal),
     select,
+    enabled,
     staleTime: MARKET_PRICE_REFRESH_MS,
     refetchInterval: (current) =>
       current.state.error instanceof PriceRateLimited
@@ -57,7 +65,9 @@ export function useMarketQuotes<T>(select: (quotes: MarketQuotes) => T): MarketP
         : MARKET_PRICE_REFRESH_MS,
     retry: (count, error) => !(error instanceof PriceRateLimited) && count < 1,
   });
+}
 
+function toState<T>(query: UseQueryResult<T>): MarketPriceState<T> {
   const hasData = query.data !== undefined;
   const failure = query.isError
     ? query.error instanceof PriceRateLimited
@@ -76,9 +86,24 @@ export function useMarketQuotes<T>(select: (quotes: MarketQuotes) => T): MarketP
   };
 }
 
-/** 코인 하나의 시세. 표에 없거나 응답에 없으면 `data` 가 null 이다. */
+const NO_QUOTE: MarketPriceState<null> = {
+  data: null,
+  loading: false,
+  failure: null,
+  refreshing: false,
+  retry: () => {},
+};
+
+/**
+ * 코인 하나의 시세. 표에 없는 코인이면 요청하지 않고 `data` 가 null 이다.
+ * 응답에 그 코인이 없어도 null 이다.
+ */
 export function useMarketQuote(symbol: string): MarketPriceState<MarketQuote | null> {
   const key = symbol.toUpperCase();
+  const coin = marketCoinOf(key);
+  const source: QuoteSource = coin?.upbitMarket ? "upbit" : "coingecko";
   const select = useCallback((quotes: MarketQuotes) => quotes[key] ?? null, [key]);
-  return useMarketQuotes(select);
+  const state = toState(useSourceQuotes(source, select, coin !== null));
+
+  return coin ? state : NO_QUOTE;
 }

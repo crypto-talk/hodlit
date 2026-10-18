@@ -10,6 +10,16 @@ type Props = {
   name: string;
 };
 
+const SOURCE_LABEL = {
+  upbit: "업비트",
+  coingecko: "CoinGecko",
+} as const;
+
+const BASIS_LABEL = {
+  "prev-close": "전일 대비",
+  "24h": "24시간",
+} as const;
+
 const DIRECTION_COLOR = {
   up: "text-success",
   down: "text-danger",
@@ -17,9 +27,11 @@ const DIRECTION_COLOR = {
 } as const;
 
 /**
- * 방 대문 위칸 — 코인 · 현재가 · 24시간 등락률.
+ * 방 대문 위칸 — 코인 · 현재가 · 등락률.
  *
- * 브라우저가 CoinGecko 를 직접 불러 30초마다 다시 받는다(HODL-61, `lib/market-price/`).
+ * 브라우저가 직접 불러 30초마다 다시 받는다(HODL-61, `lib/market-price/`). 아래 차트와 숫자를
+ * 맞추려고 업비트 원화 마켓이 있는 코인은 업비트 현재가(등락률은 전일 대비), 없는 코인
+ * (BNB · LTC · TON)만 CoinGecko 원화 환산값(등락률은 24시간)이다. 출처와 기준을 칸에 적는다.
  * "몇 초 후 갱신" 카운트다운은 없앴다(HODL-63). 자동 갱신은 그대로다.
  * 다시 받는 동안에는 가격 줄만 흐리게 한다. 화면 전체를 덮지 않는다.
  *
@@ -40,7 +52,8 @@ export default function RoomPrice({ symbol, name }: Props) {
         <span className="flex-1" />
         {quote ? (
           <span className="text-xs text-text-muted tabular-nums">
-            CoinGecko{quote.updatedAt ? ` · ${formatClock(quote.updatedAt)} 기준` : ""}
+            {SOURCE_LABEL[quote.source]}
+            {quote.updatedAt ? ` · ${formatClock(quote.updatedAt)} 기준` : ""}
           </span>
         ) : null}
       </div>
@@ -74,11 +87,11 @@ export default function RoomPrice({ symbol, name }: Props) {
             {formatCoinKrw(quote.price)}
           </span>
           <span
-            className={`text-body font-semibold tabular-nums ${DIRECTION_COLOR[directionOf(quote.change24h)]}`}
+            className={`text-body font-semibold tabular-nums ${DIRECTION_COLOR[directionOf(quote.changeRate)]}`}
           >
-            {formatChangeRate(quote.change24h)}
+            {formatChangeRate(quote.changeRate)}
           </span>
-          <span className="text-xs text-text-muted">24시간</span>
+          <span className="text-xs text-text-muted">{BASIS_LABEL[quote.changeBasis]}</span>
         </div>
       ) : null}
 
