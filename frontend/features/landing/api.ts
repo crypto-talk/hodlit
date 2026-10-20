@@ -2,8 +2,8 @@ import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { http } from "@/lib/http";
 import { type IdentifiedPost, toPostSummary } from "@/lib/post-summary";
-import { MARQUEE, VOTES } from "./mock";
-import type { FeedPost, HotPost, MarqueeItem, TrendingRoom, VoteRow } from "./types";
+import { VOTES } from "./mock";
+import type { FeedPost, HotPost, TrendingRoom, VoteRow } from "./types";
 
 /**
  * 랜딩이 가져오는 데이터 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -33,18 +33,6 @@ export async function loadFeed(): Promise<{ posts: FeedPost[]; hot: HotPost[] }>
   return { posts, hot: toHotPosts(posts) };
 }
 
-/*
- * 아래 둘은 아직 목데이터를 그대로 돌려준다. 투표는 백엔드 API 가 생겼고(HODL-64)
- * 전광판 집계는 아직 없다.
- * 화면이 `./mock` 을 직접 읽지 않게 하려고(구조 규칙 2) 여기를 통과시킨다.
- * API 가 생기면 이 함수만 async 로 바꾸면 화면은 그대로 둘 수 있다.
- */
-
-/** ⚠️ 목값. 랜딩 집계 API 없음. 오픈 전에 진짜 값으로 바꾸거나 빼야 한다. */
-export function marqueeItems(): MarqueeItem[] {
-  return MARQUEE;
-}
-
 /**
  * 지금 뜨는 방 (HODL-44, `docs/COMMUNITY_STATISTICS_API.md`).
  *
@@ -70,7 +58,12 @@ export async function loadTrendingRooms(): Promise<TrendingRoom[]> {
     }));
 }
 
-/** ⚠️ 목값. 일일 투표 API(`/communities/{symbol}/poll`)로 바꿀 자리. */
+/**
+ * ⚠️ 목값. 일일 투표 API(`/communities/{symbol}/poll`, HODL-64)로 바꿀 자리.
+ *
+ * 화면이 `./mock` 을 직접 읽지 않게 하려고(구조 규칙 2) 여기를 통과시킨다.
+ * API 를 붙이면 이 함수만 async 로 바꾸면 화면은 그대로 둘 수 있다.
+ */
 export function dailyVotes(): VoteRow[] {
   return VOTES;
 }

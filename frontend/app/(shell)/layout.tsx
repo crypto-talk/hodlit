@@ -5,12 +5,11 @@ import { useEffect, useState } from "react";
 import Fab from "@/components/layout/fab";
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
+import PriceTicker from "@/components/layout/price-ticker";
 import Sidebar from "@/components/layout/sidebar";
 import WalletBox from "@/components/layout/wallet-box";
 import type { SidebarRoom } from "@/components/layout/types";
-import { marqueeItems } from "@/features/landing/api";
 import BookmarkedPosts from "@/features/post/components/bookmarked-posts";
-import Marquee from "@/features/landing/components/marquee";
 import { loadRooms } from "@/features/room/api";
 import { useConnectWallet } from "@/features/wallet/hooks/use-connect-wallet";
 import { useWallets } from "@/features/wallet/hooks/use-wallets";
@@ -57,10 +56,10 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       <Header />
 
       {/*
-       * 상단 전광판. 숫자 세 개가 아직 목값이다(랜딩 집계 API 없음).
-       * 랜딩만의 것이 아니라 화면군 전체에 걸리는 띠라 레이아웃에 둔다.
+       * 상단 시세 전광판(HODL-57). 랜딩만의 것이 아니라 화면군 전체에 걸리는 띠라
+       * 레이아웃에 둔다.
        */}
-      <Marquee items={marqueeItems()} />
+      <PriceTicker />
 
       {/*
        * 세 칸: 사이드바(240) · 본문(최대 720) · 오른쪽 칸(240). 1320px 이상에서 본문이

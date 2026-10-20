@@ -11,12 +11,6 @@
 import type { Tier } from "@/lib/holder-snapshot/types";
 import type { PostSummary } from "@/lib/post-summary";
 
-export type MarqueeItem = {
-  lead?: string;
-  text: string;
-  value?: string;
-};
-
 /**
  * 지금 뜨는 방 한 줄. `GET /communities/stats?window=24h` 에서 온다(HODL-44).
  * 순위는 서버가 매긴 순서 그대로다. 숫자는 전부 최근 24시간이다.

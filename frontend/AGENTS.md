@@ -56,7 +56,7 @@ features/               one folder per domain: auth wallet room post comment vot
   <domain>/components/  hooks/  api.ts  types.ts  mock.ts  (schema.ts optional)
                         unit tests sit next to the source as `*.test.ts`
 components/ui/          shadcn primitives (+ *.stories.tsx)
-components/layout/      header sidebar footer fab (+ types.ts: the shape the shell receives)
+components/layout/      header sidebar footer fab price-ticker (+ types.ts: the shape the shell receives)
                         bottom-tab is still to come
 lib/http.ts             fetch wrapper: baseURL, credentials, bearer token, single-flight 401
                         refresh, {code,message} normalisation. Every backend request goes
@@ -73,7 +73,8 @@ lib/post-summary.ts     PostResponse -> list card view model, shared by landing 
 lib/market-price/       coin prices fetched by the browser straight from Upbit, or CoinGecko for
                         coins Upbit does not list (HODL-61): the symbol -> Upbit market /
                         CoinGecko id / TradingView symbol table, the fetches, and
-                        `useMarketQuote()`; shared by the room price box and the landing ticker
+                        `useMarketQuote()` / `useSourceMarketQuotes()`; shared by the room price
+                        box and the shell price ticker
 components/holder/      tier-badge.tsx — the shape of the 인증 badge; wording from lib
 components/post/        post-card.tsx — the list card used by the landing feed and the room board
 styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
@@ -133,13 +134,11 @@ import-direction rule.
 
 Deliberately not done yet, do not treat these as oversights:
 
-- `features/landing/mock.ts` still holds three sections: the marquee aggregate (no API yet),
-  trending rooms (G-3) and the daily vote (G-5). Trending rooms and the vote now have backend
-  APIs (`/communities/stats?window=24h`, `/communities/{symbol}/poll`) that are not wired yet.
-  They reach the
-  screen through `features/landing/api.ts` (`marqueeItems()`, `trendingRooms()`,
-  `dailyVotes()`) so that structure rule 2 holds and only those functions change when the
-  APIs land. Rooms come from `features/room/api.ts`; the feed and hot posts from
+- `features/landing/mock.ts` now holds only the daily vote (G-5). Its backend API
+  (`/communities/{symbol}/poll`) exists but is not wired yet. It reaches the screen through
+  `features/landing/api.ts` (`dailyVotes()`) so that structure rule 2 holds and only that
+  function changes when it lands. Trending rooms are wired (HODL-44); the old marquee mock
+  (service copy and three mock numbers) was replaced by the price ticker (HODL-57). Rooms come from `features/room/api.ts`; the feed and hot posts from
   `features/landing/api.ts`.
 - `lib/http.ts` carries the bearer token and refreshes once on 401, but it still does not
   forward cookies from a server component: that waits for `access` to move to a cookie (B-3).
@@ -186,8 +185,9 @@ Known rough edges left by step 2, deliberately:
   only the interactive part stays a client component.
 - ~~The 글쓰기 buttons in the header and the fab are disabled~~ — they link to `/write` since
   step 3 ①. The search box is still disabled with a title.
-- The marquee is rendered by the shell layout, not the landing, because it is a strip across
-  the whole screen group. Its three numbers are still mock (no aggregate API).
+- The top strip is rendered by the shell layout, not the landing, because it is a strip across
+  the whole screen group. It is now the price ticker (HODL-57,
+  `components/layout/price-ticker.tsx`); the mock service copy is gone.
 
 ### Step 3 — the remaining four screens
 
@@ -253,6 +253,15 @@ post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    **Chart (HODL-63):** the TradingView advanced-chart embed (chart and data both TradingView),
    1-hour candles, Upbit KRW markets where Upbit lists the coin, otherwise a USDT market (BNB, LTC
    on Binance, TON on OKX), named under the chart. No countdown.
+   **Ticker (HODL-57):** the shell's top strip shows prices instead of the mock service copy.
+   Upbit KRW markets only, for now — the service targets Korean users, so every change in the
+   strip is vs the previous day's close (UTC 0:00 on Upbit) and needs no per-cell basis label;
+   BNB, LTC and TON are not in the strip. It reads the same `["market-quotes", "upbit"]` query as
+   the price box, so a room screen still makes one Upbit request per 30 seconds. For foreign
+   users the plan is to switch the strip to CoinGecko (`TICKER_SOURCE`); `coingecko.ts` would
+   then have to fetch every coin, not only the three. Square board, brand frame and a static
+   LIVE badge; values change without flashing (성지's call). The strip pauses on hover; loading,
+   failure and empty responses are one still line inside the strip.
    The landing's post card and its mapper moved down to `components/post/post-card.tsx` and
    `lib/post-summary.ts` because the room board draws the same card.
    The sidebar room names, the post detail room chip, and the header/FAB 글쓰기 now point at the

@@ -55,4 +55,11 @@ describe("formatChangeRate", () => {
     expect(formatChangeRate(null)).toBe("-");
     expect(formatChangeRate(undefined)).toBe("-");
   });
+
+  it("signed: false 면 부호 없이 크기만", () => {
+    expect(formatChangeRate(2.44, { signed: false })).toBe("2.4%");
+    expect(formatChangeRate(-2.46, { signed: false })).toBe("2.5%");
+    expect(formatChangeRate(-0.04, { signed: false })).toBe("0.0%");
+    expect(formatChangeRate(null, { signed: false })).toBe("-");
+  });
 });

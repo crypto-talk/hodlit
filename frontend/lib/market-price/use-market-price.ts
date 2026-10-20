@@ -2,7 +2,14 @@ import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { fetchGeckoQuotes } from "./coingecko";
 import { marketCoinOf } from "./coins";
-import { type MarketQuote, type MarketQuotes, PriceRateLimited, type QuoteSource } from "./quote";
+import {
+  type MarketQuote,
+  type MarketQuotes,
+  orderQuotes,
+  PriceRateLimited,
+  type QuoteSource,
+  type SymbolQuote,
+} from "./quote";
 import { fetchUpbitQuotes } from "./upbit";
 
 /**
@@ -106,4 +113,14 @@ export function useMarketQuote(symbol: string): MarketPriceState<MarketQuote | n
   const state = toState(useSourceQuotes(source, select, coin !== null));
 
   return coin ? state : NO_QUOTE;
+}
+
+/**
+ * 한 출처의 시세 전부, `MARKET_COINS` 순서. 셸 전광판이 쓴다.
+ *
+ * 쿼리는 `useMarketQuote` 와 같은 것을 나눠 쓴다. 방 화면에서 전광판과 시세 칸이 함께 떠도
+ * 업비트 요청은 30초마다 하나다.
+ */
+export function useSourceMarketQuotes(source: QuoteSource): MarketPriceState<SymbolQuote[]> {
+  return toState(useSourceQuotes(source, orderQuotes));
 }

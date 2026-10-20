@@ -53,15 +53,20 @@ export function formatCompact(value: number): string {
 }
 
 /**
- * 24시간 등락률. 값이 없으면 대시를 돌려준다.
- * 부호는 항상 붙인다. `+2.4%` / `-2.4%` / `0.0%`
+ * 등락률. 값이 없으면 대시를 돌려준다.
+ * 부호는 기본으로 붙인다. `+2.4%` / `-2.4%` / `0.0%`
+ * `signed: false` 면 크기만 적는다(`2.4%`). 방향을 화살표 · 색으로 따로 보여 주는 곳에서 쓴다.
  */
-export function formatChangeRate(change: number | null | undefined): string {
+export function formatChangeRate(
+  change: number | null | undefined,
+  { signed = true }: { signed?: boolean } = {},
+): string {
   if (change === null || change === undefined || !Number.isFinite(change)) {
     return "-";
   }
   const rounded = Math.round(change * 10) / 10;
   if (rounded === 0) return "0.0%";
+  if (!signed) return `${Math.abs(rounded).toFixed(1)}%`;
   const sign = rounded > 0 ? "+" : "";
   return `${sign}${rounded.toFixed(1)}%`;
 }
