@@ -43,6 +43,26 @@ export function formatQuantity(value: number, fractionDigits = 4): string {
   }).format(value);
 }
 
+/**
+ * 원화를 만 원 · 억 원 단위로 줄인다. 좁은 칸(자산 원형 차트 가운데)용이고,
+ * 정확한 금액은 `formatKrw` 를 쓴다. `4,061만원` / `1.2억원` / `9,800원`
+ */
+export function formatKrwShort(value: number): string {
+  if (!Number.isFinite(value)) return "-";
+  const won = Math.round(value);
+  if (Math.abs(won) >= 100_000_000) return `${trimZero(won / 100_000_000)}억원`;
+  if (Math.abs(won) >= 10_000) return `${Math.round(won / 10_000).toLocaleString("ko-KR")}만원`;
+  return `${won.toLocaleString("ko-KR")}원`;
+}
+
+/** 비중(0~1)을 백분율로. 소수 첫째 자리. 0 보다 크지만 0.1% 가 안 되면 "0.1% 미만". */
+export function formatShare(share: number): string {
+  if (!Number.isFinite(share)) return "-";
+  const percent = share * 100;
+  if (percent > 0 && percent < 0.05) return "0.1% 미만";
+  return `${percent.toFixed(1)}%`;
+}
+
 /** 큰 수 축약. `12,400` → `1.2만` */
 export function formatCompact(value: number): string {
   if (!Number.isFinite(value)) return "-";
