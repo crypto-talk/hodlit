@@ -1,9 +1,12 @@
 "use client";
 
 import { Check } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatShare } from "@/lib/format/number";
+import { roomHref } from "@/lib/routes";
 import { useRequireLogin } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { canShowResults } from "../api";
@@ -12,10 +15,16 @@ import type { RoomPoll as Poll } from "../types";
 
 type Props = {
   symbol: string;
+  /**
+   * 랜딩처럼 여러 방의 투표를 모아 보일 때. 제목이 "오늘의 투표" 대신 방 이름(방 게시판 링크)이 되고,
+   * 바깥 섹션 제목 아래에 들어가므로 h3 이다.
+   */
+  showRoom?: boolean;
 };
 
 /**
- * 방 게시판의 투표 칸 (HODL-64). 방 게시판의 [뉴스 | 투표] 2분할 중 오른쪽(구조 결정 G).
+ * 방 투표 칸 (HODL-64). 방 게시판의 [뉴스 | 투표] 2분할 중 오른쪽(구조 결정 G)과
+ * 랜딩 "오늘의 투표"(`open-polls.tsx`)가 같이 쓴다.
  *
  * - 참여 전: 질문과 선택지만. 결과(표 수 · 비율)는 없다 — 서버도 주지 않는다
  * - 참여 뒤: 오늘 결과. 다시 내거나 바꿀 수 없다
@@ -24,20 +33,21 @@ type Props = {
  * 보유자와 전체를 나눠 보여 주는 것은 아직 없다. 투표 기록에 투표자의 보유 상태가 남지 않아서다
  * (설계 원칙 5장 "투표 기록"). 백엔드에서 남기기 시작하면 결과에 줄을 더한다.
  */
-export default function RoomPoll({ symbol }: Props) {
+export default function RoomPoll({ symbol, showRoom = false }: Props) {
   const poll = useRoomPoll(symbol);
+  const room = showRoom ? symbol : null;
 
   if (poll.isPending) {
     return (
-      <Frame>
+      <PollFrame room={room}>
         <p className="mt-2 text-sm text-text-muted">투표를 불러오는 중…</p>
-      </Frame>
+      </PollFrame>
     );
   }
 
   if (poll.isError) {
     return (
-      <Frame>
+      <PollFrame room={room}>
         <p className="mt-2 text-sm text-text-muted">투표를 불러오지 못했습니다.</p>
         <button
           type="button"
@@ -46,26 +56,26 @@ export default function RoomPoll({ symbol }: Props) {
         >
           다시 시도
         </button>
-      </Frame>
+      </PollFrame>
     );
   }
 
   if (!poll.data) {
     return (
-      <Frame>
+      <PollFrame room={room}>
         <p className="mt-2 text-sm text-text-muted">지금 열린 투표가 없습니다.</p>
-      </Frame>
+      </PollFrame>
     );
   }
 
   const data = poll.data;
   // 키가 날짜별이라 자정이 지나면 새로 받는다. 그래도 결과는 응답 날짜가 오늘과 같을 때만 그린다.
   return canShowResults(data, poll.today) ? (
-    <Frame day={data.day}>
+    <PollFrame day={data.day} room={room}>
       <Results poll={data} />
-    </Frame>
+    </PollFrame>
   ) : (
-    <Frame day={data.day}>
+    <PollFrame day={data.day} room={room}>
       <Ballot
         key={`${data.id}-${data.day}`}
         poll={data}
@@ -73,15 +83,36 @@ export default function RoomPoll({ symbol }: Props) {
         memberId={poll.memberId}
         today={poll.today}
       />
-    </Frame>
+    </PollFrame>
   );
 }
 
-function Frame({ day, children }: { day?: string; children: React.ReactNode }) {
+function PollFrame({
+  day,
+  room,
+  children,
+}: {
+  day?: string;
+  room: string | null;
+  children: React.ReactNode;
+}) {
+  const Heading = room ? "h3" : "h2";
   return (
-    <section aria-label="투표" className="rounded-lg border border-border-subtle bg-surface p-4">
+    <section
+      aria-label={room ? `${room} 방 투표` : "투표"}
+      className="rounded-lg border border-border-subtle bg-surface p-4"
+    >
       <div className="flex items-baseline gap-2">
-        <h2 className="text-body font-semibold text-text-primary">오늘의 투표</h2>
+        <Heading className="text-body font-semibold text-text-primary">
+          {room ? (
+            <Link href={roomHref(room)} className="hover:text-brand">
+              {room}{" "}
+              <span className="font-normal text-text-muted">{coinNameKo(room, room)} 방</span>
+            </Link>
+          ) : (
+            "오늘의 투표"
+          )}
+        </Heading>
         {day ? <span className="text-xs text-text-muted">{formatKstDay(day)}</span> : null}
       </div>
       {children}

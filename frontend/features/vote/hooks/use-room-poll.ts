@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/http";
 import { useSession } from "@/lib/session";
-import { castVote, loadRoomPoll, roomPollQueryKey } from "../api";
+import { castVote, loadOpenPolls, loadRoomPoll, openPollsQueryKey, roomPollQueryKey } from "../api";
 import { kstDay, msUntilKstMidnight } from "../kst-day";
 import type { RoomPoll } from "../types";
 
@@ -55,9 +55,33 @@ export function useRoomPoll(symbol: string) {
     queryKey: roomPollQueryKey(symbol, memberId, today),
     queryFn: () => loadRoomPoll(symbol),
     enabled: restored,
+    // 랜딩이 방마다 받아 둔 값을 바로 쓰려고 잠깐 신선하게 둔다. 참여하면 바로 다시 받는다.
+    staleTime: 30_000,
   });
 
   return { ...query, today, memberId };
+}
+
+/**
+ * 투표가 열린 방들 (랜딩). 받은 투표는 방별 키에도 넣어 두어, 각 칸이 같은 요청을 다시 보내지 않게 한다.
+ */
+export function useOpenPolls() {
+  const queryClient = useQueryClient();
+  const { member, restored } = useSession();
+  const memberId = member?.id ?? null;
+  const today = useKstToday();
+
+  return useQuery({
+    queryKey: openPollsQueryKey(memberId, today),
+    queryFn: async () => {
+      const polls = await loadOpenPolls();
+      for (const poll of polls) {
+        queryClient.setQueryData(roomPollQueryKey(poll.symbol, memberId, today), poll);
+      }
+      return polls.map((poll) => poll.symbol);
+    },
+    enabled: restored,
+  });
 }
 
 /**

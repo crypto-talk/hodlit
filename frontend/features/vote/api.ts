@@ -14,6 +14,7 @@ import type { PollChoice, RoomPoll } from "./types";
  */
 
 type PollResponse = components["schemas"]["PollResponse"];
+type CoinResponse = components["schemas"]["CoinResponse"];
 type ChoiceResponse = components["schemas"]["ChoiceResponse"];
 
 export function roomPollQueryKey(symbol: string, memberId: number | null, day: string) {
@@ -33,6 +34,39 @@ export async function loadRoomPoll(symbol: string): Promise<RoomPoll | null> {
     if (error instanceof ApiError && error.status === 404) return null;
     throw error;
   }
+}
+
+export function openPollsQueryKey(memberId: number | null, day: string) {
+  return ["open-polls", memberId, day] as const;
+}
+
+/**
+ * 투표가 열린 방들 (랜딩 "오늘의 투표").
+ *
+ * ⚠️ 열린 투표 목록 API 가 없어서 방 목록(`/coins`)을 받고 방마다 `/poll` 을 한 번씩 부른다.
+ * 방 수만큼 요청이 나간다. 목록 API 가 생기면 이 함수만 바꾼다.
+ *
+ * 순서는 방 목록 순서 그대로다. "참여자가 많은 순"은 만들 수 없다 — 참여 전에는 서버가 표 수를 주지 않는다.
+ * 방 하나가 실패해도 나머지는 보여 준다. 전부 실패했을 때만 실패로 본다.
+ */
+export async function loadOpenPolls(): Promise<RoomPoll[]> {
+  const coins = await http<CoinResponse[]>("/api/v1/coins");
+  const symbols = coins
+    .map((coin) => coin.symbol)
+    .filter((symbol): symbol is string => typeof symbol === "string" && symbol !== "");
+  if (symbols.length === 0) return [];
+
+  const results = await Promise.allSettled(symbols.map(loadRoomPoll));
+  if (results.every((result) => result.status === "rejected")) {
+    throw new Error("투표를 불러오지 못했습니다.");
+  }
+
+  // 방 칸이 같은 키로 이어 쓰도록 심볼은 요청한 값으로 맞춘다.
+  return results.flatMap((result, index) =>
+    result.status === "fulfilled" && result.value
+      ? [{ ...result.value, symbol: symbols[index] }]
+      : [],
+  );
 }
 
 /** 오늘 참여. 응답은 참여 뒤의 투표(결과 포함)다. */

@@ -134,12 +134,13 @@ import-direction rule.
 
 Deliberately not done yet, do not treat these as oversights:
 
-- `features/landing/mock.ts` now holds only the daily vote (G-5). Its backend API
-  (`/communities/{symbol}/poll`) exists but is not wired yet. It reaches the screen through
-  `features/landing/api.ts` (`dailyVotes()`) so that structure rule 2 holds and only that
-  function changes when it lands. Trending rooms are wired (HODL-44); the old marquee mock
-  (service copy and three mock numbers) was replaced by the price ticker (HODL-57). Rooms come from `features/room/api.ts`; the feed and hot posts from
-  `features/landing/api.ts`.
+- The landing has no mock data left. The daily vote is wired (HODL-64, `features/vote/`): the
+  room board's vote box and the landing's "오늘의 투표" are the same `room-poll.tsx`, composed by
+  the pages because features cannot import each other. There is no "open polls" endpoint, so the
+  landing asks `/communities/{symbol}/poll` once per coin (`loadOpenPolls()`). Results are shown
+  only after today's (KST) participation, and the query keys carry the KST date so midnight clears
+  them. Trending rooms are wired (HODL-44); the old marquee mock was replaced by the price ticker
+  (HODL-57). Rooms come from `features/room/api.ts`; the feed from `features/landing/api.ts`.
 - `lib/http.ts` carries the bearer token and refreshes once on 401, but it still does not
   forward cookies from a server component: that waits for `access` to move to a cookie (B-3).
   Until then server components fetch public data only. It also does not branch on the error
@@ -233,7 +234,7 @@ post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header
-   (`GET /communities/{symbol}`), price box, candle chart, news and vote boxes marked "준비 중",
+   (`GET /communities/{symbol}`), price box, candle chart, the news box marked "준비 중", the vote box (HODL-64),
    and the 전체/인증 tabs
    as `?tab=verified`. The post list is the latest `ROOM_POST_LIMIT` (50) posts only; the 인증
    tab filters inside those 50. The backend now has numbered pages (`…/page`,
