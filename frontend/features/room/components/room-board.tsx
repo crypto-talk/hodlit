@@ -22,12 +22,14 @@ type Props = {
    * 방이 확인된 뒤에만 그린다.
    */
   poll: React.ReactNode;
+  /** 뉴스 칸. 투표 칸과 같은 이유로 페이지가 `features/news` 의 칸을 넣어 준다. */
+  news: React.ReactNode;
 };
 
 /**
  * 방 게시판 `/subhodl/[symbol]`.
  *
- * 구조 결정 G 군: 위에 [코인·시세 + 차트], 그 아래 [뉴스 | 투표] 2분할, 그 아래 전체/인증
+ * 구조 결정 G 군: 위에 [코인·시세 + 차트], 그 아래 [뉴스 | 투표] 2분할(HODL-62 · 64), 그 아래 전체/인증
  * 2탭 글 목록.
  *
  * 데이터는 클라이언트에서 가져온다. 글 상세와 같은 이유로, access 토큰이 쿠키로
@@ -36,12 +38,10 @@ type Props = {
  * 왕복 한 번을 감수했다.
  *
  * 아직 없는 것
- *   - 뉴스: 백엔드 API 는 생겼다(`/communities/{symbol}/news`). 붙이기 전까지 그럴듯한 목값 대신
- *     "준비 중"을 둔다(G-5). 투표는 붙였다(HODL-64, `features/vote`)
  *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
  *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
  */
-export default function RoomBoard({ symbol, tab, page, poll }: Props) {
+export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
   const room = useQuery({ queryKey: ["room", symbol], queryFn: () => loadRoom(symbol) });
 
   if (room.isError) {
@@ -92,7 +92,7 @@ export default function RoomBoard({ symbol, tab, page, poll }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-4 max-shell:grid-cols-1">
-        <ComingSoon title="뉴스" body={`${info.name} 관련 뉴스를 모아 보여줄 자리입니다.`} />
+        {news}
         {poll}
       </div>
 
@@ -122,22 +122,5 @@ function RoomHeader({ info }: { info: RoomInfo }) {
         <Link href={writeHref(info.symbol)}>이 방에 글쓰기</Link>
       </Button>
     </header>
-  );
-}
-
-function ComingSoon({ title, body }: { title: string; body: string }) {
-  return (
-    <section
-      aria-label={title}
-      className="rounded-lg border border-dashed border-border-subtle bg-surface p-4"
-    >
-      <div className="flex items-baseline gap-2">
-        <h2 className="text-body font-semibold text-text-primary">{title}</h2>
-        <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted">
-          준비 중
-        </span>
-      </div>
-      <p className="mt-2 text-sm text-text-muted">{body}</p>
-    </section>
   );
 }

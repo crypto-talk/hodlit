@@ -52,7 +52,7 @@ app/
   (focus)/              header only
     login/  signup/  write/  settings/  settings/wallet/
     subhodl/[symbol]/[postId]/edit/
-features/               one folder per domain: auth wallet room post comment vote landing portfolio
+features/               one folder per domain: auth wallet room post comment vote news landing portfolio
   <domain>/components/  hooks/  api.ts  types.ts  mock.ts  (schema.ts optional)
                         unit tests sit next to the source as `*.test.ts`
 components/ui/          shadcn primitives (+ *.stories.tsx)
@@ -234,7 +234,7 @@ post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header
-   (`GET /communities/{symbol}`), price box, candle chart, the news box marked "준비 중", the vote box (HODL-64),
+   (`GET /communities/{symbol}`), price box, candle chart, the news box (HODL-62) and the vote box (HODL-64),
    and the 전체/인증 tabs
    as `?tab=verified`. The post list is the latest `ROOM_POST_LIMIT` (50) posts only; the 인증
    tab filters inside those 50. The backend now has numbered pages (`…/page`,

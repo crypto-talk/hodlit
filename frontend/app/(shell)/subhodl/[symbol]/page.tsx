@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import RoomNews from "@/features/news/components/room-news";
 import RoomBoard from "@/features/room/components/room-board";
 import RoomPoll from "@/features/vote/components/room-poll";
 import { safeSymbol } from "@/lib/routes";
@@ -37,6 +38,7 @@ export default async function RoomPage({
       symbol={room}
       tab={tab === "verified" ? "verified" : "all"}
       page={Number.isFinite(pageNumber) && pageNumber >= 1 ? pageNumber : 1}
+      news={<RoomNews symbol={room} />}
       poll={<RoomPoll symbol={room} />}
     />
   );
