@@ -20,6 +20,15 @@ type Props = {
   byPostAuthor: boolean;
   /** 로그인한 사람이 쓴 댓글이면 수정 · 삭제 버튼을 보여준다. 검사는 서버가 한다. */
   mine: boolean;
+  /**
+   * 루트 댓글이면 그 아래 답글 수. 지우면 답글도 함께 지워지므로 삭제 확인에 알린다.
+   * 답글이면 0.
+   */
+  replyCount: number;
+  /** "답글" 을 눌렀을 때. 섹션이 이 댓글을 대상으로 답글 칸을 연다. */
+  onReply: (comment: CommentView) => void;
+  /** 지금 이 댓글에 답글 칸이 열려 있으면 true. 버튼을 눌린 상태로 보인다. */
+  replying: boolean;
 };
 
 /**
@@ -29,9 +38,21 @@ type Props = {
  * 인증을 지원하지 않는 방의 댓글에는 배지도 붙이지 않는다. 모든 댓글에
  * "인증 미지원 코인" 이 반복되면 소음이고, 그 사실은 글의 보유 정보 칸이 이미 말한다.
  *
- * 와이어프레임에서 아직 없는 것: 좋아요 · 신고 (API 없음), 답글 (API 는 생겼고 아직 안 붙였다).
+ * 답글(HODL-60)은 본문 앞에 `@닉네임` 을 따로 붙인다. 닉네임은 답글을 쓸 때 서버가 저장한 값이라
+ * 그 댓글이 지워져도 남는다. 수정할 때는 본문만 고친다(대상은 바뀌지 않는다).
+ *
+ * 와이어프레임에서 아직 없는 것: 좋아요 · 신고 (API 없음).
  */
-export default function CommentItem({ postId, symbol, comment, byPostAuthor, mine }: Props) {
+export default function CommentItem({
+  postId,
+  symbol,
+  comment,
+  byPostAuthor,
+  mine,
+  replyCount,
+  onReply,
+  replying,
+}: Props) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
@@ -74,7 +95,7 @@ export default function CommentItem({ postId, symbol, comment, byPostAuthor, min
   const errorMessage = problem || (error ? commentErrorMessage(error) : "");
 
   return (
-    <li className="border-b border-border-subtle py-4 last:border-b-0">
+    <div className="py-4">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-semibold text-text-primary">{comment.nickname}</span>
         {byPostAuthor ? <span className="text-xs font-bold text-text-primary">작성자</span> : null}
@@ -114,15 +135,22 @@ export default function CommentItem({ postId, symbol, comment, byPostAuthor, min
         </div>
       ) : (
         <p className="mt-2 text-sm leading-relaxed break-words whitespace-pre-wrap text-text-primary">
+          {comment.replyToNickname ? (
+            <span className="mr-1 font-semibold text-brand">@{comment.replyToNickname}</span>
+          ) : null}
           {comment.content}
         </p>
       )}
 
-      {mine && !editing ? (
-        <div className="mt-2 flex items-center gap-3 text-xs text-text-muted">
+      {editing ? null : (
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-muted">
           {confirmingDelete ? (
             <>
-              <span>이 댓글을 삭제할까요?</span>
+              <span>
+                {replyCount > 0
+                  ? `이 댓글을 삭제하면 답글 ${replyCount}개도 함께 삭제됩니다. 삭제할까요?`
+                  : "이 댓글을 삭제할까요?"}
+              </span>
               <button
                 type="button"
                 className="font-semibold text-danger"
@@ -146,26 +174,38 @@ export default function CommentItem({ postId, symbol, comment, byPostAuthor, min
             <>
               <button
                 type="button"
-                onClick={() => {
-                  setDraft(comment.content);
-                  setEditing(true);
-                }}
+                aria-pressed={replying}
+                className={replying ? "font-semibold text-brand" : undefined}
+                onClick={() => onReply(comment)}
               >
-                수정
+                답글
               </button>
-              <button type="button" onClick={() => setConfirmingDelete(true)}>
-                삭제
-              </button>
+              {mine ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(comment.content);
+                      setEditing(true);
+                    }}
+                  >
+                    수정
+                  </button>
+                  <button type="button" onClick={() => setConfirmingDelete(true)}>
+                    삭제
+                  </button>
+                </>
+              ) : null}
             </>
           )}
         </div>
-      ) : null}
+      )}
 
       {errorMessage ? (
         <p role="alert" className="mt-2 text-xs text-danger">
           {errorMessage}
         </p>
       ) : null}
-    </li>
+    </div>
   );
 }

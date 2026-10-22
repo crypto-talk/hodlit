@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isHolderTier } from "@/lib/holder-snapshot/label";
 import { useSession } from "@/lib/session";
 import { loadComments } from "../api";
 import CommentForm from "./comment-form";
 import CommentItem from "./comment-item";
+import { groupComments } from "../thread";
+import type { CommentView } from "../types";
 
 type Props = {
   postId: number;
@@ -25,6 +28,10 @@ type Props = {
  *
  * 목록은 오래된 순(서버 순서 그대로)이다. 새 댓글은 맨 아래에 붙는다.
  * 서버에 페이지가 없어 한 번에 전부 받고, "더 보기" 도 없다.
+ *
+ * 답글(HODL-60)은 루트 댓글 아래 한 단계만 들여 쓴다. 답글에 답해도 같은 줄에 붙는다.
+ * 답글 칸은 한 번에 하나만 열리고, 그 답글이 붙을 자리(그 묶음의 맨 아래)에 둔다.
+ * 머리줄 댓글 수는 답글까지 센다(글의 댓글 수와 같다).
  */
 export default function CommentSection({ postId, symbol, postAuthorId, verifiable }: Props) {
   const { member } = useSession();
@@ -32,8 +39,11 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
     queryKey: ["comments", postId],
     queryFn: () => loadComments(postId),
   });
+  // 열린 답글 칸 — 답할 댓글과 그 묶음의 루트
+  const [replyTo, setReplyTo] = useState<{ rootId: number; comment: CommentView } | null>(null);
 
   const list = comments.data ?? [];
+  const threads = groupComments(list);
   // "보유 인증자 N명" — 같은 사람이 여러 번 써도 한 명이다.
   const verifiedHolders = new Set(
     list
@@ -71,16 +81,60 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
         <p className="mt-6 text-center text-sm text-text-muted">첫 댓글을 남겨보세요.</p>
       ) : (
         <ul className="mt-2">
-          {list.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              postId={postId}
-              symbol={symbol}
-              comment={comment}
-              byPostAuthor={postAuthorId !== null && comment.memberId === postAuthorId}
-              mine={!!member && comment.memberId === member.id}
-            />
-          ))}
+          {threads.map(({ root, replies }) => {
+            const item = (comment: CommentView, replyCount: number) => (
+              <CommentItem
+                postId={postId}
+                symbol={symbol}
+                comment={comment}
+                byPostAuthor={postAuthorId !== null && comment.memberId === postAuthorId}
+                mine={!!member && comment.memberId === member.id}
+                replyCount={replyCount}
+                replying={replyTo?.comment.id === comment.id}
+                onReply={(target) =>
+                  setReplyTo((open) =>
+                    open?.comment.id === target.id ? null : { rootId: root.id, comment: target },
+                  )
+                }
+              />
+            );
+            const replyOpen = replyTo?.rootId === root.id;
+
+            return (
+              <li key={root.id} className="border-b border-border-subtle last:border-b-0">
+                {item(root, replies.length)}
+                {replies.length > 0 || replyOpen ? (
+                  <div className="mb-4 ml-4 border-l-2 border-border-subtle pl-4 sm:ml-6">
+                    {replies.length > 0 ? (
+                      <ul aria-label={`답글 ${replies.length}개`}>
+                        {replies.map((reply) => (
+                          <li
+                            key={reply.id}
+                            className="border-b border-border-subtle last:border-b-0"
+                          >
+                            {item(reply, 0)}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {replyOpen && replyTo ? (
+                      <div className={replies.length > 0 ? "mt-1" : "pt-1"}>
+                        <CommentForm
+                          postId={postId}
+                          verifiable={verifiable}
+                          replyTo={{
+                            commentId: replyTo.comment.id,
+                            nickname: replyTo.comment.nickname,
+                          }}
+                          onClose={() => setReplyTo(null)}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
 
