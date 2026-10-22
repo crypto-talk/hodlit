@@ -3,7 +3,7 @@ import { coinNameKo } from "@/lib/coin-name-ko";
 import { http } from "@/lib/http";
 import { type IdentifiedPost, toPostSummary } from "@/lib/post-summary";
 import { VOTES } from "./mock";
-import type { FeedPost, HotPost, TrendingRoom, VoteRow } from "./types";
+import type { FeedPost, TrendingRoom, VoteRow } from "./types";
 
 /**
  * 랜딩이 가져오는 데이터 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -22,15 +22,13 @@ type FeedPageResponse = Schemas["FeedPageResponse"];
 type StatisticsResponse = Schemas["StatisticsResponse"];
 
 const FEED_SIZE = 20;
-const HOT_LIMIT = 5;
 /** 지금 뜨는 방에 보여주는 방 수. 1~3위는 카드, 나머지는 줄. */
 const TRENDING_LIMIT = 6;
 
-/** 전체 글과 핫글. 둘 다 같은 피드 한 번으로 만든다. */
-export async function loadFeed(): Promise<{ posts: FeedPost[]; hot: HotPost[] }> {
+/** 전체 글. */
+export async function loadFeed(): Promise<FeedPost[]> {
   const page = await http<FeedPageResponse>(`/api/v1/feed?size=${FEED_SIZE}`);
-  const posts = uniquePosts(page.items ?? []).map(toPostSummary);
-  return { posts, hot: toHotPosts(posts) };
+  return uniquePosts(page.items ?? []).map(toPostSummary);
 }
 
 /**
@@ -84,26 +82,4 @@ function uniquePosts(items: FeedItemResponse[]): IdentifiedPost[] {
   }
 
   return posts;
-}
-
-/**
- * 핫글.
- *
- * ⚠️ 집계 기준(G-3)이 백엔드와 미합의고 조회수 API 도 없다. 지금은 가져온
- * 피드 안에서 댓글 많은 순으로만 세운 **임시** 목록이다. 전체 글 중 진짜
- * 상위가 아니다. 기준이 정해지면 백엔드 집계로 바꾼다.
- */
-function toHotPosts(posts: FeedPost[]): HotPost[] {
-  return [...posts]
-    .sort((a, b) => b.comments - a.comments)
-    .slice(0, HOT_LIMIT)
-    .map((post, index) => ({
-      rank: index + 1,
-      href: post.href,
-      verifiable: post.verifiable,
-      symbol: post.symbol,
-      tier: post.tier,
-      title: post.title,
-      meta: `좋아요 ${post.likes} · 댓글 ${post.comments}`,
-    }));
 }
