@@ -8,7 +8,6 @@
  * `components/layout/types.ts` 의 `SidebarRoom` 을 본다.
  */
 
-import type { Tier } from "@/lib/holder-snapshot/types";
 import type { PostSummary } from "@/lib/post-summary";
 
 /**
@@ -31,17 +30,6 @@ export type VoteRow = {
   allLabel: string;
   holderWidth: string;
   holderLabel: string;
-};
-
-export type HotPost = {
-  rank: number;
-  href: string;
-  /** 보유 인증을 지원하는 코인의 글인지. false 면 인증 배지를 그리지 않는다. */
-  verifiable: boolean;
-  symbol: string;
-  tier: Tier;
-  title: string;
-  meta: string;
 };
 
 /**

@@ -3,11 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { dailyVotes, loadFeed, loadTrendingRooms } from "@/features/landing/api";
-import HotPosts from "@/features/landing/components/hot-posts";
 import PostFeed from "@/features/landing/components/post-feed";
 import TrendingRooms from "@/features/landing/components/trending-rooms";
 import VotePanel from "@/features/landing/components/vote-panel";
-import type { FeedPost, HotPost } from "@/features/landing/types";
+import type { FeedPost } from "@/features/landing/types";
 import { useRequireLogin } from "@/lib/session";
 
 /**
@@ -16,7 +15,8 @@ import { useRequireLogin } from "@/lib/session";
  * 셸(헤더·전광판·사이드바·푸터·FAB)은 `app/(shell)/layout.tsx` 가 그린다.
  * 이 파일은 가운데 칼럼의 섹션만 들고 있다.
  *
- * 백엔드에서 오는 것 — 전체 글과 핫글 (`GET /feed`), 지금 뜨는 방 (`GET /communities/stats`)
+ * 백엔드에서 오는 것 — 전체 글 (`GET /feed`), 지금 뜨는 방 (`GET /communities/stats`)
+ * 핫글 섹션은 HODL-86 으로 뺐다.
  * 아직 목데이터인 것 — 오늘의 투표(G-5). API 는 생겼고(HODL-64) 아직 안 붙였다.
  *
  * 뜨는 방은 피드와 따로 받고 따로 실패한다. 한쪽이 안 와도 다른 쪽은 보여야 한다.
@@ -28,7 +28,6 @@ export default function Landing() {
   const requireLogin = useRequireLogin();
 
   const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [hot, setHot] = useState<HotPost[]>([]);
   const [notice, setNotice] = useState("");
   const [loadFailed, setLoadFailed] = useState(false);
   const trending = useQuery({ queryKey: ["trending-rooms"], queryFn: loadTrendingRooms });
@@ -37,9 +36,7 @@ export default function Landing() {
     let alive = true;
     loadFeed()
       .then((feed) => {
-        if (!alive) return;
-        setPosts(feed.posts);
-        setHot(feed.hot);
+        if (alive) setPosts(feed);
       })
       .catch(() => {
         if (alive) setLoadFailed(true);
@@ -69,8 +66,7 @@ export default function Landing() {
         </p>
       ) : null}
 
-      {/* 인기글 → 인기 게시판 → 투표 → 전체 글. 읽을거리를 먼저 보여준다. */}
-      <HotPosts posts={hot} />
+      {/* 인기 게시판 → 투표 → 전체 글. */}
       <TrendingRooms
         rooms={trending.data ?? null}
         failed={trending.isError}
