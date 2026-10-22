@@ -52,7 +52,7 @@ app/
   (focus)/              header only
     login/  signup/  write/  settings/  settings/wallet/
     subhodl/[symbol]/[postId]/edit/
-features/               one folder per domain: auth wallet room post comment vote landing
+features/               one folder per domain: auth wallet room post comment vote landing portfolio
   <domain>/components/  hooks/  api.ts  types.ts  mock.ts  (schema.ts optional)
                         unit tests sit next to the source as `*.test.ts`
 components/ui/          shadcn primitives (+ *.stories.tsx)

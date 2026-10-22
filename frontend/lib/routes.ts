@@ -71,3 +71,6 @@ export const MYPAGE_HREF = "/mypage";
 
 /** 마이페이지 지갑 탭. 지갑 추가 · 해제와 거래소 연결 해제가 여기 있다. */
 export const MYPAGE_WALLET_HREF = "/mypage/wallet";
+
+/** 마이페이지 내 자산 탭. 지갑 · 거래소를 합산한 코인 비중 원형 차트(HODL-67). */
+export const MYPAGE_ASSETS_HREF = "/mypage/assets";

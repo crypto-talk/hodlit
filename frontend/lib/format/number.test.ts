@@ -3,6 +3,8 @@ import {
   formatChangeRate,
   formatCoinKrw,
   formatCompact,
+  formatKrwShort,
+  formatShare,
   formatKrw,
   formatQuantity,
 } from "./number";
@@ -61,5 +63,27 @@ describe("formatChangeRate", () => {
     expect(formatChangeRate(-2.46, { signed: false })).toBe("2.5%");
     expect(formatChangeRate(-0.04, { signed: false })).toBe("0.0%");
     expect(formatChangeRate(null, { signed: false })).toBe("-");
+  });
+});
+
+describe("formatKrwShort", () => {
+  it("만 원 · 억 원 단위로 줄인다", () => {
+    expect(formatKrwShort(40_612_000)).toBe("4,061만원");
+    expect(formatKrwShort(123_456_789)).toBe("1.2억원");
+    expect(formatKrwShort(300_000_000)).toBe("3억원");
+    expect(formatKrwShort(9_800)).toBe("9,800원");
+  });
+});
+
+describe("formatShare", () => {
+  it("소수 첫째 자리 백분율", () => {
+    expect(formatShare(0.4383)).toBe("43.8%");
+    expect(formatShare(1)).toBe("100.0%");
+    expect(formatShare(0)).toBe("0.0%");
+  });
+
+  it("반올림하면 0.0% 가 되는 작은 비중은 0.1% 미만", () => {
+    expect(formatShare(0.0003)).toBe("0.1% 미만");
+    expect(formatShare(0.0006)).toBe("0.1%");
   });
 });
