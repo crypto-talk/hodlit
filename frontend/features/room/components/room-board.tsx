@@ -17,6 +17,11 @@ type Props = {
   tab: RoomTab;
   /** 글 목록 쪽. 1부터. */
   page: number;
+  /**
+   * 투표 칸. features 끼리는 서로 부르지 않으므로(구조 규칙 1) 페이지가 `features/vote` 의 칸을 넣어 준다.
+   * 방이 확인된 뒤에만 그린다.
+   */
+  poll: React.ReactNode;
 };
 
 /**
@@ -31,12 +36,12 @@ type Props = {
  * 왕복 한 번을 감수했다.
  *
  * 아직 없는 것
- *   - 뉴스 · 투표: 백엔드 API 는 생겼다(`/communities/{symbol}/news` · `/communities/{symbol}/poll`).
- *     붙이기 전까지 그럴듯한 목값 대신 "준비 중"을 둔다(G-5)
+ *   - 뉴스: 백엔드 API 는 생겼다(`/communities/{symbol}/news`). 붙이기 전까지 그럴듯한 목값 대신
+ *     "준비 중"을 둔다(G-5). 투표는 붙였다(HODL-64, `features/vote`)
  *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
  *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
  */
-export default function RoomBoard({ symbol, tab, page }: Props) {
+export default function RoomBoard({ symbol, tab, page, poll }: Props) {
   const room = useQuery({ queryKey: ["room", symbol], queryFn: () => loadRoom(symbol) });
 
   if (room.isError) {
@@ -88,10 +93,7 @@ export default function RoomBoard({ symbol, tab, page }: Props) {
 
       <div className="grid grid-cols-2 gap-4 max-shell:grid-cols-1">
         <ComingSoon title="뉴스" body={`${info.name} 관련 뉴스를 모아 보여줄 자리입니다.`} />
-        <ComingSoon
-          title="투표"
-          body="내일 오를지 내릴지 투표하고, 보유자와 전체의 생각을 나눠 볼 수 있게 됩니다."
-        />
+        {poll}
       </div>
 
       <RoomPosts symbol={info.symbol} tab={tab} page={page} verifiable={info.verifiable} />

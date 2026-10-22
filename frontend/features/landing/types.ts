@@ -24,14 +24,6 @@ export type TrendingRoom = {
   participants: number;
 };
 
-export type VoteRow = {
-  symbol: string;
-  allWidth: string;
-  allLabel: string;
-  holderWidth: string;
-  holderLabel: string;
-};
-
 /**
  * 전체 글 한 줄. 방 게시판과 같은 카드라 모양은 `lib/post-summary.ts` 에 있다.
  */

@@ -2,8 +2,7 @@ import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { http } from "@/lib/http";
 import { type IdentifiedPost, toPostSummary } from "@/lib/post-summary";
-import { VOTES } from "./mock";
-import type { FeedPost, TrendingRoom, VoteRow } from "./types";
+import type { FeedPost, TrendingRoom } from "./types";
 
 /**
  * 랜딩이 가져오는 데이터 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -54,16 +53,6 @@ export async function loadTrendingRooms(): Promise<TrendingRoom[]> {
       comments: room.commentCount ?? 0,
       participants: room.activeParticipantCount ?? 0,
     }));
-}
-
-/**
- * ⚠️ 목값. 일일 투표 API(`/communities/{symbol}/poll`, HODL-64)로 바꿀 자리.
- *
- * 화면이 `./mock` 을 직접 읽지 않게 하려고(구조 규칙 2) 여기를 통과시킨다.
- * API 를 붙이면 이 함수만 async 로 바꾸면 화면은 그대로 둘 수 있다.
- */
-export function dailyVotes(): VoteRow[] {
-  return VOTES;
 }
 
 /**
