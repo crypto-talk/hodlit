@@ -6,15 +6,15 @@ import { useOpenPolls } from "../hooks/use-room-poll";
 import RoomPoll from "./room-poll";
 
 /** 칸으로 보여 줄 최대 수. 나머지는 방 링크만. */
-const SHOWN = 3;
+const SHOWN = 2;
 
 /**
  * 랜딩 "오늘의 투표" (HODL-64).
  *
  * 투표가 열린 방들을 방 게시판과 같은 칸(`room-poll.tsx`)으로 보여 준다. 여기서 바로 참여할 수 있다.
- * 앞의 3개만 칸으로, 나머지는 방 이름 링크로 둔다.
+ * 세로 한 줄로 2개만 칸으로, 나머지는 방 이름 링크로 둔다(성지 결정, 2026-10-23).
  *
- * 순서는 방 목록 순서다. 참여 전에는 표 수가 없어서 "큰 투표 순"으로 정렬할 수 없다.
+ * 순서는 하루 단위로 섞는다(`orderForDay`). 참여 전에는 표 수가 없어서 "큰 투표 순"으로 정렬할 수 없다.
  * 예전 목값의 "전체 vs 보유자" 막대는 뺐다. 투표 기록에 보유 상태가 남지 않아 서버가 줄 수 없다.
  */
 export default function OpenPolls() {
@@ -43,7 +43,7 @@ export default function OpenPolls() {
         </p>
       ) : (
         <>
-          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+          <div className="mt-4 flex flex-col gap-4">
             {polls.data.slice(0, SHOWN).map((symbol) => (
               <RoomPoll key={symbol} symbol={symbol} showRoom />
             ))}

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ApiError } from "@/lib/http";
 import { useSession } from "@/lib/session";
 import { castVote, loadOpenPolls, loadRoomPoll, openPollsQueryKey, roomPollQueryKey } from "../api";
+import { orderForDay } from "../daily-order";
 import { kstDay, msUntilKstMidnight } from "../kst-day";
 import type { RoomPoll } from "../types";
 
@@ -64,6 +65,7 @@ export function useRoomPoll(symbol: string) {
 
 /**
  * 투표가 열린 방들 (랜딩). 받은 투표는 방별 키에도 넣어 두어, 각 칸이 같은 요청을 다시 보내지 않게 한다.
+ * 순서는 한국 날짜 기준으로 섞는다(`orderForDay`) — 오늘은 같은 순서, 내일은 다른 순서.
  */
 export function useOpenPolls() {
   const queryClient = useQueryClient();
@@ -78,7 +80,10 @@ export function useOpenPolls() {
       for (const poll of polls) {
         queryClient.setQueryData(roomPollQueryKey(poll.symbol, memberId, today), poll);
       }
-      return polls.map((poll) => poll.symbol);
+      return orderForDay(
+        polls.map((poll) => poll.symbol),
+        today,
+      );
     },
     enabled: restored,
   });

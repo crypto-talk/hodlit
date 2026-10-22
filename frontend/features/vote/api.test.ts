@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canShowResults, toRoomPoll } from "./api";
+import { orderForDay } from "./daily-order";
 import { kstDay, msUntilKstMidnight } from "./kst-day";
 
 describe("kstDay", () => {
@@ -70,5 +71,27 @@ describe("canShowResults", () => {
     expect(canShowResults(toRoomPoll(AFTER), "2026-10-23")).toBe(true);
     expect(canShowResults(toRoomPoll(AFTER), "2026-10-24")).toBe(false);
     expect(canShowResults(toRoomPoll(BEFORE), "2026-10-23")).toBe(false);
+  });
+});
+
+describe("orderForDay", () => {
+  const rooms = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA"];
+
+  it("같은 날은 같은 순서, 원소는 그대로", () => {
+    const first = orderForDay(rooms, "2026-10-23");
+    expect(orderForDay(rooms, "2026-10-23")).toEqual(first);
+    expect([...first].sort()).toEqual([...rooms].sort());
+  });
+
+  it("날짜가 바뀌면 순서가 바뀐다", () => {
+    const days = ["2026-10-23", "2026-10-24", "2026-10-25", "2026-10-26"];
+    const orders = new Set(days.map((day) => orderForDay(rooms, day).join(",")));
+    expect(orders.size).toBeGreaterThan(1);
+  });
+
+  it("원본을 바꾸지 않는다", () => {
+    const copy = [...rooms];
+    orderForDay(rooms, "2026-10-23");
+    expect(rooms).toEqual(copy);
   });
 });

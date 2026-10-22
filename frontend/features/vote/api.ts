@@ -46,7 +46,8 @@ export function openPollsQueryKey(memberId: number | null, day: string) {
  * ⚠️ 열린 투표 목록 API 가 없어서 방 목록(`/coins`)을 받고 방마다 `/poll` 을 한 번씩 부른다.
  * 방 수만큼 요청이 나간다. 목록 API 가 생기면 이 함수만 바꾼다.
  *
- * 순서는 방 목록 순서 그대로다. "참여자가 많은 순"은 만들 수 없다 — 참여 전에는 서버가 표 수를 주지 않는다.
+ * 방 목록 순서로 돌려준다. 랜딩은 이걸 하루 단위로 섞는다(`daily-order.ts`).
+ * "참여자가 많은 순"은 만들 수 없다 — 참여 전에는 서버가 표 수를 주지 않는다.
  * 방 하나가 실패해도 나머지는 보여 준다. 전부 실패했을 때만 실패로 본다.
  */
 export async function loadOpenPolls(): Promise<RoomPoll[]> {
