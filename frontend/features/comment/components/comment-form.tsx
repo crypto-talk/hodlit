@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/session";
 import { createComment } from "../api";
+import { isSubmitEnter } from "../enter-to-submit";
 import { commentErrorMessage } from "../error-message";
 import { COMMENT_MAX, commentProblem } from "../limits";
 
@@ -105,6 +106,12 @@ export default function CommentForm({ postId, verifiable, replyTo, onClose }: Pr
         onChange={(event) => {
           setContent(event.target.value);
           if (problem) setProblem("");
+        }}
+        // Enter 로 등록, Shift+Enter 로 줄바꿈(터치 기기는 Enter 가 줄바꿈)
+        onKeyDown={(event) => {
+          if (!isSubmitEnter(event)) return;
+          event.preventDefault();
+          event.currentTarget.form?.requestSubmit();
         }}
       />
       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-muted">

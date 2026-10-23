@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format/time";
 import { isHolderTier } from "@/lib/holder-snapshot/label";
 import { deleteComment, updateComment } from "../api";
+import { isSubmitEnter } from "../enter-to-submit";
 import { commentErrorMessage } from "../error-message";
 import { COMMENT_MAX, commentProblem } from "../limits";
 import type { CommentView } from "../types";
@@ -119,6 +120,17 @@ export default function CommentItem({
             onChange={(event) => {
               setDraft(event.target.value);
               if (problem) setProblem("");
+            }}
+            // 새 댓글 입력칸과 같게 Enter 로 저장, Shift+Enter 로 줄바꿈, Esc 로 취소
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !update.isPending) {
+                event.preventDefault();
+                cancelEdit();
+                return;
+              }
+              if (!isSubmitEnter(event)) return;
+              event.preventDefault();
+              save();
             }}
           />
           <div className="mt-2 flex items-center justify-end gap-2">
