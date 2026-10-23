@@ -1,9 +1,11 @@
 "use client";
 
+import { FormEvent, useState } from "react";
+import { Search } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { MYPAGE_HREF, roomSymbolOf, writeHref } from "@/lib/routes";
+import { MYPAGE_HREF, roomSymbolOf, searchHref, writeHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import Logo from "./logo";
 
@@ -14,19 +16,34 @@ import Logo from "./logo";
  * 서버 컴포넌트라 함수 프롭을 내려보낼 수 없다. 로그인 상태는 `useSession()`
  * 에서 직접 읽는다.
  *
- * 검색은 백엔드에 `/search` 가 없어 비활성이다. 눌리는데 아무 일도 안 나는
- * 것보다 눌리지 않는 편이 낫다.
+ * 검색칸은 Enter 로 `/search?q=` 결과 화면에 보낸다(HODL-65). 방 게시판 · 글 상세 안에서 찾으면
+ * 그 방 범위(`&room=ETH`, HODL-69)로 열리고, 결과 화면에서 전체로 넓힐 수 있다.
+ * 보낸 뒤에는 비운다 — 검색어를 고치는 곳은 결과 화면 위의 검색칸이다.
+ * (지금 주소의 `q` 를 여기서 읽으려면 `useSearchParams` 가 필요한데, 모든 화면의 헤더라 정적
+ * 화면까지 클라이언트 렌더로 바뀌어서 쓰지 않는다)
  */
 export default function Header() {
   const { member, logout } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
+  const [query, setQuery] = useState("");
 
   // 로그인 후 원래 보던 화면으로 돌려보낸다. 로그인·회원가입 화면에서는
   // 자기 자신으로 돌아오지 않도록 홈을 넣는다.
   const next = pathname === "/login" || pathname === "/signup" ? "/" : pathname;
   const loginHref = `/login?next=${encodeURIComponent(next)}`;
   // 방 게시판·글 상세에서 누르면 그 방이 미리 골라진다.
-  const write = writeHref(roomSymbolOf(pathname));
+  const room = roomSymbolOf(pathname);
+  const write = writeHref(room);
+
+  function search(event: FormEvent) {
+    event.preventDefault();
+    const q = query.trim();
+    // 빈 검색어는 보내지 않는다. 너무 긴 검색어는 결과 화면이 안내한다.
+    if (!q) return;
+    router.push(searchHref(q, { room }));
+    setQuery("");
+  }
 
   return (
     <header className="flex items-center gap-4 border-b border-border-subtle bg-surface px-6 py-4">
@@ -36,18 +53,24 @@ export default function Header() {
         aria-label="Hodlit 홈"
       >
         <Logo size={32} background="var(--brand)" foreground="var(--text-inverse)" />
-        <span className="text-h2 font-semibold tracking-[-0.01em]">Hodlit</span>
+        {/* 좁은 화면에서는 검색칸 자리를 위해 글자를 빼고 로고만 둔다(이름은 aria-label 에 있다) */}
+        <span className="text-h2 font-semibold tracking-[-0.01em] max-shell:hidden">Hodlit</span>
       </Link>
 
-      <button
-        type="button"
-        className="flex h-9 min-w-0 flex-1 cursor-not-allowed items-center gap-2 rounded-sm border border-border-subtle bg-canvas px-4 text-left text-sm text-text-muted"
-        disabled
-        title="검색은 준비 중입니다"
-      >
-        <span className="size-3 flex-none rounded-full border-2 border-text-muted" />
-        <span className="truncate">코인 · 지갑 · 글 검색</span>
-      </button>
+      <form role="search" onSubmit={search} className="flex h-9 min-w-0 flex-1">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-muted focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-brand">
+          <Search aria-hidden className="size-4 flex-none" strokeWidth={2} />
+          <input
+            type="search"
+            enterKeyHint="search"
+            aria-label={room ? `${room} 방에서 검색` : "검색"}
+            className="min-w-0 flex-1 bg-transparent text-text-primary outline-none placeholder:text-text-muted"
+            placeholder={room ? `${room} 방에서 검색` : "글 · 댓글 · 방 · 닉네임 검색"}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+      </form>
 
       <div className="flex flex-none items-center gap-2">
         {member ? (

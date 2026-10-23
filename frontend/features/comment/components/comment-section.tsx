@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CornerDownRight } from "lucide-react";
 import { isHolderTier } from "@/lib/holder-snapshot/label";
+import { commentAnchor } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { loadComments } from "../api";
 import CommentForm from "./comment-form";
@@ -45,6 +46,7 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
 
   const list = comments.data ?? [];
   const threads = groupComments(list);
+  const highlighted = useAnchoredComment(comments.isSuccess ? list : null);
   // "보유 인증자 N명" — 같은 사람이 여러 번 써도 한 명이다.
   const verifiedHolders = new Set(
     list
@@ -92,6 +94,7 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
                 mine={!!member && comment.memberId === member.id}
                 replyCount={replyCount}
                 replying={replyTo?.comment.id === comment.id}
+                highlighted={highlighted === comment.id}
                 onReply={(target) =>
                   setReplyTo((open) =>
                     open?.comment.id === target.id ? null : { rootId: root.id, comment: target },
@@ -150,6 +153,32 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
       </div>
     </section>
   );
+}
+
+/**
+ * 주소가 `#comment-{id}` 면(검색 결과의 댓글 링크) 목록이 그려진 뒤 그 댓글로 옮긴다.
+ * 돌려준 id 의 댓글은 바탕이 잠깐 칠해졌다 사라진다(`animate-flash`, `globals.css`).
+ *
+ * 댓글은 글보다 늦게 오므로 브라우저의 기본 앵커 스크롤이 닿을 요소가 아직 없다. 그래서 여기서 한다.
+ * 해시는 화면에 처음 들어올 때 한 번만 읽고, 옮기는 것도 한 번이다(새 댓글을 등록해도 다시 안 옮긴다).
+ * 그 댓글이 지워졌으면 아무 일도 하지 않는다.
+ */
+function useAnchoredComment(list: CommentView[] | null): number | null {
+  const [anchored] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const match = /^#comment-(\d+)$/.exec(window.location.hash);
+    return match ? Number(match[1]) : null;
+  });
+  const scrolled = useRef(false);
+  const found = anchored !== null && !!list?.some((comment) => comment.id === anchored);
+
+  useEffect(() => {
+    if (!found || anchored === null || scrolled.current) return;
+    scrolled.current = true;
+    document.getElementById(commentAnchor(anchored))?.scrollIntoView({ block: "center" });
+  }, [found, anchored]);
+
+  return found ? anchored : null;
 }
 
 /** 답글 줄 왼쪽의 ↳. 닉네임 줄 높이에 맞춘다. 읽어 줄 내용이 없어 화면 낭독기에서는 숨긴다. */
