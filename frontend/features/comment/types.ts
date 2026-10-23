@@ -32,4 +32,13 @@ export type CommentView = {
   edited: boolean;
   /** 작성 시점에 고정된 보유 정보. 응답에 없으면 null. */
   holder: CommentHolderView | null;
+  /** 답글이면 루트 댓글 id, 루트면 null. 묶는 기준이다(`thread.ts`). */
+  parentCommentId: number | null;
+  /** 답글이면 실제로 답한 댓글 id(루트일 수도, 다른 답글일 수도). 그 댓글이 지워지면 null 이 된다. */
+  replyToCommentId: number | null;
+  /**
+   * 답한 댓글의 닉네임. 답글을 쓸 때 서버가 저장해 둔 값이라 대상이 지워져도 남는다.
+   * 본문과 따로 `@닉네임` 으로 그린다. 루트면 null.
+   */
+  replyToNickname: string | null;
 };

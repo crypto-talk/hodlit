@@ -1,11 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { CornerDownRight } from "lucide-react";
 import { isHolderTier } from "@/lib/holder-snapshot/label";
 import { useSession } from "@/lib/session";
 import { loadComments } from "../api";
 import CommentForm from "./comment-form";
 import CommentItem from "./comment-item";
+import { groupComments } from "../thread";
+import type { CommentView } from "../types";
 
 type Props = {
   postId: number;
@@ -25,6 +29,10 @@ type Props = {
  *
  * 목록은 오래된 순(서버 순서 그대로)이다. 새 댓글은 맨 아래에 붙는다.
  * 서버에 페이지가 없어 한 번에 전부 받고, "더 보기" 도 없다.
+ *
+ * 답글(HODL-60)은 루트 댓글 아래 한 단계만 들여 쓴다. 답글에 답해도 같은 줄에 붙는다.
+ * 답글 칸은 한 번에 하나만 열리고, 그 답글이 붙을 자리(그 묶음의 맨 아래)에 둔다.
+ * 머리줄 댓글 수는 답글까지 센다(글의 댓글 수와 같다).
  */
 export default function CommentSection({ postId, symbol, postAuthorId, verifiable }: Props) {
   const { member } = useSession();
@@ -32,8 +40,11 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
     queryKey: ["comments", postId],
     queryFn: () => loadComments(postId),
   });
+  // 열린 답글 칸 — 답할 댓글과 그 묶음의 루트
+  const [replyTo, setReplyTo] = useState<{ rootId: number; comment: CommentView } | null>(null);
 
   const list = comments.data ?? [];
+  const threads = groupComments(list);
   // "보유 인증자 N명" — 같은 사람이 여러 번 써도 한 명이다.
   const verifiedHolders = new Set(
     list
@@ -71,16 +82,65 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
         <p className="mt-6 text-center text-sm text-text-muted">첫 댓글을 남겨보세요.</p>
       ) : (
         <ul className="mt-2">
-          {list.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              postId={postId}
-              symbol={symbol}
-              comment={comment}
-              byPostAuthor={postAuthorId !== null && comment.memberId === postAuthorId}
-              mine={!!member && comment.memberId === member.id}
-            />
-          ))}
+          {threads.map(({ root, replies }) => {
+            const item = (comment: CommentView, replyCount: number) => (
+              <CommentItem
+                postId={postId}
+                symbol={symbol}
+                comment={comment}
+                byPostAuthor={postAuthorId !== null && comment.memberId === postAuthorId}
+                mine={!!member && comment.memberId === member.id}
+                replyCount={replyCount}
+                replying={replyTo?.comment.id === comment.id}
+                onReply={(target) =>
+                  setReplyTo((open) =>
+                    open?.comment.id === target.id ? null : { rootId: root.id, comment: target },
+                  )
+                }
+              />
+            );
+            const replyOpen = replyTo?.rootId === root.id;
+
+            return (
+              <li key={root.id} className="border-b border-border-subtle last:border-b-0">
+                {item(root, replies.length)}
+                {replies.length > 0 || replyOpen ? (
+                  // 답글은 화살표 + 회색 칸으로 루트와 구분한다(커뮤니티 게시판에 흔한 모양).
+                  // 왼쪽 세로줄은 인용처럼 보여서 쓰지 않는다.
+                  <div className="mb-4 flex flex-col gap-2 pl-1 sm:pl-3">
+                    {replies.length > 0 ? (
+                      <ul aria-label={`답글 ${replies.length}개`} className="flex flex-col gap-2">
+                        {replies.map((reply) => (
+                          <li key={reply.id} className="flex items-start gap-1.5">
+                            <ReplyArrow />
+                            <div className="min-w-0 flex-1 rounded-sm bg-surface-muted px-4">
+                              {item(reply, 0)}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {replyOpen && replyTo ? (
+                      <div className="flex items-start gap-1.5">
+                        <ReplyArrow />
+                        <div className="min-w-0 flex-1">
+                          <CommentForm
+                            postId={postId}
+                            verifiable={verifiable}
+                            replyTo={{
+                              commentId: replyTo.comment.id,
+                              nickname: replyTo.comment.nickname,
+                            }}
+                            onClose={() => setReplyTo(null)}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -89,5 +149,16 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
         <CommentForm postId={postId} verifiable={verifiable} />
       </div>
     </section>
+  );
+}
+
+/** 답글 줄 왼쪽의 ↳. 닉네임 줄 높이에 맞춘다. 읽어 줄 내용이 없어 화면 낭독기에서는 숨긴다. */
+function ReplyArrow() {
+  return (
+    <CornerDownRight
+      aria-hidden
+      className="mt-[18px] size-4 shrink-0 text-text-muted"
+      strokeWidth={1.75}
+    />
   );
 }

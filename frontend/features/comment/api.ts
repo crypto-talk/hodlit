@@ -25,16 +25,25 @@ type UpdateCommentRequest = components["schemas"]["UpdateCommentRequest"];
  */
 export async function loadComments(postId: number): Promise<CommentView[]> {
   const comments = await http<CommentResponse[]>(`/api/v1/posts/${postId}/comments`);
-  return comments.filter(hasId).map(toView);
+  return comments.filter(hasId).map(toCommentView);
 }
 
 /**
- * 댓글 작성.
+ * 댓글 · 답글 작성.
+ *
+ * 답글이면 누른 댓글의 id 를 `replyToCommentId` 로 보낸다. 그 댓글이 답글이어도 그대로 보내면
+ * 서버가 같은 루트 아래에 붙인다(3단으로 내려가지 않는다, HODL-60). 다른 글의 댓글이면 400,
+ * 이미 지워진 댓글이면 404.
  *
  * 보유 정보는 보내지 않는다. 서버가 저장하면서 보유 기록을 새로 읽어 댓글에 붙인다(HODL-45).
  */
-export async function createComment(input: { postId: number; content: string }): Promise<void> {
+export async function createComment(input: {
+  postId: number;
+  content: string;
+  replyToCommentId?: number;
+}): Promise<void> {
   const body: CreateCommentRequest = { content: input.content.trim() };
+  if (input.replyToCommentId !== undefined) body.replyToCommentId = input.replyToCommentId;
   await http<CommentResponse>(`/api/v1/posts/${input.postId}/comments`, {
     method: "POST",
     body: JSON.stringify(body),
@@ -52,14 +61,16 @@ export async function updateComment(input: { commentId: number; content: string 
 
 /**
  * 댓글 삭제. 서버는 기록을 남기지 않고 지운다.
- * ⚠️ 백엔드에 답글(1단, `parentCommentId`)이 생겼고 루트 댓글을 지우면 답글도 함께 지워진다.
- * 프론트는 아직 답글을 만들거나 묶어 그리지 않는다.
+ * ⚠️ 루트 댓글을 지우면 그 아래 답글도 함께 지워진다(DB `ON DELETE CASCADE`). 그래서 삭제 확인에
+ * 답글 수를 같이 알린다. 답글을 지우면 다른 답글은 남고, 그 답글에 답한 댓글의
+ * `replyToCommentId` 만 null 이 된다(`@닉네임` 은 남는다).
  */
 export async function deleteComment(commentId: number): Promise<void> {
   await http<void>(`/api/v1/comments/${commentId}`, { method: "DELETE" });
 }
 
-function toView(comment: CommentResponse & { id: number }): CommentView {
+/** 응답 한 건을 뷰 모델로. 테스트에서 쓰려고 내보낸다. */
+export function toCommentView(comment: CommentResponse & { id: number }): CommentView {
   const createdAt = comment.createdAt ?? "";
   const snapshot = comment.holderSnapshot;
 
@@ -81,6 +92,10 @@ function toView(comment: CommentResponse & { id: number }): CommentView {
           holding: holdingPeriodLabel(snapshot.holdingMonths),
         }
       : null,
+    // null 필드는 응답에서 아예 빠진다(`non_null`). 예전 댓글(답글 기능 전)은 셋 다 없는 루트다.
+    parentCommentId: comment.parentCommentId ?? null,
+    replyToCommentId: comment.replyToCommentId ?? null,
+    replyToNickname: comment.replyToNickname?.trim() ? comment.replyToNickname : null,
   };
 }
 
