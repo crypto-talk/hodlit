@@ -101,6 +101,8 @@
   --animate-blink: hd-blink 5s infinite;
   --animate-marquee: hd-marquee 32s linear infinite;
   --animate-fade-in: hd-fade-in 0.4s ease both;
+  /* 주소로 찾아온 댓글(#comment-{id})을 잠깐 칠했다가 지운다 */
+  --animate-flash: hd-flash 3s ease-out both;
 }
 
 /* 위 --animate-* 가 가리키는 키프레임. 이름은 hd- 접두사를 유지한다. */
@@ -121,6 +123,16 @@
   }
   100% {
     transform: translateX(-50%);
+  }
+}
+
+@keyframes hd-flash {
+  0%,
+  50% {
+    background-color: color-mix(in srgb, var(--brand) 18%, transparent);
+  }
+  100% {
+    background-color: transparent;
   }
 }
 

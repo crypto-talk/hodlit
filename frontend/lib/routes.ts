@@ -44,6 +44,30 @@ export function postHref(symbol: string, postId: number): string {
   return `/subhodl/${encodeURIComponent(symbol)}/${postId}`;
 }
 
+/**
+ * 글 상세의 댓글 하나. 댓글 목록이 늦게 오므로 브라우저가 알아서 스크롤하지 못한다 —
+ * 목록이 그려진 뒤 `features/comment` 의 댓글 섹션이 이 앵커로 옮긴다.
+ */
+export function commentHref(symbol: string, postId: number, commentId: number): string {
+  return `${postHref(symbol, postId)}#${commentAnchor(commentId)}`;
+}
+
+/** 댓글 요소의 id. `commentHref` 와 댓글 화면이 같은 값을 써야 해서 여기 둔다. */
+export function commentAnchor(commentId: number): string {
+  return `comment-${commentId}`;
+}
+
+/**
+ * 검색 결과 화면. `room` 이 있으면 그 방 안에서만(글 · 댓글) 찾는다.
+ * `page` 는 1부터 세고 1쪽은 주소에 적지 않는다.
+ */
+export function searchHref(q: string, options: { room?: string | null; page?: number } = {}) {
+  const query = new URLSearchParams({ q });
+  if (options.room) query.set("room", options.room);
+  if (options.page && options.page > 1) query.set("page", String(options.page));
+  return `/search?${query.toString()}`;
+}
+
 /** 글 수정. 글쓰기처럼 헤더만 있는 화면군(`(focus)`)이다. */
 export function editHref(symbol: string, postId: number): string {
   return `${postHref(symbol, postId)}/edit`;

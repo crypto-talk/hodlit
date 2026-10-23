@@ -6,6 +6,7 @@ import TierBadge from "@/components/holder/tier-badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format/time";
 import { isHolderTier } from "@/lib/holder-snapshot/label";
+import { commentAnchor } from "@/lib/routes";
 import { deleteComment, updateComment } from "../api";
 import { isSubmitEnter } from "../enter-to-submit";
 import { commentErrorMessage } from "../error-message";
@@ -30,6 +31,8 @@ type Props = {
   onReply: (comment: CommentView) => void;
   /** 지금 이 댓글에 답글 칸이 열려 있으면 true. 버튼을 눌린 상태로 보인다. */
   replying: boolean;
+  /** 주소의 `#comment-{id}` 로 찾아온 댓글이면 true. 바탕이 잠깐 칠해졌다 사라져 어느 댓글인지 보인다. */
+  highlighted?: boolean;
 };
 
 /**
@@ -53,6 +56,7 @@ export default function CommentItem({
   replyCount,
   onReply,
   replying,
+  highlighted = false,
 }: Props) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -96,7 +100,10 @@ export default function CommentItem({
   const errorMessage = problem || (error ? commentErrorMessage(error) : "");
 
   return (
-    <div className="py-4">
+    <div
+      id={commentAnchor(comment.id)}
+      className={`scroll-mt-24 py-4 ${highlighted ? "-mx-3 animate-flash rounded-sm px-3" : ""}`}
+    >
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-semibold text-text-primary">{comment.nickname}</span>
         {byPostAuthor ? <span className="text-xs font-bold text-text-primary">작성자</span> : null}
