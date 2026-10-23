@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { CornerDownRight } from "lucide-react";
 import { isHolderTier } from "@/lib/holder-snapshot/label";
 import { useSession } from "@/lib/session";
 import { loadComments } from "../api";
@@ -104,30 +105,35 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
               <li key={root.id} className="border-b border-border-subtle last:border-b-0">
                 {item(root, replies.length)}
                 {replies.length > 0 || replyOpen ? (
-                  <div className="mb-4 ml-4 border-l-2 border-border-subtle pl-4 sm:ml-6">
+                  // 답글은 화살표 + 회색 칸으로 루트와 구분한다(커뮤니티 게시판에 흔한 모양).
+                  // 왼쪽 세로줄은 인용처럼 보여서 쓰지 않는다.
+                  <div className="mb-4 flex flex-col gap-2 pl-1 sm:pl-3">
                     {replies.length > 0 ? (
-                      <ul aria-label={`답글 ${replies.length}개`}>
+                      <ul aria-label={`답글 ${replies.length}개`} className="flex flex-col gap-2">
                         {replies.map((reply) => (
-                          <li
-                            key={reply.id}
-                            className="border-b border-border-subtle last:border-b-0"
-                          >
-                            {item(reply, 0)}
+                          <li key={reply.id} className="flex items-start gap-1.5">
+                            <ReplyArrow />
+                            <div className="min-w-0 flex-1 rounded-sm bg-surface-muted px-4">
+                              {item(reply, 0)}
+                            </div>
                           </li>
                         ))}
                       </ul>
                     ) : null}
                     {replyOpen && replyTo ? (
-                      <div className={replies.length > 0 ? "mt-1" : "pt-1"}>
-                        <CommentForm
-                          postId={postId}
-                          verifiable={verifiable}
-                          replyTo={{
-                            commentId: replyTo.comment.id,
-                            nickname: replyTo.comment.nickname,
-                          }}
-                          onClose={() => setReplyTo(null)}
-                        />
+                      <div className="flex items-start gap-1.5">
+                        <ReplyArrow />
+                        <div className="min-w-0 flex-1">
+                          <CommentForm
+                            postId={postId}
+                            verifiable={verifiable}
+                            replyTo={{
+                              commentId: replyTo.comment.id,
+                              nickname: replyTo.comment.nickname,
+                            }}
+                            onClose={() => setReplyTo(null)}
+                          />
+                        </div>
                       </div>
                     ) : null}
                   </div>
@@ -143,5 +149,16 @@ export default function CommentSection({ postId, symbol, postAuthorId, verifiabl
         <CommentForm postId={postId} verifiable={verifiable} />
       </div>
     </section>
+  );
+}
+
+/** 답글 줄 왼쪽의 ↳. 닉네임 줄 높이에 맞춘다. 읽어 줄 내용이 없어 화면 낭독기에서는 숨긴다. */
+function ReplyArrow() {
+  return (
+    <CornerDownRight
+      aria-hidden
+      className="mt-[18px] size-4 shrink-0 text-text-muted"
+      strokeWidth={1.75}
+    />
   );
 }
