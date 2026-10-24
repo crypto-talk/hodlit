@@ -95,7 +95,7 @@ export default function Header() {
             </Button>
             <WriteButton href={write} />
             <Button asChild>
-              <Link href="/signup">시작하기</Link>
+              <Link href="/signup">회원가입</Link>
             </Button>
           </>
         )}
