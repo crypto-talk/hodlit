@@ -219,6 +219,13 @@ had no posts, so every list screen could only be checked empty; writing first fi
    images inside the body, the "이 글에 붙을 정보" preview, preview.
    Drafts are saved on the server (`/drafts`, HODL-43), not in localStorage: the 임시저장
    button creates one and then overwrites it, `?draft=<id>` reopens it, publishing deletes it.
+   The edit page has its own draft, one per post (`/posts/{id}/draft`, HODL-56, docs
+   `EDIT_DRAFTS_API.md`): fetched after the post (a 404 then means "no draft"; any other failure
+   stops the page, because starting from the original would let autosave overwrite the draft),
+   started from when present with a bar to switch back to the original, autosaved the same way
+   as the write page, and deleted after `PUT /posts/{id}` succeeds. Both kinds share the 10-draft
+   quota and the `/drafts` list; `sourcePostId` tells them apart and `draftHref()` in
+   `lib/routes.ts` sends an edit draft to its edit page (the write page redirects there too).
 2. ✅ Post detail `/subhodl/[symbol]/[postId]`, first pass (`features/post/components/
 post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    (youtube-nocookie), the price captured at publish time. The body is rendered by Tiptap in

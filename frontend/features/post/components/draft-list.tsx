@@ -1,10 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { formatRelativeTime } from "@/lib/format/time";
 import { useSession } from "@/lib/session";
 import { deleteDraft, loadDrafts } from "../api";
+import DraftRow from "./draft-row";
 
 type Props = {
   /** 지금 쓰고 있는 임시저장. 목록에서 "작성 중" 으로 표시한다. */
@@ -16,8 +15,8 @@ type Props = {
 /**
  * 글쓰기 위에 펼치는 임시저장 목록. 회원당 10개까지라 페이지 없이 전부 보인다.
  *
- * 고르면 `/write?draft=<번호>` 로 간다. 지금 쓰던 내용은 그대로 버려진다 — 저장하지
- * 않은 내용이 있으면 먼저 임시저장하라고 안내만 한다.
+ * 고르면 `/write?draft=<번호>` 로 간다(글 수정 임시저장은 그 글의 수정 화면). 지금 쓰던
+ * 내용은 그대로 버려진다 — 저장하지 않은 내용이 있으면 먼저 임시저장하라고 안내만 한다.
  */
 export default function DraftList({ currentId, onDeleted }: Props) {
   const queryClient = useQueryClient();
@@ -71,28 +70,13 @@ export default function DraftList({ currentId, onDeleted }: Props) {
       ) : (
         <ul className="mt-2 flex flex-col">
           {list.map((draft) => (
-            <li
+            <DraftRow
               key={draft.id}
-              className="flex items-center gap-3 border-b border-border-subtle py-2 last:border-b-0"
-            >
-              <Link href={`/write?draft=${draft.id}`} className="min-w-0 flex-1 hover:text-brand">
-                <span className="block truncate text-sm font-semibold">
-                  {draft.title.trim() || "(제목 없음)"}
-                </span>
-                <span className="block text-xs text-text-muted">
-                  {draft.coinSymbol || "방 미선택"} · {formatRelativeTime(draft.updatedAt)}
-                  {draft.id === currentId ? " · 작성 중" : ""}
-                </span>
-              </Link>
-              <button
-                type="button"
-                className="flex-none text-xs text-text-muted hover:text-danger"
-                disabled={remove.isPending}
-                onClick={() => remove.mutate(draft.id)}
-              >
-                삭제
-              </button>
-            </li>
+              draft={draft}
+              current={draft.id === currentId}
+              deleting={remove.isPending}
+              onDelete={remove.mutate}
+            />
           ))}
         </ul>
       )}

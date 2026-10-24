@@ -2,12 +2,13 @@ import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { config } from "@/lib/config";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
-import { http } from "@/lib/http";
+import { ApiError, http } from "@/lib/http";
 import type {
   BookmarkedPost,
   Draft,
   DraftInput,
   DraftSummary,
+  EditDraftInput,
   EditablePost,
   PostDetail,
   PostEdit,
@@ -238,6 +239,7 @@ export async function deletePost(postId: number): Promise<void> {
 
 /**
  * 내 임시저장 목록. 최근 수정순, 회원당 최대 10개라 한 번에 전부 온다.
+ * 새 글과 글 수정(HODL-56) 임시저장이 섞여 온다 — `sourcePostId` 로 가른다.
  */
 export async function loadDrafts(): Promise<DraftSummary[]> {
   const drafts = await http<DraftResponse[]>("/api/v1/drafts");
@@ -246,6 +248,7 @@ export async function loadDrafts(): Promise<DraftSummary[]> {
     updatedAt: draft.updatedAt ?? "",
     coinSymbol: draft.coinSymbol ?? "",
     title: draft.title ?? "",
+    sourcePostId: draft.sourcePostId ?? null,
   }));
 }
 
@@ -287,6 +290,56 @@ export async function deleteDraft(draftId: number): Promise<void> {
   await http<void>(`/api/v1/drafts/${draftId}`, { method: "DELETE" });
 }
 
+/**
+ * 글 수정 임시저장 (HODL-56). 글 하나에 하나뿐이라 글 번호로 찾는다.
+ *
+ * 없으면 null. 서버는 "임시저장 없음" 과 "원래 글 없음" 을 둘 다 404 로 주는데, 수정
+ * 화면은 원래 글을 먼저 받아 있는 것을 확인한 뒤에 부르므로 여기 404 는 임시저장이
+ * 없다는 뜻이다. 403 · 네트워크 실패는 그대로 던진다 — 없는 것으로 치고 원래 글로
+ * 시작하면, 다음 자동저장이 남아 있던 수정본을 덮어쓴다.
+ */
+export async function loadEditDraft(postId: number): Promise<Draft | null> {
+  try {
+    return toDraft(await http<DraftResponse>(`/api/v1/posts/${postId}/draft`));
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+/**
+ * 글 수정 임시저장. 없으면 만들고 있으면 통째로 덮어쓴다(PUT 하나).
+ *
+ * 원래 글 · 보유 정보 · 시세는 건드리지 않는다. 원래 글에 붙어 있던 이미지는 그대로
+ * 원래 글 것으로 남고, 새로 올린 이미지만 이 임시저장에 묶인다.
+ *
+ * 새 글 임시저장과 합쳐 10개가 차 있으면 새로 만들 때만 409. 이미 있는 것은 덮어쓴다.
+ */
+export async function saveEditDraft(postId: number, input: EditDraftInput): Promise<Draft> {
+  const tradingView = input.tradingView;
+  const body: SaveDraftRequest = {
+    coinSymbol: input.coinSymbol,
+    title: input.title,
+    content: input.content,
+    media: input.images.map((image) => ({ type: "IMAGE", url: image.url })),
+    youtubeUrl: input.youtubeUrl,
+    ...(tradingView
+      ? {
+          tradingViewSymbol: tradingView.symbol,
+          tradingViewInterval: tradingView.interval,
+          tradingViewAnalysis: tradingView.analysis,
+        }
+      : {}),
+  };
+
+  return toDraft(
+    await http<DraftResponse>(`/api/v1/posts/${postId}/draft`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
 function toDraft(draft: DraftResponse, fallbackId: number | null = null): Draft {
   const id = draft.id ?? fallbackId;
   if (typeof id !== "number") throw new Error("임시저장은 됐지만 응답에 번호가 없습니다.");
@@ -301,6 +354,7 @@ function toDraft(draft: DraftResponse, fallbackId: number | null = null): Draft 
       .filter((media) => media.type === "IMAGE" && media.url)
       .map((media) => ({ url: media.url, src: mediaSrc(media.url) })),
     youtubeUrl: draft.youtubeUrl ?? "",
+    sourcePostId: draft.sourcePostId ?? null,
   };
 }
 

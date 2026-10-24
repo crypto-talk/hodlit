@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
-import { postHref } from "@/lib/routes";
+import { draftHref, postHref } from "@/lib/routes";
 import { unsupportedNotice } from "@/lib/holder-snapshot/label";
 import { useSession } from "@/lib/session";
 import { deleteDraft, loadDraft, loadWriteRooms, publishPost, saveDraft } from "../api";
@@ -67,6 +67,13 @@ export default function WriteForm({ initialSymbol, draftId }: Props) {
     gcTime: 0,
   });
 
+  // 글 수정 임시저장(HODL-56)은 여기서 열지 않는다. 여기서 저장하면 새 글로 발행되고, 덮어쓰기는
+  // 서버가 원래 글 기준으로 다루기 때문이다. 그 글의 수정 화면으로 보낸다.
+  const editTarget = draft.data && draft.data.sourcePostId !== null ? draftHref(draft.data) : null;
+  useEffect(() => {
+    if (editTarget) router.replace(editTarget);
+  }, [editTarget, router]);
+
   if (draftId === null) return <WriteFields key="new" initialSymbol={initialSymbol} draft={null} />;
 
   if (draft.isPending) return <p className="text-sm text-text-muted">임시저장을 불러오는 중…</p>;
@@ -86,6 +93,8 @@ export default function WriteForm({ initialSymbol, draftId }: Props) {
       </div>
     );
   }
+
+  if (editTarget) return <p className="text-sm text-text-muted">수정 중인 글로 이동합니다…</p>;
 
   // 임시저장마다 key 가 달라서, 목록에서 다른 것을 고르면 에디터가 새로 마운트된다.
   return <WriteFields key={draftId} initialSymbol={null} draft={draft.data} />;

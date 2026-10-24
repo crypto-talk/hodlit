@@ -131,6 +131,9 @@ export type PostEdit = {
 /**
  * 임시저장 (HODL-43). 서버가 빈 방 · 제목 · 본문도 받아서 전부 비어 있을 수 있다.
  * 이미지는 수정 화면과 같은 모양 — `url` 은 상대 경로, `src` 는 미리보기 주소.
+ *
+ * 새 글 임시저장과 글 수정 임시저장(HODL-56)이 같은 목록 · 같은 10개 한도를 쓴다.
+ * 둘을 가르는 것은 `sourcePostId` 하나다.
  */
 export type Draft = {
   id: number;
@@ -140,14 +143,27 @@ export type Draft = {
   content: string;
   images: { url: string; src: string }[];
   youtubeUrl: string;
+  /** 수정 중인 원래 글 번호. 새 글 임시저장이면 null. 서버가 정하고 바꿀 수 없다. */
+  sourcePostId: number | null;
 };
 
 /** 임시저장 목록 한 줄. */
-export type DraftSummary = Pick<Draft, "id" | "updatedAt" | "coinSymbol" | "title">;
+export type DraftSummary = Pick<
+  Draft,
+  "id" | "updatedAt" | "coinSymbol" | "title" | "sourcePostId"
+>;
 
 /** 임시저장할 값. 글쓰기 화면에 있는 것만 보낸다. */
 export type DraftInput = Pick<Draft, "coinSymbol" | "title" | "content" | "youtubeUrl"> & {
   images: UploadedImage[];
+};
+
+/**
+ * 글 수정 임시저장할 값. 서버는 통째로 덮어써서 빠진 값을 null 로 지우므로, 화면에 없는
+ * TradingView 값도 원래 글에서 받은 그대로 싣는다.
+ */
+export type EditDraftInput = DraftInput & {
+  tradingView: EditablePost["tradingView"];
 };
 
 /** 북마크한 글 한 줄. */
