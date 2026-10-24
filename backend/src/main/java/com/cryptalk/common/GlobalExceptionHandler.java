@@ -2,11 +2,14 @@ package com.cryptalk.common;
 
 import java.time.Instant;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -20,6 +23,15 @@ public class GlobalExceptionHandler {
         FieldError fieldError = exception.getBindingResult().getFieldErrors().stream().findFirst().orElse(null);
         String message = fieldError == null ? "요청값을 확인해 주세요." : fieldError.getField() + ": " + fieldError.getDefaultMessage();
         return ResponseEntity.badRequest().body(error(message));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        Class<?> type = exception.getRequiredType();
+        String guidance = type == int.class || type == Integer.class
+            ? "정수로 입력해 주세요." : "요청값 형식을 확인해 주세요.";
+        return ResponseEntity.badRequest().body(error(exception.getName() + ": " + guidance));
     }
 
     private Map<String, Object> error(String message) {

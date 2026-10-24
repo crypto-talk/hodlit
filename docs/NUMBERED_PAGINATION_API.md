@@ -18,6 +18,8 @@ New endpoints preserve the legacy array/cursor contracts:
 
 All accept `page=0` and `size=20` defaults. Page numbering is zero-based on the API; UI page buttons show `page+1`. Size must be 1..100, page nonnegative and offset within JPA's integer limit, otherwise HTTP 400.
 
+Invalid integer types, including text (`page=abc`), decimals (`size=1.5`), and values outside the signed 32-bit range, return HTTP 400 with the common JSON error shape: `{ "message": "page: 정수로 입력해 주세요.", "timestamp": "<UTC instant>" }` (or `size` for that parameter). The rejected value is not echoed. Existing numeric range validation keeps its current message. Private endpoints still require authentication before validating parameters; an unauthenticated request returns 401 even when its parameters are malformed (HODL-84).
+
 Response: `{items, page, size, totalElements, totalPages, hasNext, hasPrevious}`. Empty/out-of-range pages return HTTP 200 with empty items and truthful totals; unknown/inactive rooms and missing posts return 404. Private metadata retains original ownership boundaries and never accepts an actor ID parameter.
 
 Post pages sort creation time DESC, then ID DESC. Comment pages sort creation time ASC, then ID ASC. Room pages use display order ASC then ID ASC; other lists have explicit stable time/entity tie-breakers. Post pages accept `verified=true` to filter server-side before counting/page selection.
