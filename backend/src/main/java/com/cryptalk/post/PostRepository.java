@@ -9,15 +9,17 @@ import java.time.Instant;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
     long countByCoinId(Long coinId);
-    @Query("select p from Post p where p.coin.active = true and (:symbol is null or lower(p.coin.symbol) = lower(:symbol)) and (:verified = false or p.authorVerified = true)")
+    @Query("select p from Post p where p.coin.active = true and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN and (:symbol is null or lower(p.coin.symbol) = lower(:symbol)) and (:verified = false or p.authorVerified = true)")
     org.springframework.data.domain.Page<Post> numberedPage(@Param("symbol") String symbol,
         @Param("verified") boolean verified, Pageable pageable);
     List<Post> findByCoinSymbolIgnoreCaseOrderByCreatedAtDesc(String symbol, Pageable pageable);
     List<Post> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    @Query("select p from Post p where p.coin.active = true and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN order by p.createdAt desc, p.id desc")
     List<Post> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);
+    @Query("select p from Post p where p.coin.active = true and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN and p.createdAt <= :before order by p.createdAt desc, p.id desc")
     List<Post> findByCreatedAtLessThanEqualOrderByCreatedAtDescIdDesc(Instant before, Pageable pageable);
-    @Query("select p from Post p where p.member.id in :memberIds order by p.createdAt desc, p.id desc")
+    @Query("select p from Post p where p.coin.active = true and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN and p.member.id in :memberIds order by p.createdAt desc, p.id desc")
     List<Post> findFollowing(@Param("memberIds") List<Long> memberIds, Pageable pageable);
-    @Query("select p from Post p where p.member.id in :memberIds and p.createdAt <= :before order by p.createdAt desc, p.id desc")
+    @Query("select p from Post p where p.coin.active = true and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN and p.member.id in :memberIds and p.createdAt <= :before order by p.createdAt desc, p.id desc")
     List<Post> findFollowingBefore(@Param("memberIds") List<Long> memberIds, @Param("before") Instant before, Pageable pageable);
 }

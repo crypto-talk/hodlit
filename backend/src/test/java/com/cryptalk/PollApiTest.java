@@ -57,7 +57,8 @@ class PollApiTest {
         mvc.perform(get("/api/v1/communities/ETH/poll"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.participatedToday").value(false))
             .andExpect(jsonPath("$.totalVotes").doesNotExist()).andExpect(jsonPath("$.choices[0].voteCount").doesNotExist());
-        mvc.perform(get("/api/v1/communities/BTC/poll")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/communities/BTC/poll")).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("ROOM_CLOSED"));
         mvc.perform(post("/api/v1/polls/{id}/votes",poll).with(jwt().jwt(token -> token.subject(Long.toString(user))))
             .contentType(MediaType.APPLICATION_JSON).content("{\"choiceId\":"+up+"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.day").value("2026-10-09"))

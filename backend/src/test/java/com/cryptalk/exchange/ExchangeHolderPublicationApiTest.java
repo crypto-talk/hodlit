@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class ExchangeHolderPublicationApiTest {
     @Autowired MockMvc mvc;
+    @Autowired com.cryptalk.coin.CoinRepository coins;
     @Autowired ObjectMapper json;
     @Autowired MemberRepository members;
     @Autowired ExchangeConnectionRepository connections;
@@ -99,6 +100,8 @@ class ExchangeHolderPublicationApiTest {
 
     @Test
     void observedExchangeCurrencyEnablesItsRoomVerificationCapability() throws Exception {
+        coins.findBySymbolIgnoreCaseAndActiveTrue("SOL").orElseThrow()
+            .changeOperationStatus(com.cryptalk.coin.RoomOperationStatus.OPEN);
         connect(owner);
         when(balances.balances(any(Exchange.class),anyString(),anyString())).thenReturn(List.of(
             new ExchangeBalanceClient.Balance("SOL",new BigDecimal("2"),BigDecimal.ZERO,new BigDecimal("2"))));

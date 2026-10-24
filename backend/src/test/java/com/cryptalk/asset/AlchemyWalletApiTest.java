@@ -43,6 +43,7 @@ class AlchemyWalletApiTest {
     String address;
 
     @BeforeEach void setup() {
+        jdbc.update("UPDATE coins SET operation_status='OPEN' WHERE symbol IN ('POL','LINK')");
         owner = members.saveAndFlush(new Member(UUID.randomUUID().toString(), "#123456"));
         address = "0x" + UUID.randomUUID().toString().replace("-", "") + "12345678";
         wallets.saveAndFlush(new Wallet(owner, address));
@@ -54,6 +55,7 @@ class AlchemyWalletApiTest {
                 "KRW", BigDecimal.ZERO, Instant.now(), "TEST"));
     }
     @AfterEach void restoreRegistry() {
+        jdbc.update("UPDATE coins SET operation_status='CLOSE' WHERE symbol IN ('POL','LINK')");
         jdbc.update("UPDATE coins SET chain_id=NULL, contract_address=NULL, token_decimals=NULL, verification_availability='NOT_CONFIGURED' WHERE symbol='LINK'");
     }
 

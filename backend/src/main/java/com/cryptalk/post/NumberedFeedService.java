@@ -34,11 +34,11 @@ public class NumberedFeedService {
             SELECT 'POST' AS event_type, 0 AS type_rank, p.id AS post_id, p.created_at AS occurred_at,
                    m.id AS actor_id, m.nickname AS actor_nickname, m.avatar_color AS actor_color
             FROM posts p JOIN members m ON m.id=p.member_id JOIN coins c ON c.id=p.coin_id
-            WHERE c.active=TRUE
+            WHERE c.active=TRUE AND c.operation_status='OPEN'
             """ + postScope + " UNION ALL " + """
             SELECT 'REPOST', 1, p.id, r.created_at, m.id, m.nickname, m.avatar_color
             FROM post_reposts r JOIN posts p ON p.id=r.post_id JOIN members m ON m.id=r.member_id
-                 JOIN coins c ON c.id=p.coin_id WHERE c.active=TRUE
+                 JOIN coins c ON c.id=p.coin_id WHERE c.active=TRUE AND c.operation_status='OPEN'
             """ + repostScope;
         Map<String,Object> parameters = Map.of("viewer",viewerId == null ? 0L : viewerId,"size",size,"offset",(long)page*size);
         long total = jdbc.queryForObject("SELECT COUNT(*) FROM ("+rows+") feed",parameters,Long.class);

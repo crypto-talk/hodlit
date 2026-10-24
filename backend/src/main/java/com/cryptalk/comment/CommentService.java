@@ -1,5 +1,6 @@
 package com.cryptalk.comment;
 
+import com.cryptalk.coin.RoomAccess;
 import com.cryptalk.common.ApiException;
 import com.cryptalk.asset.AssetService;
 import com.cryptalk.asset.AssetSnapshot;
@@ -14,10 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CommentService {
+    private final RoomAccess rooms;
     private final CommentRepository comments; private final PostService posts;
     private final AssetService assets; private final CommentHolderSnapshotRepository holderSnapshots;
     public CommentService(CommentRepository comments, PostService posts, AssetService assets,
-                          CommentHolderSnapshotRepository holderSnapshots) {
+                          CommentHolderSnapshotRepository holderSnapshots, RoomAccess rooms) {
+        this.rooms = rooms;
         this.comments = comments; this.posts = posts; this.assets = assets; this.holderSnapshots = holderSnapshots;
     }
     @Transactional(readOnly = true)
@@ -50,7 +53,11 @@ public class CommentService {
         Comment comment = comment(commentId);
         posts.own(memberId, comment.getMember().getId()); comments.delete(comment);
     }
-    private Comment comment(Long id) { return comments.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다.")); }
+    private Comment comment(Long id) {
+        Comment comment = comments.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."));
+        rooms.requireOpen(comment.getPost().getCoin());
+        return comment;
+    }
     private CommentResponse response(Comment comment) {
         Member member = comment.getMember();
         HolderSnapshotResponse snapshot = holderSnapshots.findById(comment.getId()).map(item ->
