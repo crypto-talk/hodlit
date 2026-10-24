@@ -1,5 +1,6 @@
 package com.cryptalk.news;
 
+import com.cryptalk.coin.RoomAccess;
 import com.cryptalk.admin.AdminAccess;
 import com.cryptalk.coin.CoinRepository;
 import com.cryptalk.common.ApiException;
@@ -12,10 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NewsService {
+    private final RoomAccess rooms;
     private final NewsRepository news;
     private final CoinRepository coins;
     private final AdminAccess admins;
-    public NewsService(NewsRepository news, CoinRepository coins, AdminAccess admins) {
+    public NewsService(NewsRepository news, CoinRepository coins, AdminAccess admins, RoomAccess rooms) {
+        this.rooms = rooms;
         this.news = news;
         this.coins = coins;
         this.admins = admins;
@@ -26,6 +29,7 @@ public class NewsService {
         var request = com.cryptalk.common.PageResponse.request(page, size, Sort.by(Sort.Direction.DESC,"createdAt","id"));
         var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 방을 찾을 수 없습니다."));
+        rooms.requireOpen(coin);
         var rows = news.findByCoinId(coin.getId(), request);
         return com.cryptalk.common.PageResponse.of(rows.map(this::response));
     }

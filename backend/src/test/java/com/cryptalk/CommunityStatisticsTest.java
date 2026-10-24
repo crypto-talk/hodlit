@@ -59,6 +59,7 @@ class CommunityStatisticsTest {
 
     @Test
     void publicApiHandlesEmptyRoomsInvalidWindowsAndInactiveSymbols() throws Exception {
+        jdbc.update("UPDATE coins SET operation_status='OPEN'");
         mvc.perform(get("/api/v1/communities/BTC/stats"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.rooms[0].participantCount").value(0))
             .andExpect(jsonPath("$.rooms[0].verifiedParticipantRate").value(0));

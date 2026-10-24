@@ -42,7 +42,7 @@ class NewsApiTest {
             .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].title").value("Ethereum update"))
             .andExpect(jsonPath("$.items[0].sourceName").value("Example"));
         mvc.perform(get("/api/v1/communities/BTC/news"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ROOM_CLOSED"));
         mvc.perform(put("/api/v1/news/{id}",id).with(jwt().jwt(token -> token.subject("100000")))
             .contentType(MediaType.APPLICATION_JSON).content(body.replace("Ethereum update","New headline")))
             .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("New headline"));

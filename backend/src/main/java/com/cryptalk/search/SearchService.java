@@ -26,7 +26,7 @@ public class SearchService {
                 + CASE WHEN LOWER(p.content) LIKE :pattern ESCAPE '!' THEN 1 ELSE 0 END
                 + CASE WHEN LOWER(m.nickname) LIKE :pattern ESCAPE '!' THEN 2 ELSE 0 END) AS relevance
         FROM posts p JOIN members m ON m.id=p.member_id JOIN coins c ON c.id=p.coin_id
-        WHERE c.active=TRUE AND (:coinId IS NULL OR c.id=:coinId) AND (LOWER(p.title) LIKE :pattern ESCAPE '!'
+        WHERE c.active=TRUE AND c.operation_status='OPEN' AND (:coinId IS NULL OR c.id=:coinId) AND (LOWER(p.title) LIKE :pattern ESCAPE '!'
               OR LOWER(p.content) LIKE :pattern ESCAPE '!' OR LOWER(m.nickname) LIKE :pattern ESCAPE '!')
         UNION ALL
         SELECT 'COMMENT', cm.id, p.title, cm.content, m.nickname, c.symbol, p.id, cm.created_at,
@@ -34,11 +34,11 @@ public class SearchService {
                 + CASE WHEN LOWER(m.nickname) LIKE :pattern ESCAPE '!' THEN 2 ELSE 0 END)
         FROM comments cm JOIN posts p ON p.id=cm.post_id JOIN members m ON m.id=cm.member_id
              JOIN coins c ON c.id=p.coin_id
-        WHERE c.active=TRUE AND (:coinId IS NULL OR c.id=:coinId) AND (LOWER(cm.content) LIKE :pattern ESCAPE '!'
+        WHERE c.active=TRUE AND c.operation_status='OPEN' AND (:coinId IS NULL OR c.id=:coinId) AND (LOWER(cm.content) LIKE :pattern ESCAPE '!'
               OR LOWER(m.nickname) LIKE :pattern ESCAPE '!')
         UNION ALL
         SELECT 'ROOM', c.id, c.name, '', NULL, c.symbol, NULL, NULL, 3
-        FROM coins c WHERE :coinId IS NULL AND c.active=TRUE AND (LOWER(c.name) LIKE :pattern ESCAPE '!'
+        FROM coins c WHERE :coinId IS NULL AND c.active=TRUE AND c.operation_status='OPEN' AND (LOWER(c.name) LIKE :pattern ESCAPE '!'
               OR LOWER(c.symbol) LIKE :pattern ESCAPE '!')
         UNION ALL
         SELECT 'USER', m.id, m.nickname, '', m.nickname, NULL, NULL, m.created_at, 2

@@ -1,5 +1,6 @@
 package com.cryptalk.post;
 
+import com.cryptalk.coin.RoomAccess;
 import com.cryptalk.asset.AssetService;
 import com.cryptalk.asset.AssetSnapshot;
 import com.cryptalk.coin.Coin;
@@ -47,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PostService {
+    private final RoomAccess rooms;
     private static final Pattern YOUTUBE = Pattern.compile("^(?:https://)?(?:www\\.)?(?:youtube\\.com/(?:shorts/|watch\\?v=)|youtu\\.be/)([A-Za-z0-9_-]{11})(?:[?&].*)?$");
     private static final Comparator<FeedEvent> FEED_ORDER = (left, right) -> {
         int time = right.occurredAt().compareTo(left.occurredAt());
@@ -78,7 +80,8 @@ public class PostService {
                        AssetService assets, PostMediaRepository postMedia,
                        PostBookmarkRepository bookmarks, PostRepostRepository reposts,
                        MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows,
-                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc) {
+                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc, RoomAccess rooms) {
+        this.rooms = rooms;
         this.posts = posts; this.likes = likes; this.comments = comments; this.members = members;
         this.coins = coins; this.assets = assets; this.postMedia = postMedia;
         this.bookmarks = bookmarks; this.reposts = reposts; this.mediaFiles = mediaFiles;
@@ -88,8 +91,7 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public List<PostResponse> list(String symbol, Long viewerId, int size) {
-        if (coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).isEmpty())
-            throw new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다.");
+        rooms.requireOpen(symbol);
         return posts.findByCoinSymbolIgnoreCaseOrderByCreatedAtDesc(symbol, PageRequest.of(0, bounded(size)))
             .stream().map(post -> response(post, viewerId)).toList();
     }
@@ -99,9 +101,7 @@ public class PostService {
                                                                        boolean verified, int page, int size) {
         var request = com.cryptalk.common.PageResponse.request(page, size,
             org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt", "id"));
-        if (symbol != null && coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).isEmpty()) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다.");
-        }
+        if (symbol != null) rooms.requireOpen(symbol);
         return com.cryptalk.common.PageResponse.of(posts.numberedPage(symbol, verified, request)
             .map(post -> response(post, viewerId)));
     }
@@ -144,6 +144,7 @@ public class PostService {
         Member member = member(memberId);
         Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(request.coinSymbol())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
+        rooms.requireOpen(coin);
         AssetSnapshot snapshot = assets.snapshotForPublication(memberId, coin);
         boolean verified = snapshot != null && snapshot.isVerified();
         // Exchange-backed aggregate quantities are public only as bands, never inferable exact valuations.
@@ -192,6 +193,7 @@ public class PostService {
 
     @Transactional
     public PostResponse unlike(Long memberId, Long postId) {
+        post(postId);
         likes.deleteById(new PostLikeId(postId, memberId)); return response(post(postId), memberId);
     }
 
@@ -204,6 +206,7 @@ public class PostService {
 
     @Transactional
     public PostResponse unbookmark(Long memberId, Long postId) {
+        post(postId);
         bookmarks.deleteById(new PostMemberId(postId, memberId)); return response(post(postId), memberId);
     }
 
@@ -223,11 +226,14 @@ public class PostService {
 
     @Transactional
     public PostResponse unrepost(Long memberId, Long postId) {
+        post(postId);
         reposts.deleteById(new PostMemberId(postId, memberId)); return response(post(postId), memberId);
     }
 
     public Post post(Long id) {
-        return posts.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        Post post = posts.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        rooms.requireOpen(post.getCoin());
+        return post;
     }
 
     public Member member(Long id) {

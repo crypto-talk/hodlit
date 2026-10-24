@@ -1,5 +1,6 @@
 package com.cryptalk.draft;
 
+import com.cryptalk.coin.RoomAccess;
 import com.cryptalk.common.ApiException;
 import com.cryptalk.draft.DraftDtos.*;
 import com.cryptalk.media.MediaService;
@@ -18,13 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DraftService {
+    private final RoomAccess rooms;
     private final DraftRepository drafts;
     private final MemberRepository members;
     private final MediaService media;
     private final ObjectMapper json;
     private final PostRepository posts;
 
-    public DraftService(DraftRepository drafts, MemberRepository members, MediaService media, ObjectMapper json, PostRepository posts) {
+    public DraftService(DraftRepository drafts, MemberRepository members, MediaService media, ObjectMapper json, PostRepository posts, RoomAccess rooms) {
+        this.rooms = rooms;
         this.drafts = drafts;
         this.members = members;
         this.media = media;
@@ -94,6 +97,7 @@ public class DraftService {
     private void requirePostOwner(Long memberId, Long postId) {
         var post = posts.findById(postId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "원문을 찾을 수 없습니다."));
+        rooms.requireOpen(post.getCoin());
         if (!post.getMember().getId().equals(memberId))
             throw new ApiException(HttpStatus.FORBIDDEN, "본인 글의 수정 초안만 접근할 수 있습니다.");
     }

@@ -32,6 +32,12 @@ public class Coin {
     private Integer tokenDecimals;
     @Column(nullable = false)
     private boolean active;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operation_status", nullable = false, length = 10)
+    private RoomOperationStatus operationStatus = RoomOperationStatus.CLOSE;
+
+    public RoomOperationStatus getOperationStatus() { return operationStatus; }
+    public void changeOperationStatus(RoomOperationStatus status) { this.operationStatus = status; }
     protected Coin() {}
     public void enableVerification() { this.verificationAvailability = VerificationAvailability.SUPPORTED; }
     public boolean isActive() { return active; }

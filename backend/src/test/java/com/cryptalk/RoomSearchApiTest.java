@@ -27,6 +27,7 @@ class RoomSearchApiTest {
 
     @Test
     void restrictsBothTypesToTheRoomAndKeepsRankingAndPagination() throws Exception {
+        jdbc.update("UPDATE coins SET operation_status='OPEN' WHERE symbol='BTC'");
         long author = members.saveAndFlush(new Member("needle-author", "#123456")).getId();
         long eth = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow().getId();
         long btc = coins.findBySymbolIgnoreCaseAndActiveTrue("BTC").orElseThrow().getId();

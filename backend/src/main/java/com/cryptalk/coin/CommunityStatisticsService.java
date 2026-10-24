@@ -16,11 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CommunityStatisticsService {
+    private final RoomAccess roomAccess;
     private final NamedParameterJdbcTemplate jdbc;
     private final Clock clock;
 
     public CommunityStatisticsService(NamedParameterJdbcTemplate jdbc,
-                                      @Qualifier("communityStatisticsClock") Clock clock) {
+                                      @Qualifier("communityStatisticsClock") Clock clock, RoomAccess roomAccess) {
+        this.roomAccess = roomAccess;
         this.jdbc = jdbc;
         this.clock = clock;
     }
@@ -31,6 +33,7 @@ public class CommunityStatisticsService {
         if (!List.of("24h", "all").contains(normalized)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "집계 기간은 24h 또는 all이어야 합니다.");
         }
+        if (symbol != null) roomAccess.requireOpen(symbol);
         Instant until = clock.instant();
         Instant from = normalized.equals("all") ? Instant.EPOCH : until.minus(Duration.ofHours(24));
         var parameters = new HashMap<String, Object>();
@@ -42,7 +45,12 @@ public class CommunityStatisticsService {
         parameters.put("hotOnly", symbol == null && normalized.equals("24h"));
         parameters.put("symbol", symbol == null ? null : symbol.trim().toUpperCase(Locale.ROOT));
         // UNION is required for a distinct participant across different activity types; JPQL cannot express it.
-        List<RoomStatistics> rooms = jdbc.query(SQL, parameters, (row, index) -> {
+        // Lifetime totals have no lower bound. Keep their SQL independent of the rolling-window
+        // start parameter: reused parameterized CTEs can otherwise apply a recent cutoff to all-time totals.
+        String sql = normalized.equals("all") ? SQL.replace("p.created_at >= :from AND ", "")
+            .replace("c.created_at >= :from AND ", "").replace("l.created_at >= :from AND ", "")
+            .replace("v.created_at >= :from AND ", "") : SQL;
+        List<RoomStatistics> rooms = jdbc.query(sql, parameters, (row, index) -> {
             long participants = row.getLong("participants");
             long verified = row.getLong("verified_participants");
             double rate = participants == 0 ? 0 : 100.0 * verified / participants;
@@ -102,7 +110,7 @@ public class CommunityStatisticsService {
                 THEN a.member_id ELSE NULL END) AS verified_participants
         FROM coins c LEFT JOIN activity a ON a.coin_id = c.id
         LEFT JOIN asset_snapshots s ON s.coin_id = c.id AND s.member_id = a.member_id
-        WHERE c.active = TRUE AND (:symbol IS NULL OR c.symbol = :symbol)
+        WHERE c.active = TRUE AND c.operation_status = 'OPEN' AND (:symbol IS NULL OR c.symbol = :symbol)
         GROUP BY c.id, c.symbol, c.display_order
         )
         SELECT t.*, COALESCE(h.hot_score, 0) AS hot_score,

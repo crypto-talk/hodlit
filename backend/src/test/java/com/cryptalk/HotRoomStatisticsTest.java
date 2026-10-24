@@ -42,7 +42,10 @@ class HotRoomStatisticsTest {
     @MockitoBean(name = "communityStatisticsClock") Clock clock;
 
     @BeforeEach
-    void fixTime() { when(clock.instant()).thenReturn(NOW); }
+    void fixTime() {
+        when(clock.instant()).thenReturn(NOW);
+        jdbc.update("UPDATE coins SET operation_status='OPEN' WHERE symbol='BTC'");
+    }
 
     @Test
     void oneMemberIsScoredOnceAcrossPostsCommentsAndLikesAndViewsDoNotIncreaseScore() throws Exception {
@@ -127,7 +130,7 @@ class HotRoomStatisticsTest {
         var cumulative = statistics.statistics("all", "BTC").rooms().getFirst();
         assertEquals(1, cumulative.postCount());
         assertEquals(0, cumulative.hotScore());
-        assertEquals(19, statistics.statistics("all", null).rooms().size());
+        assertEquals(1, statistics.statistics("all", null).rooms().size());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.cryptalk.poll;
 
+import com.cryptalk.coin.RoomAccess;
 import com.cryptalk.admin.AdminAccess;
 import com.cryptalk.coin.CoinRepository;
 import com.cryptalk.common.ApiException;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PollService {
+    private final RoomAccess rooms;
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private final PollRepository polls;
     private final PollVoteRepository votes;
@@ -26,7 +28,8 @@ public class PollService {
     private final Clock clock;
 
     public PollService(PollRepository polls,PollVoteRepository votes,CoinRepository coins,MemberRepository members,
-                       AdminAccess admins,@Qualifier("pollClock") Clock clock) {
+                       AdminAccess admins,@Qualifier("pollClock") Clock clock, RoomAccess rooms) {
+        this.rooms = rooms;
         this.polls = polls;
         this.votes = votes;
         this.coins = coins;
@@ -51,6 +54,7 @@ public class PollService {
     public PollDtos.PollResponse current(String symbol,Long memberId) {
         var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"코인 방을 찾을 수 없습니다."));
+        rooms.requireOpen(coin);
         var poll = polls.findFirstByCoinIdAndActiveTrueOrderByCreatedAtDescIdDesc(coin.getId())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"현재 투표가 없습니다."));
         return response(poll,memberId,today());
@@ -58,13 +62,16 @@ public class PollService {
 
     @Transactional(readOnly=true)
     public PollDtos.PollResponse get(Long pollId,Long memberId) {
-        return response(polls.findById(pollId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"투표를 찾을 수 없습니다.")),memberId,today());
+        var poll = polls.findById(pollId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"투표를 찾을 수 없습니다."));
+        rooms.requireOpen(poll.getCoin());
+        return response(poll,memberId,today());
     }
 
     @Transactional
     public PollDtos.PollResponse vote(Long memberId,Long pollId,Long choiceId) {
         var member = members.lockById(memberId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"회원을 찾을 수 없습니다."));
         var poll = polls.lockById(pollId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"투표를 찾을 수 없습니다."));
+        rooms.requireOpen(poll.getCoin());
         if (!poll.isActive() || !poll.getCoin().isActive()) throw new ApiException(HttpStatus.CONFLICT,"종료된 투표입니다.");
         LocalDate day = today(); // Capture after locks: one KST day for validation, insertion and response.
         if (votes.findByPollIdAndMemberIdAndVoteDate(pollId,memberId,day).isPresent())

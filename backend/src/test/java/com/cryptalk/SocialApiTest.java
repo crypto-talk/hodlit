@@ -46,6 +46,7 @@ import java.time.Duration;
 @AutoConfigureMockMvc
 class SocialApiTest {
     @Autowired MockMvc mvc;
+    @Autowired com.cryptalk.coin.CoinRepository coins;
     @Autowired ObjectMapper json;
     @Autowired MemberRepository members;
     @Autowired WalletRepository wallets;
@@ -284,6 +285,9 @@ class SocialApiTest {
     }
 
     private long replyPost(Account author) throws Exception {
+        var room = coins.findBySymbolIgnoreCaseAndActiveTrue("BTC").orElseThrow();
+        room.changeOperationStatus(com.cryptalk.coin.RoomOperationStatus.OPEN);
+        coins.saveAndFlush(room);
         var result = mvc.perform(post("/api/v1/posts").header("Authorization", bearer(author.token()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"coinSymbol\":\"BTC\",\"title\":\"reply test\",\"content\":\"body\"}"))

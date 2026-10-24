@@ -45,14 +45,14 @@ public class CoinController {
     @GetMapping("/communities/{symbol}")
     CommunityResponse community(@PathVariable String symbol) {
         Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
-        long postCount = posts.countByCoinId(coin.getId());
+        long postCount = coin.getOperationStatus() == RoomOperationStatus.OPEN ? posts.countByCoinId(coin.getId()) : 0;
         return new CommunityResponse(response(coin), postCount, coin.getName() + " 홀더와 투자자가 정보를 나누는 공간입니다.");
     }
     private CoinResponse response(Coin coin) {
         return new CoinResponse(coin.getId(), coin.getSymbol(), coin.getName(), coin.getChainType(), coin.getAccentColor(),
-            coin.getVerificationAvailability().name(), coin.getChainId(), coin.getAssetType());
+            coin.getVerificationAvailability().name(), coin.getChainId(), coin.getAssetType(), coin.getOperationStatus());
     }
     public record CoinResponse(Long id, String symbol, String name, String chainType, String accentColor,
-                               String verificationAvailability, Long chainId, String assetType) {}
+                               String verificationAvailability, Long chainId, String assetType, RoomOperationStatus operationStatus) {}
     public record CommunityResponse(CoinResponse coin, long postCount, String description) {}
 }

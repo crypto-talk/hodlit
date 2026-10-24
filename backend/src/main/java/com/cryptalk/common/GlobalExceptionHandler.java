@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
     ResponseEntity<Map<String, Object>> handleApi(ApiException exception) {
-        return ResponseEntity.status(exception.status()).body(error(exception.getMessage()));
+        var body = new java.util.HashMap<>(error(exception.getMessage()));
+        if (exception.code() != null) body.put("code", exception.code());
+        return ResponseEntity.status(exception.status()).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
