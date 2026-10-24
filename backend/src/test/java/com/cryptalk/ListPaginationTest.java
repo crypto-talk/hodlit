@@ -9,7 +9,11 @@ import com.cryptalk.member.Member;
 import com.cryptalk.member.MemberRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +29,44 @@ class ListPaginationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired MemberRepository members;
     @Autowired CoinRepository coins;
+
+    @ParameterizedTest
+    @MethodSource("invalidPageParameters")
+    void returnsJsonBadRequestForInvalidPageParameterTypes(String path, String parameter, String value) throws Exception {
+        mvc.perform(get(path).param(parameter, value))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(parameter + ": 정수로 입력해 주세요."))
+            .andExpect(jsonPath("$.timestamp").isString());
+    }
+
+    static Stream<Arguments> invalidPageParameters() {
+        return Stream.of("/api/v1/posts/page", "/api/v1/coins/page",
+                "/api/v1/posts/8/comments/page", "/api/v1/communities/ETH/posts/page")
+            .flatMap(path -> Stream.of("page", "size")
+                .flatMap(parameter -> Stream.of("abc", "1.5", "2147483648", "-2147483649")
+                    .map(value -> Arguments.of(path, parameter, value))));
+    }
+
+    @Test
+    void invalidPageParametersDoNotBypassAuthentication() throws Exception {
+        for (String path : new String[] {"/api/v1/me/wallets/page", "/api/v1/me/bookmarks/page",
+                "/api/v1/me/exchanges/page", "/api/v1/feed/following/page"}) {
+            mvc.perform(get(path).param("page", "abc")).andExpect(status().isUnauthorized());
+        }
+        var jwt = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt()
+            .jwt(token -> token.subject("1"));
+        mvc.perform(get("/api/v1/me/wallets/page").with(jwt).param("page", "abc"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("page: 정수로 입력해 주세요."));
+    }
+
+    @Test
+    void nonIntegerTypeErrorsUseGenericGuidance() throws Exception {
+        mvc.perform(get("/api/v1/posts/page").param("verified", "invalid-value"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("verified: 요청값 형식을 확인해 주세요."))
+            .andExpect(jsonPath("$.timestamp").isString());
+    }
 
     @Test
     void pagesAllPostsRoomPostsAndCommentsWithStableOrdering() throws Exception {
