@@ -219,6 +219,13 @@ had no posts, so every list screen could only be checked empty; writing first fi
    images inside the body, the "이 글에 붙을 정보" preview, preview.
    Drafts are saved on the server (`/drafts`, HODL-43), not in localStorage: the 임시저장
    button creates one and then overwrites it, `?draft=<id>` reopens it, publishing deletes it.
+   The edit page has its own draft, one per post (`/posts/{id}/draft`, HODL-56, docs
+   `EDIT_DRAFTS_API.md`): fetched after the post (a 404 then means "no draft"; any other failure
+   stops the page, because starting from the original would let autosave overwrite the draft),
+   started from when present with a bar to switch back to the original, autosaved the same way
+   as the write page, and deleted after `PUT /posts/{id}` succeeds. Both kinds share the 10-draft
+   quota and the `/drafts` list; `sourcePostId` tells them apart and `draftHref()` in
+   `lib/routes.ts` sends an edit draft to its edit page (the write page redirects there too).
 2. ✅ Post detail `/subhodl/[symbol]/[postId]`, first pass (`features/post/components/
 post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    (youtube-nocookie), the price captured at publish time. The body is rendered by Tiptap in
@@ -229,8 +236,9 @@ post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    Comments, like/bookmark (`post-actions.tsx`) and the author's edit/delete
    (`post-owner-actions.tsx`, edit page `(focus)/subhodl/[symbol]/[postId]/edit`) are built.
    Repost is left out on purpose. The post query key carries the viewer id
-   (`hooks/use-post.ts`) because `liked`/`bookmarked` depend on the token. The right column's
-   "북마크한 글" box is temporary until the profile page exists.
+   (`hooks/use-post.ts`) because `liked`/`bookmarked` depend on the token. Bookmarks and
+   drafts are listed in the mypage tabs `/mypage/bookmarks` and `/mypage/drafts`; the
+   temporary "북마크한 글" box in the right column is gone.
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header

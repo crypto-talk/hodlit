@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { roomHref } from "@/lib/routes";
 import MyCoins from "./my-coins";
 import WalletBox from "./wallet-box";
@@ -12,20 +11,12 @@ type Props = {
   onConnectWallet: () => void;
   /** 지갑 연결이 진행 중이면 true. */
   connecting: boolean;
-  /**
-   * 전체 방 아래에 붙는 칸. 지금은 "북마크한 글"(임시)이다. 넓은 화면(≥1320px)에서는
-   * 오른쪽 칸에 그려지고 여기서는 숨는다.
-   *
-   * `components/` 는 `features/` 를 참조할 수 없어서(구조 규칙 1) 셸 레이아웃이
-   * 만들어 넘긴다.
-   */
-  extra?: ReactNode;
 };
 
 /** 섹션 제목. 사이드바 안에서만 쓰는 작은 조각이라 여기 둔다. */
 const LABEL = "text-xs font-semibold tracking-[0.06em] text-text-muted";
 
-export default function Sidebar({ rooms, wallets, onConnectWallet, connecting, extra }: Props) {
+export default function Sidebar({ rooms, wallets, onConnectWallet, connecting }: Props) {
   return (
     <div className="flex w-60 flex-none flex-col max-shell:hidden">
       <div className={LABEL}>내 코인</div>
@@ -53,9 +44,8 @@ export default function Sidebar({ rooms, wallets, onConnectWallet, connecting, e
         ))}
       </div>
 
-      {/* 넓은 화면(≥1320px)에서는 둘 다 오른쪽 칸으로 옮겨 가고 여기서는 숨는다. */}
+      {/* 넓은 화면(≥1320px)에서는 오른쪽 칸으로 옮겨 가고 여기서는 숨는다. */}
       <WalletBox className="mt-8 wide:hidden" />
-      {extra ? <div className="mt-4 wide:hidden">{extra}</div> : null}
 
       <div className="mt-6 flex flex-col gap-2">
         <a href="#" className="text-xs text-text-muted">

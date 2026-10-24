@@ -3,13 +3,20 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { MYPAGE_ASSETS_HREF, MYPAGE_WALLET_HREF } from "@/lib/routes";
+import {
+  MYPAGE_ASSETS_HREF,
+  MYPAGE_BOOKMARKS_HREF,
+  MYPAGE_DRAFTS_HREF,
+  MYPAGE_WALLET_HREF,
+} from "@/lib/routes";
 import { useSession } from "@/lib/session";
 
 /** 마이페이지 탭. 탭이 늘면 여기에 줄을 더한다. */
 const TABS = [
   { href: MYPAGE_WALLET_HREF, label: "지갑" },
   { href: MYPAGE_ASSETS_HREF, label: "내 자산" },
+  { href: MYPAGE_BOOKMARKS_HREF, label: "북마크" },
+  { href: MYPAGE_DRAFTS_HREF, label: "임시저장" },
 ] as const;
 
 const TAB_CLASS =

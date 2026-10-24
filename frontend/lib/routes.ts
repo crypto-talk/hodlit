@@ -79,6 +79,20 @@ export function writeHref(symbol?: string | null): string {
 }
 
 /**
+ * 임시저장을 이어 쓰는 화면. 새 글 임시저장은 글쓰기(`?draft=`)로, 글 수정 임시저장
+ * (HODL-56)은 그 글의 수정 화면으로 간다 — 수정 화면이 들어오면서 임시저장을 먼저 찾는다.
+ */
+export function draftHref(draft: {
+  id: number;
+  coinSymbol: string;
+  sourcePostId: number | null;
+}): string {
+  return draft.sourcePostId === null
+    ? `/write?draft=${draft.id}`
+    : editHref(draft.coinSymbol, draft.sourcePostId);
+}
+
+/**
  * 지금 주소가 어느 방 안인지. 방 게시판과 글 상세 둘 다 해당한다.
  * 헤더·FAB 의 글쓰기와 사이드바의 현재 방 표시가 쓴다.
  */
@@ -98,3 +112,9 @@ export const MYPAGE_WALLET_HREF = "/mypage/wallet";
 
 /** 마이페이지 내 자산 탭. 지갑 · 거래소를 합산한 코인 비중 원형 차트(HODL-67). */
 export const MYPAGE_ASSETS_HREF = "/mypage/assets";
+
+/** 마이페이지 북마크 탭. 북마크한 글 전부, 북마크한 순서대로. */
+export const MYPAGE_BOOKMARKS_HREF = "/mypage/bookmarks";
+
+/** 마이페이지 임시저장 탭. 새 글과 글 수정 임시저장을 합쳐 10개까지. */
+export const MYPAGE_DRAFTS_HREF = "/mypage/drafts";
