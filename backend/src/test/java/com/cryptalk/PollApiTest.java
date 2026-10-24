@@ -23,7 +23,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties="cryptalk.admin.member-ids=100000")
+@SpringBootTest
 @AutoConfigureMockMvc
 class PollApiTest {
     @Autowired MockMvc mvc;
@@ -37,7 +37,7 @@ class PollApiTest {
 
     @BeforeEach
     void setup() {
-        jdbc.update("INSERT INTO members(id,nickname,avatar_color,asset_visibility,created_at,updated_at) VALUES(100000,'poll-admin','#123456','EXACT',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
+        jdbc.update("INSERT INTO members(id,role,nickname,avatar_color,asset_visibility,created_at,updated_at) VALUES(100000,'ADMIN','poll-admin','#123456','EXACT',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
         user = members.saveAndFlush(new Member(UUID.randomUUID().toString(),"#123456")).getId();
         when(clock.instant()).thenReturn(Instant.parse("2026-10-09T14:59:59Z"));
     }

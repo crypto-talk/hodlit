@@ -14,7 +14,7 @@ The server captures one date after acquiring vote locks and uses it for validati
 
 Member locking plus the database unique `(poll_id,member_id,vote_date)` blocks simultaneous duplicate submissions. Poll locks serialize votes with closing/replacement; coin locking prevents competing administrators from leaving multiple active polls in a room. A composite choice FK reinforces choice/poll association. Choices/questions are immutable; create a new question instead of editing options underneath recorded votes.
 
-Admin config matches HODL-62: `ADMIN_MEMBER_IDS` allowlist of persisted members, validated JWT subject, default empty denies all. Identical AdminAccess/config/Compose/example changes are shared, not two separate permission systems. No actual .env/production permissions were modified.
+Service-wide administrators are persisted as `members.role = 'ADMIN'` and verified using the validated JWT subject on each request. Existing and new members default to `USER`. See ADMIN_PERMISSIONS.md for grant/revoke SQL. Client-supplied roles do not grant access.
 
 ## Frontend handoff
 

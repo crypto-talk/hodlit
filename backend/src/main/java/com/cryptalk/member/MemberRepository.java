@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
+    boolean existsByIdAndRole(Long id, MemberRole role);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select member from Member member where member.id = :id")
     Optional<Member> lockById(@Param("id") Long id);
