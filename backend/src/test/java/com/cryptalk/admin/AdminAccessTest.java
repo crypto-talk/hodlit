@@ -4,26 +4,27 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import com.cryptalk.common.ApiException;
 import com.cryptalk.member.MemberRepository;
+import com.cryptalk.member.MemberRole;
 import org.junit.jupiter.api.Test;
 
 class AdminAccessTest {
     @Test
-    void emptyAllowlistDeniesEveryoneWithoutCheckingMembership() {
+    void missingPrincipalIsDeniedWithoutDatabaseAccess() {
         var members = mock(MemberRepository.class);
-        var access = new AdminAccess("", members);
-        assertThrows(ApiException.class, () -> access.requireAdmin(1L));
+        var access = new AdminAccess(members);
         assertThrows(ApiException.class, () -> access.requireAdmin(null));
         verifyNoInteractions(members);
     }
 
     @Test
-    void requiresBothExplicitApprovalAndExistingMember() {
+    void checksCurrentDatabaseRoleOnEveryCall() {
         var members = mock(MemberRepository.class);
-        when(members.existsById(7L)).thenReturn(true);
-        var access = new AdminAccess("7, 8", members);
+        var access = new AdminAccess(members);
+        when(members.existsByIdAndRole(7L, MemberRole.ADMIN)).thenReturn(false, true, false);
+        assertThrows(ApiException.class, () -> access.requireAdmin(7L));
         assertDoesNotThrow(() -> access.requireAdmin(7L));
-        assertThrows(ApiException.class, () -> access.requireAdmin(8L));
-        assertThrows(ApiException.class, () -> access.requireAdmin(9L));
-        assertThrows(IllegalArgumentException.class, () -> new AdminAccess("0",members));
+        assertThrows(ApiException.class, () -> access.requireAdmin(7L));
+        assertThrows(ApiException.class, () -> access.requireAdmin(999L));
+        verify(members, times(3)).existsByIdAndRole(7L, MemberRole.ADMIN);
     }
 }
