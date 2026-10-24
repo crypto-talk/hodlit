@@ -1,6 +1,7 @@
 package com.cryptalk.post;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -8,6 +9,18 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
+    @Query("""
+        select p from Post p where p.member.id = :memberId and p.coin.active = true
+        and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN
+        """)
+    Page<Post> publicMemberPage(@Param("memberId") Long memberId, Pageable pageable);
+
+    @Query("""
+        select count(p) from Post p where p.member.id = :memberId and p.coin.active = true
+        and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN
+        """)
+    long countPublicByMemberId(@Param("memberId") Long memberId);
+
     long countByCoinId(Long coinId);
     @Query("select p from Post p where p.coin.active = true and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN and (:symbol is null or lower(p.coin.symbol) = lower(:symbol)) and (:verified = false or p.authorVerified = true)")
     org.springframework.data.domain.Page<Post> numberedPage(@Param("symbol") String symbol,

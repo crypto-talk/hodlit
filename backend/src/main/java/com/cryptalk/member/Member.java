@@ -41,6 +41,7 @@ public class Member {
     }
 
     public Long getId() { return id; }
+    public Instant getCreatedAt() { return createdAt; }
     public String getNickname() { return nickname; }
     public String getLoginId() { return loginId; }
     public String getPasswordHash() { return passwordHash; }
