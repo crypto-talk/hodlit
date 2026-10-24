@@ -112,3 +112,9 @@ export const MYPAGE_WALLET_HREF = "/mypage/wallet";
 
 /** 마이페이지 내 자산 탭. 지갑 · 거래소를 합산한 코인 비중 원형 차트(HODL-67). */
 export const MYPAGE_ASSETS_HREF = "/mypage/assets";
+
+/** 마이페이지 북마크 탭. 북마크한 글 전부, 북마크한 순서대로. */
+export const MYPAGE_BOOKMARKS_HREF = "/mypage/bookmarks";
+
+/** 마이페이지 임시저장 탭. 새 글과 글 수정 임시저장을 합쳐 10개까지. */
+export const MYPAGE_DRAFTS_HREF = "/mypage/drafts";

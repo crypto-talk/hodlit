@@ -165,11 +165,3 @@ export type DraftInput = Pick<Draft, "coinSymbol" | "title" | "content" | "youtu
 export type EditDraftInput = DraftInput & {
   tradingView: EditablePost["tradingView"];
 };
-
-/** 북마크한 글 한 줄. */
-export type BookmarkedPost = {
-  id: number;
-  coinSymbol: string;
-  title: string;
-  createdAt: string;
-};

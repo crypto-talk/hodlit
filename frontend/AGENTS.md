@@ -236,8 +236,9 @@ post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    Comments, like/bookmark (`post-actions.tsx`) and the author's edit/delete
    (`post-owner-actions.tsx`, edit page `(focus)/subhodl/[symbol]/[postId]/edit`) are built.
    Repost is left out on purpose. The post query key carries the viewer id
-   (`hooks/use-post.ts`) because `liked`/`bookmarked` depend on the token. The right column's
-   "북마크한 글" box is temporary until the profile page exists.
+   (`hooks/use-post.ts`) because `liked`/`bookmarked` depend on the token. Bookmarks and
+   drafts are listed in the mypage tabs `/mypage/bookmarks` and `/mypage/drafts`; the
+   temporary "북마크한 글" box in the right column is gone.
    `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
    too and features cannot import each other.
 3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header

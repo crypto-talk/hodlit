@@ -3,8 +3,8 @@ import { coinNameKo } from "@/lib/coin-name-ko";
 import { config } from "@/lib/config";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
 import { ApiError, http } from "@/lib/http";
+import { hasPostId, toPostSummary, type PostSummary } from "@/lib/post-summary";
 import type {
-  BookmarkedPost,
   Draft,
   DraftInput,
   DraftSummary,
@@ -384,19 +384,11 @@ export async function setBookmarked(postId: number, on: boolean): Promise<PostRe
 /**
  * 내가 북마크한 글. 북마크한 시각 최근 순이다. 페이지가 없어 한 번에 전부 온다.
  *
- * 마이페이지가 생기기 전까지 오른쪽 칸의 임시 목록이 쓴다.
+ * 마이페이지 북마크 탭이 랜딩 · 방 게시판과 같은 글 카드로 그린다.
  */
-export async function loadBookmarks(): Promise<BookmarkedPost[]> {
+export async function loadBookmarks(): Promise<PostSummary[]> {
   const posts = await http<PostResponse[]>("/api/v1/me/bookmarks");
-
-  return posts
-    .filter((post): post is PostResponse & { id: number } => typeof post.id === "number")
-    .map((post) => ({
-      id: post.id,
-      coinSymbol: post.coinSymbol ?? "",
-      title: post.title ?? "(제목 없음)",
-      createdAt: post.createdAt ?? "",
-    }));
+  return posts.filter(hasPostId).map(toPostSummary);
 }
 
 function toReactions(post: PostResponse): PostReactions {
