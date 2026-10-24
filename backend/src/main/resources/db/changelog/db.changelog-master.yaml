@@ -37,3 +37,5 @@ databaseChangeLog:
       file: db/changelog/013-polygon-native-holder.sql
   - include:
       file: db/changelog/014-room-operation-status.sql
+  - include:
+      file: db/changelog/015-public-profile-indexes.sql

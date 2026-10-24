@@ -18,6 +18,9 @@
 
 | 기능 | Method | Path | 인증 | 성공 상태 |
 |---|---|---|---|---|
+| 공개 프로필 | GET | `/members/by-nickname/{nickname}` | 불필요 | `200` |
+| 회원의 공개 글 페이지 | GET | `/members/{memberId}/posts/page` | 불필요 | `200` |
+| 회원의 공개 댓글 페이지 | GET | `/members/{memberId}/comments/page` | 불필요 | `200` |
 | 랜딩 피드 | GET | `/feed?size=30&cursor=...` | 선택 | `200` |
 | 팔로잉 피드 | GET | `/feed/following?size=30&cursor=...` | 필요 | `200` |
 | 코인별 글 | GET | `/communities/{symbol}/posts?size=30` | 선택 | `200` |
@@ -45,6 +48,9 @@
 | 내 지갑 기본 자산·ERC20 목록 | GET | `/me/wallets/assets` | 필요 | `200`, 키 미설정 `503` |
 
 `/me/assets`의 `assets`와 `walletAssets.assets`에는 양수 잔액만 반환하며 확인된 0잔액은 제외합니다. 조회 실패는 `unresolvedAssets` 및 네트워크 상태로 구분합니다. 지갑 전용 조회는 거래소를 호출하지 않습니다. 상세 계약과 운영 설정은 [Alchemy 지갑 자산 API](ALCHEMY_WALLET_ASSETS_API.md)를 참고하세요.
+
+공개 프로필 API는 자산 공개 회원도 정확 수량·평가금액 없이 구간만 반환합니다.
+활동 목록과 집계는 운영 중인 방만 포함합니다. 자세한 응답과 정책은 [공개 프로필 API](PUBLIC_PROFILE_API.md)를 참고하세요.
 
 조회 응답의 `liked`, `reposted`, `bookmarked`, `followedByMe`는 로그인 사용자를 기준으로
 계산됩니다. 비로그인 조회에서는 `false`입니다. `size`는 1~100 범위로 보정됩니다.
