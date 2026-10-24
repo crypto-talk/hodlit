@@ -9,7 +9,7 @@
 
 POST/PUT body: `{title,summary,sourceName,sourceUrl}`. Required nonblank lengths 200/1000/100/1000. Source URL must be absolute HTTP(S), no URL credentials. These are plain-text fields: this service never fetches source URLs, imports RSS, auto-posts news or provides article full text. Response adds id/coinSymbol/createdAt/updatedAt.
 
-Admin IDs are deployment-controlled `ADMIN_MEMBER_IDS=1,2` (real persisted member IDs, not Jira account IDs). Default empty denies **everyone**. Allowlist + existing member + validated JWT subject is checked in the service; body IDs, headers and JWT roles supplied by the client cannot grant access. Missing auth is 401, authenticated nonadmin 403. Compose now passes this value from its environment; `.env.example` documents an empty default. Operations must provision real approved IDs; no actual `.env` or production configuration was changed here. HODL-64 introduces the identical AdminAccess helper/config—retain one identical copy when integrating.
+Service-wide administrators are persisted as `members.role = 'ADMIN'` and verified using the validated JWT subject on each request. Existing and new members default to `USER`. See ADMIN_PERMISSIONS.md for grant/revoke SQL. Client-supplied roles do not grant access.
 
 Frontend: show only title, short summary and a clearly labelled source link in its coin room; render plain text and external links with `rel="noopener noreferrer"`. Default 20 numbered pages. Provide admin tools only to approved administrators, but rely on API 403 rather than UI hiding as security. Refresh after mutation, run pnpm gen:api after deployment. There is no public admin-ID discovery API.
 

@@ -39,3 +39,5 @@ databaseChangeLog:
       file: db/changelog/014-room-operation-status.sql
   - include:
       file: db/changelog/015-public-profile-indexes.sql
+  - include:
+      file: db/changelog/016-member-role.sql

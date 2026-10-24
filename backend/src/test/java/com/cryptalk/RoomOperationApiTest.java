@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest(properties = "cryptalk.admin.member-ids=100000")
+@SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 class RoomOperationApiTest {
@@ -34,8 +34,25 @@ class RoomOperationApiTest {
 
     @BeforeEach
     void setup() {
-        jdbc.update("INSERT INTO members(id,nickname,avatar_color,asset_visibility,created_at,updated_at) VALUES(100000,'room-admin','#123456','EXACT',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
+        jdbc.update("INSERT INTO members(id,role,nickname,avatar_color,asset_visibility,created_at,updated_at) VALUES(100000,'ADMIN','room-admin','#123456','EXACT',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
         user = members.saveAndFlush(new Member("room-user", "#123456")).getId();
+    }
+
+    @Test
+    void databaseRoleGrantAndRevocationApplyWithTheSameToken() throws Exception {
+        String subject = Long.toString(user);
+        String path = "/api/v1/admin/communities";
+        assertThat(jdbc.queryForObject("SELECT role FROM members WHERE id=?", String.class, user)).isEqualTo("USER");
+        mvc.perform(get(path).with(jwt().jwt(t -> t.subject(subject).claim("role", "ADMIN"))))
+            .andExpect(status().isForbidden());
+        jdbc.update("UPDATE members SET role='ADMIN' WHERE id=?", user);
+        mvc.perform(get(path).with(jwt().jwt(t -> t.subject(subject))))
+            .andExpect(status().isOk());
+        jdbc.update("UPDATE members SET role='USER' WHERE id=?", user);
+        mvc.perform(get(path).with(jwt().jwt(t -> t.subject(subject))))
+            .andExpect(status().isForbidden());
+        mvc.perform(get(path).with(jwt().jwt(t -> t.subject("999999999"))))
+            .andExpect(status().isForbidden());
     }
 
     @Test

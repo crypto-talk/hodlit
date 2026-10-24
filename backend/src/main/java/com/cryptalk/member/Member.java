@@ -8,6 +8,9 @@ import java.time.Instant;
 public class Member {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 20)
+    private MemberRole role = MemberRole.USER;
     @Column(name = "login_id", unique = true, length = 254)
     private String loginId;
     @Column(name = "password_hash", length = 100)

@@ -4,7 +4,7 @@ Room operation uses `operationStatus: OPEN | CLOSE`, independently of the coin c
 
 ## Service administrator endpoints
 
-The existing `AdminAccess` allowlist (`ADMIN_MEMBER_IDS`) and validated JWT identify service-wide administrators. There are no room-specific administrators, assignments, or permissions.
+Service-wide administrators are persisted as `members.role = 'ADMIN'` and verified using the validated JWT subject on each request. Existing and new members default to `USER`. See ADMIN_PERMISSIONS.md for grant/revoke SQL. Client-supplied roles do not grant access.
 
 | Method and path | Contract |
 | --- | --- |
