@@ -1,17 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
+import { pretendard } from "./fonts";
+import { Providers } from "./providers";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -22,10 +13,12 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const imageUrl = `${protocol}://${host}/og.png`;
-  const title = "CRYPTALK — 증명된 투자자들의 코인 커뮤니티";
+  const title = "Hodlit — 증명된 투자자들의 코인 커뮤니티";
   const description = "회원가입하고, 선택적으로 지갑 자산을 인증해 코인별 투자자들과 이야기하세요.";
 
   return {
@@ -42,11 +35,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+    <html lang="ko" className={pretendard.variable}>
+      <body className="font-sans antialiased">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

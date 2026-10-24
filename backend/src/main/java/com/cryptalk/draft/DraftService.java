@@ -1,0 +1,141 @@
+package com.cryptalk.draft;
+
+import com.cryptalk.coin.RoomAccess;
+import com.cryptalk.common.ApiException;
+import com.cryptalk.draft.DraftDtos.*;
+import com.cryptalk.media.MediaService;
+import com.cryptalk.post.PostRepository;
+import com.cryptalk.member.Member;
+import com.cryptalk.member.MemberRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class DraftService {
+    private final RoomAccess rooms;
+    private final DraftRepository drafts;
+    private final MemberRepository members;
+    private final MediaService media;
+    private final ObjectMapper json;
+    private final PostRepository posts;
+
+    public DraftService(DraftRepository drafts, MemberRepository members, MediaService media, ObjectMapper json, PostRepository posts, RoomAccess rooms) {
+        this.rooms = rooms;
+        this.drafts = drafts;
+        this.members = members;
+        this.media = media;
+        this.json = json;
+        this.posts = posts;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DraftResponse> list(Long memberId) {
+        return drafts.findByMemberIdOrderByUpdatedAtDescIdDesc(memberId).stream().map(this::response).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DraftResponse get(Long memberId, Long id) { return response(owned(memberId, id)); }
+
+    @Transactional
+    public DraftResponse create(Long memberId, SaveDraftRequest request) {
+        Member member = lockMember(memberId);
+        if (drafts.countByMemberId(memberId) >= 10)
+            throw new ApiException(HttpStatus.CONFLICT, "임시저장은 회원당 10개까지 가능합니다.");
+        Draft draft = drafts.save(new Draft(member, encode(request)));
+        media.replaceDraftMedia(memberId, draft.getId(), mediaUrls(request));
+        return response(draft);
+    }
+
+    @Transactional
+    public DraftResponse update(Long memberId, Long id, SaveDraftRequest request) {
+        lockMember(memberId);
+        Draft draft = owned(memberId, id);
+        if (draft.getSourcePostId() != null) requirePostOwner(memberId, draft.getSourcePostId());
+        media.replaceDraftMedia(memberId, id, mediaUrls(request), draft.getSourcePostId());
+        draft.update(encode(request));
+        return response(draft);
+    }
+
+    @Transactional
+    public void delete(Long memberId, Long id) {
+        lockMember(memberId);
+        Draft draft = owned(memberId, id);
+        media.replaceDraftMedia(memberId, id, List.of());
+        drafts.delete(draft);
+    }
+
+    @Transactional(readOnly = true)
+    public DraftResponse editDraft(Long memberId, Long postId) {
+        requirePostOwner(memberId, postId);
+        return response(drafts.findByMemberIdAndSourcePostId(memberId, postId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "수정 초안이 없습니다.")));
+    }
+
+    @Transactional
+    public DraftResponse saveEditDraft(Long memberId, Long postId, SaveDraftRequest request) {
+        Member member = lockMember(memberId);
+        requirePostOwner(memberId, postId);
+        Draft draft = drafts.findByMemberIdAndSourcePostId(memberId, postId).orElse(null);
+        if (draft == null) {
+            if (drafts.countByMemberId(memberId) >= 10)
+                throw new ApiException(HttpStatus.CONFLICT, "임시저장은 회원당 10개까지 가능합니다.");
+            draft = drafts.save(Draft.editing(member, encode(request), postId));
+        } else {
+            draft.update(encode(request));
+        }
+        media.replaceDraftMedia(memberId, draft.getId(), mediaUrls(request), postId);
+        return response(draft);
+    }
+
+    private void requirePostOwner(Long memberId, Long postId) {
+        var post = posts.findById(postId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "원문을 찾을 수 없습니다."));
+        rooms.requireOpen(post.getCoin());
+        if (!post.getMember().getId().equals(memberId))
+            throw new ApiException(HttpStatus.FORBIDDEN, "본인 글의 수정 초안만 접근할 수 있습니다.");
+    }
+
+    private Member lockMember(Long id) {
+        return members.lockById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
+    }
+
+    private Draft owned(Long memberId, Long id) {
+        Draft draft = drafts.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "임시저장을 찾을 수 없습니다."));
+        if (!draft.getMember().getId().equals(memberId))
+            throw new ApiException(HttpStatus.FORBIDDEN, "본인의 임시저장만 접근할 수 있습니다.");
+        return draft;
+    }
+
+    private List<String> mediaUrls(SaveDraftRequest request) {
+        List<String> urls = new ArrayList<>();
+        Set<String> primary = new HashSet<>();
+        if (request.media() != null) for (var item : request.media()) {
+            if (item.type() == null || !primary.add(item.url()))
+                throw new ApiException(HttpStatus.BAD_REQUEST, "미디어 형식이 필요하며 중복 미디어는 허용하지 않습니다.");
+            urls.add(item.url());
+            if (item.thumbnailUrl() != null) urls.add(item.thumbnailUrl());
+        }
+        return urls;
+    }
+
+    private String encode(SaveDraftRequest request) {
+        try { return json.writeValueAsString(request); }
+        catch (JsonProcessingException exception) { throw new IllegalStateException("Cannot encode draft", exception); }
+    }
+
+    private DraftResponse response(Draft draft) {
+        try {
+            SaveDraftRequest data = json.readValue(draft.getPayload(), SaveDraftRequest.class);
+            return new DraftResponse(draft.getId(), draft.getUpdatedAt(), data.coinSymbol(), data.title(), data.content(),
+                data.media(), data.tradingViewSymbol(), data.tradingViewInterval(), data.tradingViewAnalysis(),
+                data.assetPrice(), data.assetPriceCurrency(), data.youtubeUrl(), draft.getSourcePostId());
+        } catch (JsonProcessingException exception) { throw new IllegalStateException("Cannot decode draft", exception); }
+    }
+}

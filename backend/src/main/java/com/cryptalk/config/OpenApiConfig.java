@@ -17,7 +17,7 @@ public class OpenApiConfig {
         return new OpenAPI()
             .info(new Info()
                 .title("CrypTalk API")
-                .description("CrypTalk backend REST API")
+                .description("코인 커뮤니티 CrypTalk 백엔드 REST API")
                 .version("v1"))
             .components(new Components()
                 .addSecuritySchemes(BEARER_AUTH, new SecurityScheme()

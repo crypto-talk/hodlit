@@ -18,8 +18,5 @@ cryptalk:
     refresh-token-days: 14
   cors:
     allowed-origins: http://localhost:3000
-  asset:
-    ethereum-rpc-url: ""
-    eth-krw-price: 0
   auth:
     cookie-secure: false

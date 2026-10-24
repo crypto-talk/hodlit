@@ -1,6 +1,6 @@
 # CrypTalk 인증 API 명세
 
-이 문서는 현재 `develop` 브랜치의 이메일 기반 인증 API를 설명합니다.
+이 문서는 현재 `develop` 브랜치의 아이디 기반 인증 API를 설명합니다.
 지갑 로그인은 지원하지 않으며, 로그인 후 지갑을 연결하는 API는 이 문서의 범위에서
 제외합니다.
 
@@ -21,7 +21,7 @@ fetch(`${API_BASE_URL}/api/v1/auth/login`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   credentials: "include",
-  body: JSON.stringify({ email, password }),
+  body: JSON.stringify({ loginId, password }),
 });
 ```
 
@@ -95,7 +95,7 @@ Content-Type: application/json
 
 ```json
 {
-  "email": "member@example.com",
+  "loginId": "satoshi_21",
   "password": "strong-password-123",
   "nickname": "새회원"
 }
@@ -103,23 +103,27 @@ Content-Type: application/json
 
 | 필드 | 필수 | 제약 |
 |---|---|---|
-| `email` | 예 | 유효한 이메일, 최대 254자 |
+| `loginId` | 예 | 4~40자, 영문·숫자·마침표·밑줄·하이픈만 허용 |
 | `password` | 예 | 8~72자 |
 | `nickname` | 예 | 요청값 기준 2~40자, 공백만 입력할 수 없음 |
 
-이메일은 trim 후 소문자로 저장되고 nickname은 trim 후 저장됩니다. 비밀번호는
+아이디는 소문자로 저장되고 nickname은 trim 후 저장됩니다. 비밀번호는
 BCrypt cost 12로 해시됩니다.
+
+기존 이메일 계정은 마이그레이션 과정에서 종전 이메일이 `loginId`로 승계됩니다.
+따라서 기존 회원은 아이디를 별도로 정하기 전까지 기존 이메일을 `loginId` 값으로
+보내 로그인할 수 있습니다.
 
 ### 응답
 
 - `200 OK`: 공통 인증 응답 및 refresh cookie 발급
 - `400 Bad Request`: 요청값 검증 실패
-- `409 Conflict`: 이미 가입된 이메일 또는 사용 중인 닉네임
+- `409 Conflict`: 이미 사용 중인 아이디 또는 닉네임
 
 ```bash
 curl -i -c cookies.txt \
   -H 'Content-Type: application/json' \
-  -d '{"email":"member@example.com","password":"strong-password-123","nickname":"새회원"}' \
+  -d '{"loginId":"satoshi_21","password":"strong-password-123","nickname":"새회원"}' \
   http://localhost:8080/api/v1/auth/signup
 ```
 
@@ -134,29 +138,29 @@ Content-Type: application/json
 
 ```json
 {
-  "email": "member@example.com",
+  "loginId": "satoshi_21",
   "password": "strong-password-123"
 }
 ```
 
 | 필드 | 필수 | 제약 |
 |---|---|---|
-| `email` | 예 | 유효한 이메일, 최대 254자 |
+| `loginId` | 예 | 최대 254자 (신규 아이디는 회원가입 제약 적용) |
 | `password` | 예 | 최대 72자 |
 
 ### 응답
 
 - `200 OK`: 공통 인증 응답 및 refresh cookie 발급
 - `400 Bad Request`: 요청값 검증 실패
-- `401 Unauthorized`: 이메일 또는 비밀번호 불일치
+- `401 Unauthorized`: 아이디 또는 비밀번호 불일치
 
-보안을 위해 존재하지 않는 이메일과 잘못된 비밀번호는 같은 오류 메시지를
+보안을 위해 존재하지 않는 아이디와 잘못된 비밀번호는 같은 오류 메시지를
 반환합니다.
 
 ```bash
 curl -i -c cookies.txt \
   -H 'Content-Type: application/json' \
-  -d '{"email":"member@example.com","password":"strong-password-123"}' \
+  -d '{"loginId":"satoshi_21","password":"strong-password-123"}' \
   http://localhost:8080/api/v1/auth/login
 ```
 
@@ -216,6 +220,35 @@ curl -i -b cookies.txt -c cookies.txt \
 
 로그인한 사용자의 선택적 지갑 연결은 별도의 보호된 `/api/v1/me/wallet/**` API를
 사용합니다.
+
+## EVM 지갑 연결 및 관리
+
+MVP는 `0x`로 시작하는 EVM 지갑과 `personal_sign` 서명만 지원합니다. 지갑은 로그인 수단이
+아니며 아이디 로그인 후 선택적으로 여러 개 연결할 수 있습니다. 한 주소는 한 회원에게만 연결됩니다.
+
+| 기능 | Method | Path | 인증 |
+|---|---|---|---|
+| 연결 nonce 발급 | POST | `/api/v1/me/wallet/nonce` | 필요 |
+| 서명 검증 및 연결 | POST | `/api/v1/me/wallet` | 필요 |
+| 내 EVM 지갑 목록 | GET | `/api/v1/me/wallets` | 필요 |
+| 지갑 연결 해제 | DELETE | `/api/v1/me/wallets/{walletId}` | 필요, 소유자 |
+
+nonce 요청과 연결 요청은 기존 `NonceRequest`, `WalletLoginRequest` 형식을 사용합니다. nonce는
+5분 동안 한 번만 사용할 수 있고 로그인 회원, `LINK` 목적, 주소에 묶입니다.
+
+```json
+[
+  {
+    "id": 12,
+    "chainType": "EVM",
+    "address": "0x1111111111111111111111111111111111111111",
+    "connectedAt": "2026-09-05T10:00:00Z"
+  }
+]
+```
+
+목록의 전체 주소는 본인에게만 반환합니다. 연결과 해제 이벤트는 별도 이력으로 남고, 지갑을
+해제해도 과거 글과 댓글의 발행 당시 보유 스냅샷은 변경되지 않습니다.
 
 ## Swagger/OpenAPI
 

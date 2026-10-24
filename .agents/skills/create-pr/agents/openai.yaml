@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Pull Request"
+  short_description: "검증된 feature 브랜치의 GitHub PR 생성"
+  default_prompt: "Use $create-pr to verify my feature branch and open a pull request to develop."

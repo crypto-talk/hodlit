@@ -21,13 +21,35 @@ public class Coin {
     private int displayOrder;
     @Column(name = "market_price_id", length = 100)
     private String marketPriceId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_availability", nullable = false, length = 20)
+    private VerificationAvailability verificationAvailability;
+    @Column(name = "chain_id")
+    private Long chainId;
+    @Column(name = "asset_type", length = 20)
+    private String assetType;
+    @Column(name = "token_decimals")
+    private Integer tokenDecimals;
     @Column(nullable = false)
     private boolean active;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operation_status", nullable = false, length = 10)
+    private RoomOperationStatus operationStatus = RoomOperationStatus.CLOSE;
+
+    public RoomOperationStatus getOperationStatus() { return operationStatus; }
+    public void changeOperationStatus(RoomOperationStatus status) { this.operationStatus = status; }
     protected Coin() {}
+    public void enableVerification() { this.verificationAvailability = VerificationAvailability.SUPPORTED; }
+    public boolean isActive() { return active; }
     public Long getId() { return id; }
     public String getSymbol() { return symbol; }
     public String getName() { return name; }
     public String getChainType() { return chainType; }
+    public String getContractAddress() { return contractAddress; }
     public String getAccentColor() { return accentColor; }
     public String getMarketPriceId() { return marketPriceId; }
+    public VerificationAvailability getVerificationAvailability() { return verificationAvailability; }
+    public Long getChainId() { return chainId; }
+    public String getAssetType() { return assetType; }
+    public Integer getTokenDecimals() { return tokenDecimals; }
 }

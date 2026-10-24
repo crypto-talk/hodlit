@@ -18,6 +18,9 @@
 
 | 기능 | Method | Path | 인증 | 성공 상태 |
 |---|---|---|---|---|
+| 공개 프로필 | GET | `/members/by-nickname/{nickname}` | 불필요 | `200` |
+| 회원의 공개 글 페이지 | GET | `/members/{memberId}/posts/page` | 불필요 | `200` |
+| 회원의 공개 댓글 페이지 | GET | `/members/{memberId}/comments/page` | 불필요 | `200` |
 | 랜딩 피드 | GET | `/feed?size=30&cursor=...` | 선택 | `200` |
 | 팔로잉 피드 | GET | `/feed/following?size=30&cursor=...` | 필요 | `200` |
 | 코인별 글 | GET | `/communities/{symbol}/posts?size=30` | 선택 | `200` |
@@ -41,6 +44,13 @@
 | 팔로워 목록 | GET | `/members/{memberId}/followers` | 불필요 | `200` |
 | 팔로잉 목록 | GET | `/members/{memberId}/following` | 불필요 | `200` |
 | 현재 자산 가격 | GET | `/market/prices/{symbol}?currency=USD` | 불필요 | `200` |
+| 내 지갑·거래소 자산 집계 | GET | `/me/assets` | 필요 | `200`, 연결 지갑의 키 미설정 `503` |
+| 내 지갑 기본 자산·ERC20 목록 | GET | `/me/wallets/assets` | 필요 | `200`, 키 미설정 `503` |
+
+`/me/assets`의 `assets`와 `walletAssets.assets`에는 양수 잔액만 반환하며 확인된 0잔액은 제외합니다. 조회 실패는 `unresolvedAssets` 및 네트워크 상태로 구분합니다. 지갑 전용 조회는 거래소를 호출하지 않습니다. 상세 계약과 운영 설정은 [Alchemy 지갑 자산 API](ALCHEMY_WALLET_ASSETS_API.md)를 참고하세요.
+
+공개 프로필 API는 자산 공개 회원도 정확 수량·평가금액 없이 구간만 반환합니다.
+활동 목록과 집계는 운영 중인 방만 포함합니다. 자세한 응답과 정책은 [공개 프로필 API](PUBLIC_PROFILE_API.md)를 참고하세요.
 
 조회 응답의 `liked`, `reposted`, `bookmarked`, `followedByMe`는 로그인 사용자를 기준으로
 계산됩니다. 비로그인 조회에서는 `false`입니다. `size`는 1~100 범위로 보정됩니다.
@@ -56,13 +66,13 @@ cursor 내부 형식은 서버 구현 세부사항이므로 클라이언트가 �
     {
       "eventType": "REPOST",
       "occurredAt": "2026-09-01T10:05:00Z",
-      "actor": { "id": 9, "nickname": "재게시자", "avatarColor": "#...", "walletAddress": null },
+      "actor": { "id": 9, "nickname": "재게시자", "avatarColor": "#..." },
       "post": { "id": 42, "title": "ETH 분석" }
     },
     {
       "eventType": "POST",
       "occurredAt": "2026-09-01T10:00:00Z",
-      "actor": { "id": 7, "nickname": "작성자", "avatarColor": "#...", "walletAddress": null },
+      "actor": { "id": 7, "nickname": "작성자", "avatarColor": "#..." },
       "post": { "id": 42, "title": "ETH 분석" }
     }
   ],
@@ -164,7 +174,7 @@ Content-Type: application/json
   "coinSymbol": "ETH",
   "title": "ETH 1시간봉 분석",
   "content": "지지 구간을 확인했습니다.",
-  "author": { "id": 7, "nickname": "작성자", "avatarColor": "#...", "walletAddress": null },
+  "author": { "id": 7, "nickname": "작성자", "avatarColor": "#..." },
   "verifiedHolder": false,
   "assetValueKrw": null,
   "assetDisplay": "자산 비공개",
@@ -179,9 +189,35 @@ Content-Type: application/json
   "youtube": { "url": "https://www.youtube.com/shorts/dQw4w9WgXcQ", "videoId": "dQw4w9WgXcQ", "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg" },
   "reposts": 0,
   "reposted": false,
-  "bookmarked": false
+  "bookmarked": false,
+  "holderSnapshot": {
+    "verificationAvailability": "SUPPORTED",
+    "verificationLevel": "UNVERIFIED",
+    "verifiedHolder": false,
+    "quantityBand": null,
+    "holdingMonths": null,
+    "walletCount": 0,
+    "capturedAt": "2026-09-01T10:00:00Z",
+    "blockNumber": null,
+    "syncStatus": "NO_DATA"
+  }
 }
 ```
+
+`holderSnapshot`은 발행할 때 한 번 생성하며 이후 수정하거나 지갑을 해제해도 바뀌지 않습니다.
+글·댓글 발행 시 연결된 지갑과 거래소의 잔액을 다시 조회합니다. 실패한 조회는 제외하고
+성공적으로 확인한 해당 코인의 잔액만 합산합니다. 확인된 양수 부분합이 있으면 일부 조회가
+실패해도 `verifiedHolder=true`, `holderStatus=HOLDER`로 기록하며 수량 구간은 이 부분합을
+기준으로 계산합니다. 이때 `syncStatus=PARTIAL`은 유지합니다. 해당 값은 모든 연결 수단의
+전체 잔액이 아니라 **성공적으로 확인된 잔액의 합계**입니다.
+
+확인된 양수 잔액이 없고 조회가 불완전하면 `UNKNOWN`으로 기록합니다. 모든 관련 조회가
+성공하여 잔액 0을 확인한 경우에만 `EMPTY`이며, 연결 자체가 없으면 `NOT_CONNECTED`입니다.
+실패한 수단의 이전 캐시를 합산하거나 과거 인증으로 대체하지 않습니다. 잔액 인증은
+작성자 표시용으로, 외부 조회 실패 자체가 글·댓글 작성을 막지는 않습니다.
+
+Ethereum mainnet ETH는 지갑 보유 인증을 지원합니다. 다른 코인의 지원 여부는 등록된
+체인·계약 정보 및 거래소 조회 결과에 따라 결정됩니다. 인증 미지원 상태는 미보유와 다릅니다.
 
 좋아요·재게시·북마크·팔로우의 POST는 같은 요청을 반복해도 중복 생성되지 않으며,
 DELETE도 이미 취소된 상태에서 안전하게 반복할 수 있습니다.
@@ -189,8 +225,8 @@ DELETE도 이미 취소된 상태에서 안전하게 반복할 수 있습니다.
 ## 글과 댓글 수정
 
 `PUT /posts/{postId}`는 제목, 내용, 미디어 및 분석 메타데이터를 전체 교체합니다. `coinSymbol`은
-변경하지 않습니다. `media`를 생략하거나 빈 배열로 보내면 기존 미디어가 제거됩니다. 수정 시
-관련 자산 가격도 다시 조회하고 `updatedAt`을 갱신합니다.
+변경하지 않습니다. `media`를 생략하거나 빈 배열로 보내면 기존 미디어가 제거됩니다. 수정은
+`updatedAt`만 갱신하며 발행 당시 가격과 `holderSnapshot`을 다시 조회하거나 덮어쓰지 않습니다.
 
 ```json
 {
@@ -219,9 +255,57 @@ DELETE도 이미 취소된 상태에서 안전하게 반복할 수 있습니다.
   "avatarColor": "#627eea",
   "content": "수정된 댓글입니다.",
   "createdAt": "2026-09-01T10:00:00Z",
-  "updatedAt": "2026-09-01T10:05:00Z"
+  "updatedAt": "2026-09-01T10:05:00Z",
+  "holderSnapshot": {
+    "verificationAvailability": "SUPPORTED",
+    "verificationLevel": "WALLET",
+    "verifiedHolder": true,
+    "holdingMonths": null,
+    "walletCount": 2,
+    "capturedAt": "2026-09-01T10:00:00Z",
+    "syncStatus": "READY"
+  }
 }
 ```
+
+댓글 스냅샷은 정확한 수량을 내부에 저장하지만 공개 응답에는 수량과 수량 구간을 포함하지 않습니다.
+
+## 내 EVM 자산 집계
+
+`GET /me/assets`는 연결된 EVM 지갑과 거래소에서 성공적으로 확인한 서비스 코인 잔액을
+합산합니다. 일부 수단이 실패해도 확인된 양수 부분합은 `assets`에 반환하고 보유 인증에
+사용합니다. 조회가 불완전하면 `syncStatus=PARTIAL`을 유지하고 `unresolvedAssets`에도
+포함합니다. 이때 `holderStatus=HOLDER`와 `PARTIAL`이 함께 반환될 수 있습니다. 일부 실패와
+확인 잔액 0을 전체 미보유로 해석하면 안 됩니다. 연결 지갑의 Alchemy 키 미설정은 이 조회
+API에서 `503`이지만, 발행 경로에서는 성공한 거래소 조회를 계속 사용합니다.
+상세 계약은 [Alchemy 지갑 자산 API](ALCHEMY_WALLET_ASSETS_API.md)를 참고하세요.
+
+```json
+{
+  "walletCount": 2,
+  "assets": [
+    {
+      "symbol": "ETH",
+      "quantity": 12.345,
+      "valueKrw": 53346954.75,
+      "quantityBand": "10~100 ETH",
+      "verified": true,
+      "verificationLevel": "WALLET",
+      "status": "VERIFIED",
+      "walletCount": 2,
+      "holdingSince": null,
+      "holdingMonths": null,
+      "capturedAt": "2026-09-05T10:00:00Z",
+      "blockNumber": null,
+      "syncStatus": "READY"
+    }
+  ]
+}
+```
+
+보유 시작일과 block number는 아직 EVM history indexer가 없으므로 `null`입니다. 거짓 취득일을
+만들지 않고 indexer 연동 후 채웁니다. ERC-20은 contract address와 decimals 및 잔액 client가
+구성된 뒤 같은 응답에 추가합니다.
 
 ## 소셜 동작 응답
 
@@ -242,17 +326,22 @@ DELETE도 이미 취소된 상태에서 안전하게 반복할 수 있습니다.
 
 ## 실시간 가격
 
-`GET /market/prices/ETH?currency=KRW`는 서버가 현재 가격을 조회해 다음 형태로 반환합니다.
+`GET /market/prices/ETH?currency=KRW`는 서버가 현재 가격과 24시간 등락률을 조회해 다음 형태로 반환합니다.
 
 ```json
 {
   "symbol": "ETH",
   "price": 4321000.50,
   "currency": "KRW",
+  "change24h": 2.75,
   "capturedAt": "2026-09-01T09:59:40Z",
   "source": "COINGECKO"
 }
 ```
+
+`GET /market/prices?currency=KRW`는 모든 활성 코인의 같은 응답 객체를 표시 순서대로 배열로
+반환합니다. 공급자에는 코인 ID를 묶어 한 번만 요청하므로 커뮤니티 화면은 이 API를 30초마다
+호출합니다. `change24h`는 공급자가 등락률을 제공하지 않으면 `null`일 수 있습니다.
 
 가격은 20초간 서버 캐시를 사용합니다. 공급자 장애나 rate limit으로 조회하지 못하면
 `503 Service Unavailable`을 반환하며 가격이 없는 게시글을 저장하지 않습니다. 운영 환경은

@@ -6,6 +6,8 @@ import com.cryptalk.member.Member;
 import com.cryptalk.member.MemberRepository;
 import com.cryptalk.wallet.Wallet;
 import com.cryptalk.wallet.WalletRepository;
+import com.cryptalk.wallet.WalletConnectionEvent;
+import com.cryptalk.wallet.WalletConnectionEventRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -25,6 +27,7 @@ public class AuthService {
     private final MemberRepository members;
     private final WalletRepository wallets;
     private final WalletSignatureVerifier verifier;
+    private final WalletConnectionEventRepository walletEvents;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final long refreshTokenDays;
@@ -32,30 +35,31 @@ public class AuthService {
 
     public AuthService(AuthNonceRepository nonces, RefreshTokenRepository refreshTokens, MemberRepository members,
                        WalletRepository wallets, WalletSignatureVerifier verifier, JwtService jwtService,
-                       PasswordEncoder passwordEncoder,
+                       WalletConnectionEventRepository walletEvents, PasswordEncoder passwordEncoder,
                        @Value("${cryptalk.jwt.refresh-token-days}") long refreshTokenDays) {
         this.nonces = nonces; this.refreshTokens = refreshTokens; this.members = members; this.wallets = wallets;
-        this.verifier = verifier; this.jwtService = jwtService; this.passwordEncoder = passwordEncoder; this.refreshTokenDays = refreshTokenDays;
+        this.verifier = verifier; this.jwtService = jwtService; this.walletEvents = walletEvents;
+        this.passwordEncoder = passwordEncoder; this.refreshTokenDays = refreshTokenDays;
     }
 
     @Transactional
     public LoginResult signup(SignupRequest request) {
-        String email = request.email().trim().toLowerCase();
+        String loginId = request.loginId().toLowerCase();
         String nickname = request.nickname().trim();
-        if (members.findByEmailIgnoreCase(email).isPresent())
-            throw new ApiException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
+        if (members.findByLoginIdIgnoreCase(loginId).isPresent())
+            throw new ApiException(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다.");
         if (members.findByNickname(nickname).isPresent())
             throw new ApiException(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다.");
-        Member member = members.save(new Member(email, passwordEncoder.encode(request.password()), nickname, colorFor(email)));
+        Member member = members.save(new Member(loginId, passwordEncoder.encode(request.password()), nickname, colorFor(loginId)));
         return issueTokens(member, null);
     }
 
     @Transactional
-    public LoginResult emailLogin(EmailLoginRequest request) {
-        Member member = members.findByEmailIgnoreCase(request.email().trim())
-            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
+    public LoginResult login(LoginRequest request) {
+        Member member = members.findByLoginIdIgnoreCase(request.loginId().trim())
+            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."));
         if (member.getPasswordHash() == null || !passwordEncoder.matches(request.password(), member.getPasswordHash()))
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.");
         String address = wallets.findFirstByMemberId(member.getId()).map(Wallet::getAddress).orElse(null);
         return issueTokens(member, address);
     }
@@ -83,7 +87,10 @@ public class AuthService {
         if (wallet != null && !wallet.getMember().getId().equals(memberId))
             throw new ApiException(HttpStatus.CONFLICT, "다른 계정에 연결된 지갑입니다.");
         Member member = members.findById(memberId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
-        if (wallet == null) wallets.save(new Wallet(member, address));
+        if (wallet == null) {
+            wallet = wallets.save(new Wallet(member, address));
+            walletEvents.save(new WalletConnectionEvent(member, wallet, WalletConnectionEvent.EventType.CONNECTED));
+        }
         return profile(member, address);
     }
 

@@ -1,5 +1,6 @@
 package com.cryptalk.post;
 
+import com.cryptalk.coin.RoomAccess;
 import com.cryptalk.asset.AssetService;
 import com.cryptalk.asset.AssetSnapshot;
 import com.cryptalk.coin.Coin;
@@ -16,6 +17,7 @@ import com.cryptalk.post.PostDtos.AuthorResponse;
 import com.cryptalk.post.PostDtos.CreatePostRequest;
 import com.cryptalk.post.PostDtos.FeedItemResponse;
 import com.cryptalk.post.PostDtos.FeedPageResponse;
+import com.cryptalk.post.PostDtos.HolderSnapshotResponse;
 import com.cryptalk.post.PostDtos.MediaRequest;
 import com.cryptalk.post.PostDtos.MediaResponse;
 import com.cryptalk.post.PostDtos.PostResponse;
@@ -24,7 +26,6 @@ import com.cryptalk.post.PostDtos.TradingViewResponse;
 import com.cryptalk.post.PostDtos.UpdatePostRequest;
 import com.cryptalk.post.PostDtos.YoutubeResponse;
 import com.cryptalk.social.FollowRepository;
-import com.cryptalk.wallet.WalletRepository;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -47,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PostService {
+    private final RoomAccess rooms;
     private static final Pattern YOUTUBE = Pattern.compile("^(?:https://)?(?:www\\.)?(?:youtube\\.com/(?:shorts/|watch\\?v=)|youtu\\.be/)([A-Za-z0-9_-]{11})(?:[?&].*)?$");
     private static final Comparator<FeedEvent> FEED_ORDER = (left, right) -> {
         int time = right.occurredAt().compareTo(left.occurredAt());
@@ -66,29 +68,51 @@ public class PostService {
     private final PostRepostRepository reposts;
     private final MemberRepository members;
     private final CoinRepository coins;
-    private final WalletRepository wallets;
     private final AssetService assets;
     private final MediaService mediaFiles;
     private final MarketPriceService marketPrices;
     private final FollowRepository follows;
+    private final PostHolderSnapshotRepository holderSnapshots;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public PostService(PostRepository posts, PostLikeRepository likes, CommentRepository comments,
-                       MemberRepository members, CoinRepository coins, WalletRepository wallets,
+                       MemberRepository members, CoinRepository coins,
                        AssetService assets, PostMediaRepository postMedia,
                        PostBookmarkRepository bookmarks, PostRepostRepository reposts,
-                       MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows) {
+                       MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows,
+                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc, RoomAccess rooms) {
+        this.rooms = rooms;
         this.posts = posts; this.likes = likes; this.comments = comments; this.members = members;
-        this.coins = coins; this.wallets = wallets; this.assets = assets; this.postMedia = postMedia;
+        this.coins = coins; this.assets = assets; this.postMedia = postMedia;
         this.bookmarks = bookmarks; this.reposts = reposts; this.mediaFiles = mediaFiles;
-        this.marketPrices = marketPrices; this.follows = follows;
+        this.marketPrices = marketPrices; this.follows = follows; this.holderSnapshots = holderSnapshots;
+        this.jdbc = jdbc;
     }
 
     @Transactional(readOnly = true)
     public List<PostResponse> list(String symbol, Long viewerId, int size) {
-        if (coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).isEmpty())
-            throw new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다.");
+        rooms.requireOpen(symbol);
         return posts.findByCoinSymbolIgnoreCaseOrderByCreatedAtDesc(symbol, PageRequest.of(0, bounded(size)))
             .stream().map(post -> response(post, viewerId)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<PostResponse> numberedPage(String symbol, Long viewerId,
+                                                                       boolean verified, int page, int size) {
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt", "id"));
+        if (symbol != null) rooms.requireOpen(symbol);
+        return com.cryptalk.common.PageResponse.of(posts.numberedPage(symbol, verified, request)
+            .map(post -> response(post, viewerId)));
+    }
+
+    @Transactional(readOnly = true)
+    public com.cryptalk.common.PageResponse<PostResponse> bookmarkPage(Long memberId, int page, int size) {
+        member(memberId);
+        var request = com.cryptalk.common.PageResponse.request(page, size,
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt", "post.id"));
+        return com.cryptalk.common.PageResponse.of(bookmarks.findByMemberId(memberId, request)
+            .map(bookmark -> response(bookmark.getPost(), memberId)));
     }
 
     @Transactional(readOnly = true)
@@ -102,17 +126,30 @@ public class PostService {
         return feedPage(memberId, cursor, size, follows.findFollowingMemberIds(memberId));
     }
 
+    @Transactional
+    public PostResponse get(Long postId, Long viewerId) {
+        Post post = post(postId);
+        PostResponse result = response(post, viewerId);
+        Long participant = viewerId != null && members.existsById(viewerId) ? viewerId : null;
+        jdbc.update("INSERT INTO post_view_events (post_id, member_id, created_at) VALUES (?, ?, ?)",
+            postId, participant, java.sql.Timestamp.from(Instant.now()));
+        return result;
+    }
+
     @Transactional(readOnly = true)
-    public PostResponse get(Long postId, Long viewerId) { return response(post(postId), viewerId); }
+    public PostResponse pageItem(Long postId, Long viewerId) { return response(post(postId), viewerId); }
 
     @Transactional
     public PostResponse create(Long memberId, CreatePostRequest request) {
         Member member = member(memberId);
         Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(request.coinSymbol())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
-        AssetSnapshot snapshot = assets.snapshotForPost(memberId, coin.getId());
+        rooms.requireOpen(coin);
+        AssetSnapshot snapshot = assets.snapshotForPublication(memberId, coin);
         boolean verified = snapshot != null && snapshot.isVerified();
-        BigDecimal value = verified ? snapshot.getValueKrw() : null;
+        // Exchange-backed aggregate quantities are public only as bands, never inferable exact valuations.
+        BigDecimal value = verified && snapshot.getExchangeCount() == 0 && "READY".equals(snapshot.getSyncStatus())
+            ? snapshot.getValueKrw() : null;
         YoutubeData youtube = youtube(request.youtubeUrl());
         PriceQuote quote = marketPrices.currentPrice(coin, request.assetPriceCurrency());
         Post saved = posts.save(new Post(member, coin, request.title().trim(), request.content().trim(), value, verified,
@@ -120,6 +157,7 @@ public class PostService {
             quote.price(), quote.currency(), quote.capturedAt(), quote.source(),
             youtube == null ? null : youtube.url(), youtube == null ? null : youtube.videoId(),
             youtube == null ? null : youtube.thumbnailUrl()));
+        holderSnapshots.save(new PostHolderSnapshot(saved, snapshot));
         saveMedia(memberId, saved, request.media(), Set.of());
         return response(saved, memberId);
     }
@@ -129,10 +167,8 @@ public class PostService {
         Post post = post(postId);
         own(memberId, post.getMember().getId());
         YoutubeData youtube = youtube(request.youtubeUrl());
-        PriceQuote quote = marketPrices.currentPrice(post.getCoin(), request.assetPriceCurrency());
         post.update(request.title(), request.content(), clean(request.tradingViewSymbol()),
-            clean(request.tradingViewInterval()), clean(request.tradingViewAnalysis()), quote.price(),
-            quote.currency(), quote.capturedAt(), quote.source(), youtube == null ? null : youtube.url(),
+            clean(request.tradingViewInterval()), clean(request.tradingViewAnalysis()), youtube == null ? null : youtube.url(),
             youtube == null ? null : youtube.videoId(), youtube == null ? null : youtube.thumbnailUrl());
         replaceMedia(memberId, post, request.media());
         return response(post, memberId);
@@ -157,6 +193,7 @@ public class PostService {
 
     @Transactional
     public PostResponse unlike(Long memberId, Long postId) {
+        post(postId);
         likes.deleteById(new PostLikeId(postId, memberId)); return response(post(postId), memberId);
     }
 
@@ -169,6 +206,7 @@ public class PostService {
 
     @Transactional
     public PostResponse unbookmark(Long memberId, Long postId) {
+        post(postId);
         bookmarks.deleteById(new PostMemberId(postId, memberId)); return response(post(postId), memberId);
     }
 
@@ -188,11 +226,14 @@ public class PostService {
 
     @Transactional
     public PostResponse unrepost(Long memberId, Long postId) {
+        post(postId);
         reposts.deleteById(new PostMemberId(postId, memberId)); return response(post(postId), memberId);
     }
 
     public Post post(Long id) {
-        return posts.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        Post post = posts.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        rooms.requireOpen(post.getCoin());
+        return post;
     }
 
     public Member member(Long id) {
@@ -321,16 +362,19 @@ public class PostService {
             : new PriceSnapshotResponse(post.getAssetPrice(), post.getAssetPriceCurrency(), post.getAssetPriceAt(), post.getAssetPriceSource());
         YoutubeResponse youtube = post.getYoutubeVideoId() == null ? null
             : new YoutubeResponse(post.getYoutubeUrl(), post.getYoutubeVideoId(), post.getYoutubeThumbnailUrl());
+        HolderSnapshotResponse holderSnapshot = holderSnapshots.findById(post.getId()).map(item ->
+            new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
+                item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getWalletCount(),
+                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus())).orElse(null);
         return new PostResponse(post.getId(), post.getCoin().getSymbol(), post.getTitle(), post.getContent(), author(member),
             visible && post.isAuthorVerified(), value, assetDisplay(member.getAssetVisibility(), value),
             likes.countByPostId(post.getId()), comments.countByPostId(post.getId()), liked,
             post.getCreatedAt(), post.getUpdatedAt(), mediaResponses, tradingView, priceSnapshot, youtube,
-            reposts.countByPostId(post.getId()), reposted, bookmarked);
+            reposts.countByPostId(post.getId()), reposted, bookmarked, holderSnapshot);
     }
 
     private AuthorResponse author(Member member) {
-        String address = wallets.findFirstByMemberId(member.getId()).map(wallet -> mask(wallet.getAddress())).orElse(null);
-        return new AuthorResponse(member.getId(), member.getNickname(), member.getAvatarColor(), address);
+        return new AuthorResponse(member.getId(), member.getNickname(), member.getAvatarColor());
     }
 
     private String assetDisplay(AssetVisibility visibility, BigDecimal value) {
@@ -343,10 +387,6 @@ public class PostService {
             return "10억원 이상";
         }
         return "₩" + NumberFormat.getIntegerInstance(Locale.KOREA).format(value);
-    }
-
-    private String mask(String address) {
-        return address.length() < 12 ? address : address.substring(0, 6) + "..." + address.substring(address.length() - 4);
     }
 
     private int bounded(int size) { return Math.min(Math.max(size, 1), 100); }

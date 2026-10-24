@@ -1,78 +1,57 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { clearAccessToken, setAccessToken } from "@/lib/auth-token";
+import { http } from "@/lib/http";
 
-export type ApiCoin = { id: number; symbol: string; name: string; chainType: string; accentColor: string };
-export type Member = { id: number; nickname: string; avatarColor: string; walletAddress: string | null; assetVisibility: string };
-export type Asset = { symbol: string; quantity: number; valueKrw: number; verified: boolean; status: string; capturedAt: string };
-export type ApiPost = {
-  id: number; coinSymbol: string; title: string; content: string;
-  author: { id: number; nickname: string; avatarColor: string; walletAddress: string | null };
-  verifiedHolder: boolean; assetValueKrw?: number; assetDisplay: string;
-  likes: number; comments: number; liked: boolean; createdAt: string;
+/**
+ * 구조 개편 전부터 남은 마지막 API 모음. `lib/session.tsx` 만 쓴다 —
+ * 로그인 · 회원가입 · 로그아웃 · 세션 복원. 지갑 연결은 `lib/wallet-link.ts` 로 옮겼다(HODL-55).
+ *
+ * 전송은 `lib/http.ts` 를 거친다. 타입은 손으로 적은 `Member` 하나뿐이다.
+ *
+ * 새 코드를 여기에 추가하지 않는다. 화면이 쓰는 API 는 `features/<domain>/api.ts` 로
+ * 간다. access 토큰이 쿠키로 옮겨질 때(B-3) 세션 코드와 함께 정리한다.
+ */
+
+export type Member = {
+  id: number;
+  nickname: string;
+  avatarColor: string;
+  walletAddress: string | null;
+  assetVisibility: string;
 };
 
-let accessToken: string | null = typeof window === "undefined" ? null : sessionStorage.getItem("cryptalk_access");
+type AuthResult = { accessToken: string; member: Member };
 
-async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
-  const headers = new Headers(init.headers);
-  if (init.body) headers.set("Content-Type", "application/json");
-  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
-  if (response.status === 401 && retry && !path.startsWith("/api/v1/auth/")) {
-    const refreshed = await refreshSession();
-    if (refreshed) return request<T>(path, init, false);
-  }
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({ message: "요청을 처리하지 못했습니다." }));
-    throw new Error(body.message ?? "요청을 처리하지 못했습니다.");
-  }
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+async function authenticate(path: string, body: unknown): Promise<Member> {
+  const result = await http<AuthResult>(path, { method: "POST", body: JSON.stringify(body) });
+  setAccessToken(result.accessToken);
+  return result.member;
 }
 
-function setToken(token: string | null) {
-  accessToken = token;
-  if (token) sessionStorage.setItem("cryptalk_access", token);
-  else sessionStorage.removeItem("cryptalk_access");
-}
-
+/**
+ * refresh 쿠키로 세션을 복원한다. 실패는 "로그인 안 된 상태"라 오류가 아니므로
+ * null 을 돌려준다.
+ */
 export async function refreshSession(): Promise<Member | null> {
   try {
-    const result = await request<{ accessToken: string; member: Member }>("/api/v1/auth/refresh", { method: "POST" }, false);
-    setToken(result.accessToken); return result.member;
-  } catch { setToken(null); return null; }
-}
-
-async function injectedWallet() {
-  const ethereum = (window as typeof window & { ethereum?: { request(args: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum;
-  if (!ethereum) throw new Error("EVM 지갑 확장 프로그램을 설치해 주세요.");
-  const accounts = await ethereum.request({ method: "eth_requestAccounts" }) as string[];
-  const walletAddress = accounts[0];
-  if (!walletAddress) throw new Error("지갑 계정을 선택해 주세요.");
-  return { ethereum, walletAddress };
-}
-
-export async function linkInjectedWallet(): Promise<Member> {
-  const { ethereum, walletAddress } = await injectedWallet();
-  const nonce = await request<{ nonceId: string; message: string }>("/api/v1/me/wallet/nonce", { method: "POST", body: JSON.stringify({ walletAddress }) });
-  const signature = await ethereum.request({ method: "personal_sign", params: [nonce.message, walletAddress] }) as string;
-  return request<Member>("/api/v1/me/wallet", {
-    method: "POST", body: JSON.stringify({ walletAddress, nonceId: nonce.nonceId, signature }),
-  });
+    return await authenticate("/api/v1/auth/refresh", undefined);
+  } catch {
+    clearAccessToken();
+    return null;
+  }
 }
 
 export const api = {
-  signup: async (email: string, password: string, nickname: string) => {
-    const auth = await request<{ accessToken: string; member: Member }>("/api/v1/auth/signup", { method: "POST", body: JSON.stringify({ email, password, nickname }) });
-    setToken(auth.accessToken); return auth.member;
+  signup: (loginId: string, password: string, nickname: string) =>
+    authenticate("/api/v1/auth/signup", { loginId, password, nickname }),
+
+  login: (loginId: string, password: string) =>
+    authenticate("/api/v1/auth/login", { loginId, password }),
+
+  logout: async () => {
+    try {
+      await http<void>("/api/v1/auth/logout", { method: "POST" });
+    } finally {
+      clearAccessToken();
+    }
   },
-  emailLogin: async (email: string, password: string) => {
-    const auth = await request<{ accessToken: string; member: Member }>("/api/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
-    setToken(auth.accessToken); return auth.member;
-  },
-  coins: () => request<ApiCoin[]>("/api/v1/coins"),
-  posts: (symbol: string) => request<ApiPost[]>(`/api/v1/communities/${symbol}/posts`),
-  assets: () => request<Asset[]>("/api/v1/me/assets"),
-  createPost: (coinSymbol: string, title: string, content: string) => request<ApiPost>("/api/v1/posts", { method: "POST", body: JSON.stringify({ coinSymbol, title, content }) }),
-  like: (postId: number, liked: boolean) => request<ApiPost>(`/api/v1/posts/${postId}/likes`, { method: liked ? "DELETE" : "POST" }),
-  logout: async () => { await request<void>("/api/v1/auth/logout", { method: "POST" }, false); setToken(null); },
 };

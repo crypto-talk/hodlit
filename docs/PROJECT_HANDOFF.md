@@ -26,15 +26,15 @@ CrypTalk는 암호화폐 종류별 커뮤니티다.
 
 핵심 제품 정책은 다음과 같다.
 
-1. 사용자는 이메일과 비밀번호로만 가입·로그인한다.
+1. 사용자는 아이디와 비밀번호로 가입·로그인한다.
 2. 가입 계정은 지갑 메시지 서명으로 지갑을 선택적으로 연결하고 자산을 인증한다.
-3. BTC, ETH, SOL, XRP, DOGE처럼 코인별로 독립된 커뮤니티 피드가 있다.
+3. BTC, ETH, SOL, XRP, DOGE 등 20개 코인별로 독립된 커뮤니티 피드가 있다.
 4. 사용자가 글을 작성하면 프로필 옆에 자산 공개 정보가 표시된다.
 5. 해당 커뮤니티의 코인을 실제 보유한 것으로 검증된 작성자는 인증 마크를 받는다.
 6. 자산 표시는 `정확한 금액`, `금액 구간`, `비공개` 중 사용자가 선택한다.
 7. 게시글에는 조회할 때의 실시간 잔액이 아니라 작성 시점 자산 스냅샷을 보존한다.
 
-현재 MVP는 이메일 회원가입·로그인, 로그인 계정의 EVM 지갑 연결, ETH 온체인 잔액 검증까지 구현했다. BTC, SOL, XRP, DOGE 커뮤니티와 글 작성은 가능하지만 해당 체인의 보유 인증기는 아직 없다.
+현재 MVP는 아이디 회원가입·로그인, 로그인 계정의 EVM 지갑 연결, ETH 온체인 잔액 검증까지 구현했다. ETH 외 19개 코인 커뮤니티와 글 작성은 가능하지만 해당 체인의 보유 인증기는 아직 없다.
 
 ## 3. 확정 기술 스택
 
@@ -129,7 +129,7 @@ cryptalk/
 
 ### `auth`
 
-- 이메일 회원가입·로그인과 BCrypt 비밀번호 검증
+- 아이디 회원가입·로그인과 BCrypt 비밀번호 검증
 - 로그인 nonce 생성 및 5분 만료
 - Ethereum `personal_sign` 검증
 - 최초 로그인 시 회원과 EVM 지갑 자동 생성
@@ -154,13 +154,13 @@ cryptalk/
 ### `coin`
 
 - 활성 코인 목록과 커뮤니티 메타데이터 제공
-- 초기 코인: BTC, ETH, SOL, XRP, DOGE
+- 활성 코인 20개: BTC, ETH, SOL, XRP, DOGE, ADA, BNB, AVAX, DOT, LINK, POL, TON, TRX, LTC, BCH, UNI, AAVE, ATOM, NEAR, SUI
 
 ### `asset`
 
 - Ethereum JSON-RPC의 `eth_getBalance` 호출
 - Wei를 ETH 수량으로 변환
-- 설정된 고정 `ETH_KRW_PRICE`를 곱해 KRW 가치 계산
+- CoinGecko의 현재 ETH/KRW 시세를 곱해 KRW 가치 계산
 - 회원·코인별 최신 스냅샷 upsert
 - RPC 미설정: `UNAVAILABLE`
 - RPC 오류: `RPC_ERROR`
@@ -196,7 +196,7 @@ sequenceDiagram
     participant B as Backend
     participant DB as MySQL
 
-    U->>F: 이메일과 비밀번호 입력
+    U->>F: 아이디와 비밀번호 입력
     F->>B: POST /api/v1/auth/login
     B->>DB: 회원 조회 및 BCrypt 검증
     B->>DB: refresh token hash 저장
@@ -223,9 +223,11 @@ sequenceDiagram
 중요 제약:
 
 - 현재 자동 조회되는 자산은 ETH뿐이다.
-- `ETH_KRW_PRICE`는 외부 가격 API가 아니라 환경 변수의 고정값이다.
+- KRW 가격은 CoinGecko를 20초 캐시해 조회하며 공급자 장애 시 자산 갱신도 실패한다.
 - 자산 갱신은 현재 `/me/assets` 호출 시 발생한다.
 - 글 작성 직전에 서버가 자산을 강제 재조회하지 않고 마지막 snapshot을 사용한다.
+- 잔액 인증은 작성자 표시용이며 글·댓글 작성 권한과 무관하다. 저장된 snapshot이 없으면 미인증으로 작성한다.
+- RPC 미설정·장애로 `/me/assets` 갱신에 실패해도 기존 snapshot은 보존되며 글·댓글 작성은 가능하다.
 - 향후에는 체인별 balance provider와 가격 provider를 인터페이스로 분리하고 snapshot freshness 정책을 정해야 한다.
 
 ## 9. API 명세
@@ -238,8 +240,8 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 | Method | Path | 설명 |
 |---|---|---|
-| POST | `/auth/signup` | 이메일, 비밀번호, 닉네임으로 가입 |
-| POST | `/auth/login` | 이메일과 비밀번호로 로그인 |
+| POST | `/auth/signup` | 아이디, 비밀번호, 닉네임으로 가입 |
+| POST | `/auth/login` | 아이디와 비밀번호로 로그인 |
 | POST | `/auth/refresh` | refresh cookie 회전 및 access token 재발급 |
 | POST | `/auth/logout` | refresh token revoke 및 cookie 삭제 |
 | GET | `/coins` | 활성 코인 목록 |
@@ -315,7 +317,7 @@ Liquibase 기준 파일:
 
 | 테이블 | 역할 | 주요 제약 |
 |---|---|---|
-| `members` | 이메일 계정, 비밀번호 해시, 프로필과 자산 공개 설정 | email/nickname unique |
+| `members` | 로그인 아이디, 비밀번호 해시, 프로필과 자산 공개 설정 | login_id/nickname unique |
 | `wallets` | 회원별 체인 지갑 | chain_type + address unique |
 | `auth_nonces` | 로그인·지갑 연결용 일회성 메시지 | UUID PK, purpose, member_id, expiry/used_at |
 | `refresh_tokens` | refresh token hash | token_hash unique |
@@ -331,10 +333,10 @@ Liquibase 기준 파일:
 
 API client는 `frontend/lib/api.ts`에 있다.
 
-현재 연동됨:
+현재 백엔드에서 지원됨:
 
 - 코인 목록 조회
-- 이메일 회원가입·로그인
+- 아이디 회원가입·로그인 (`loginId` 요청 필드)
 - 코인 변경 시 게시글 조회
 - 브라우저 injected EVM wallet 연결
 - 로그인 계정의 nonce 발급, `personal_sign`, 지갑 연결
@@ -345,9 +347,12 @@ API client는 `frontend/lib/api.ts`에 있다.
 - 좋아요/취소
 - 인증 작성자 마크와 자산 표시
 
+`frontend/`의 인증 폼과 API client는 아직 이메일 요청 필드를 사용하므로,
+백엔드의 `loginId` 계약에 맞춘 별도 프론트엔드 변경이 필요하다.
+
 현재 UI에 남은 정적/미구현 요소:
 
-- 가격, 등락률, 멤버 수, 인증률은 프론트 `coinMeta`의 정적 값
+- 멤버 수와 인증률은 프론트 `coinMeta`의 정적 값. 가격과 등락률은 30초마다 서버에서 갱신
 - trending topic 정적 값
 - 인기/최신 탭은 UI 상태만 바뀌고 서버 정렬은 항상 최신순
 - 보유 인증 탭은 받아온 게시글을 클라이언트에서 필터링
@@ -376,8 +381,8 @@ API client는 `frontend/lib/api.ts`에 있다.
 | `DB_PASSWORD` | `cryptalk` | 예 | DB 비밀번호 |
 | `JWT_SECRET` | 로컬 예시값 | 예 | 최소 32 bytes, 운영 secret 사용 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | 예 | 쉼표 구분 허용 origin |
-| `ETHEREUM_RPC_URL` | 빈 값 | 자산 인증 시 예 | Ethereum JSON-RPC endpoint |
-| `ETH_KRW_PRICE` | `0` | 자산 금액 표시 시 예 | ETH 1개의 KRW 가격 |
+| `ALCHEMY_API_KEY` | 빈 값 | 연결 지갑 조회 시 예 | 서버 전용 Alchemy Portfolio API 키 |
+| `MARKET_PRICE_BASE_URL` | CoinGecko 공개 API | 선택 | 호환 가격 공급자/proxy base URL |
 | `AUTH_COOKIE_SECURE` | `false` | HTTPS 운영에서 `true` | Secure/None cookie 적용 |
 
 ### Frontend
@@ -425,11 +430,10 @@ npm run dev
 - Swagger: `http://localhost:8080/swagger-ui.html`
 - MySQL: `localhost:3306`, database/user/password는 로컬 compose 기준 모두 `cryptalk`
 
-실제 ETH 자산을 확인하려면 backend 실행 전에 RPC와 가격을 설정한다.
+실제 ETH 자산을 확인하려면 backend 실행 전에 RPC를 설정한다.
 
 ```bash
-export ETHEREUM_RPC_URL="https://..."
-export ETH_KRW_PRICE="5000000"
+export ALCHEMY_API_KEY="..."
 ./gradlew bootRun
 ```
 
@@ -490,7 +494,7 @@ npm test
 - 커뮤니티 통계는 현재 실제 집계가 아니다.
 - `CoinController`의 post count는 최대 100건 조회 결과 크기라 정확한 전체 count가 아니다.
 - 게시글 목록 응답 과정에 지갑, 좋아요, 댓글 count 조회가 반복되어 N+1 성격의 비용이 있다.
-- 지갑 자산가치 계산용 `ETH_KRW_PRICE`는 여전히 고정 환경 변수다. 게시글 관련 자산 가격은 CoinGecko에서 서버가 조회한다.
+- 지갑 자산가치와 게시글 가격 스냅샷은 CoinGecko 시세를 사용하므로 공급자 장애 시 해당 갱신/저장이 실패한다.
 - ETH 이외 코인은 인증 불가다. 체인 타입은 seed에 있지만 구현체가 없다.
 - access token은 `sessionStorage`에 보관한다. XSS 방어를 포함해 인증 저장 전략을 운영 전 재검토한다.
 - refresh token cookie path가 `/api/v1/auth`로 제한되어 있다.
@@ -505,13 +509,12 @@ npm test
 3. 게시글/좋아요/댓글 repository query 최적화와 pagination
 4. 댓글 UI 연결
 5. 프로필 및 자산 공개 설정 UI 연결
-6. 실시간 가격 provider 도입과 가격 snapshot 저장
-7. 체인별 `BalanceProvider` 추상화
-8. BTC/Solana/XRPL/Dogecoin 주소 소유권과 잔액 인증 설계
-9. WalletConnect 정식 SDK 연동
-10. 검색, 정렬, 북마크, 알림, 활동 내역 구현
-11. 백엔드 배포 환경 결정 후 프론트 `NEXT_PUBLIC_API_URL` 연결
-12. 보안 점검, rate limit, 관측성, CI/CD 구성
+6. 체인별 `BalanceProvider` 추상화
+7. BTC/Solana/XRPL/Dogecoin 주소 소유권과 잔액 인증 설계
+8. WalletConnect 정식 SDK 연동
+9. 검색, 정렬, 북마크, 알림, 활동 내역 구현
+10. 백엔드 배포 환경 결정 후 프론트 `NEXT_PUBLIC_API_URL` 연결
+11. 보안 점검, rate limit, 관측성, CI/CD 구성
 
 ## 18. 다음 Codex 세션 시작용 프롬프트
 

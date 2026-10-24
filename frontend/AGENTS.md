@@ -1,0 +1,371 @@
+# Hodlit frontend agent harness
+
+Read the repository `AGENTS.md` first. This file adds the rules that apply under `frontend/`.
+
+The product is **Hodlit**. The repository, the npm package name, the API domain and the Java
+package are still spelled `cryptalk`; renaming those is a separate job scheduled for just
+before launch. Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
+The `sessionStorage` key `cryptalk_access` is left alone; it disappears when `access` moves
+to a cookie (B-3).
+
+## Stack
+
+- Next.js 16 App Router, React 19, TypeScript strict, Tailwind CSS 4.
+- UI primitives: shadcn/ui (copied into `components/ui/`, styled with our tokens). Icons: `lucide-react`.
+- Server state: TanStack Query. Client global state: session, modal, toast only.
+- Editor: Tiptap, body stored as Markdown (`@tiptap/markdown`). Charts: `lightweight-charts`.
+- Tests: Vitest for unit tests (`pnpm test`), Playwright for e2e. `tests/rendered-html.test.mjs`
+  is a separate build-dependent check run by `pnpm run test:html`.
+- Fonts: Pretendard, self-hosted. Static subset woff2 in `styles/fonts/`, loaded by `app/fonts.ts`.
+- pnpm is the package manager, pinned by `packageManager` in `package.json`. Never run
+  `npm install` here; it would create a competing `package-lock.json`.
+- Deployed on Vercel. `next build` is the build; there is no Cloudflare Worker runtime.
+- The API client talks to the Spring Boot backend at `NEXT_PUBLIC_API_URL`. There is no
+  database, ORM or server-side data layer in this project.
+
+## Where the other documents are
+
+- Notion "구조 고민하기" — the structure decisions A~G with their reasoning, the settled
+  folder tree, and the open questions for the backend. This is the source of truth for
+  _why_ something is the way it is.
+  https://app.notion.com/p/3dc64d6951428066a501d5da4a774997
+- Claude project `claude/프로젝트_컨텍스트.md` — current state, branch status, repository
+  conventions and their rationale, open issues, session setup.
+
+This file carries the rules an agent has to follow. When it disagrees with the Notion tree,
+the Notion tree wins and this file gets fixed.
+
+## Repository map (settled 2026-09-18)
+
+```
+app/
+  layout.tsx            root: font + <Providers>. Server component.
+  providers.tsx         "use client": QueryClientProvider (toast provider goes here too)
+  fonts.ts              next/font/local; files in styles/fonts/
+  globals.css           imports styles/tokens.css + Tailwind @theme mapping only
+  not-found.tsx         single 404
+  (shell)/              header + sidebar (>=900px) / bottom tab (<900px)
+    page.tsx            landing (server component, Promise.all over sections)
+    subhodl/[symbol]/page.tsx             room board
+    subhodl/[symbol]/[postId]/page.tsx    post detail
+    [handle]/page.tsx   public profile; notFound() unless handle starts with "@"
+  (focus)/              header only
+    login/  signup/  write/  settings/  settings/wallet/
+    subhodl/[symbol]/[postId]/edit/
+features/               one folder per domain: auth wallet room post comment vote news landing portfolio
+  <domain>/components/  hooks/  api.ts  types.ts  mock.ts  (schema.ts optional)
+                        unit tests sit next to the source as `*.test.ts`
+components/ui/          shadcn primitives (+ *.stories.tsx)
+components/layout/      header sidebar footer fab price-ticker (+ types.ts: the shape the shell receives)
+                        bottom-tab is still to come
+lib/http.ts             fetch wrapper: baseURL, credentials, bearer token, single-flight 401
+                        refresh, {code,message} normalisation. Every backend request goes
+                        through it
+lib/auth-token.ts       the only place the access token is read or written; deleted at B-3
+lib/api-schema.ts       generated from the backend OpenAPI spec by `pnpm gen:api`. Never
+                        hand-edited, excluded from ESLint and Prettier
+lib/query.ts  lib/format/  lib/utils.ts (cn)  lib/config.ts (env, single read point)
+lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3). Was
+                        `features/badge` — pure functions every feature needs, so it moved
+                        down to lib/ when the post detail screen became its second user
+lib/routes.ts           screen URLs (room, post, write) + `safeSymbol()` + `roomSymbolOf()`
+lib/post-summary.ts     PostResponse -> list card view model, shared by landing and room board
+lib/market-price/       coin prices fetched by the browser straight from Upbit, or CoinGecko for
+                        coins Upbit does not list (HODL-61): the symbol -> Upbit market /
+                        CoinGecko id / TradingView symbol table, the fetches, and
+                        `useMarketQuote()` / `useSourceMarketQuotes()`; shared by the room price
+                        box and the shell price ticker
+components/holder/      tier-badge.tsx — the shape of the 인증 badge; wording from lib
+components/post/        post-card.tsx — the list card used by the landing feed and the room board
+styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
+styles/fonts/           Pretendard subset woff2, 400/600/700/800/900
+components.json         shadcn/ui config; `shadcn add` writes into components/ui/
+vitest.config.ts        unit test scope: features/**/*.test.ts, lib/**/*.test.ts
+tests/e2e/              Playwright: login.spec.ts, publish-post.spec.ts (run locally)
+.storybook/             Storybook config; stories only for components/ui and components/holder
+```
+
+`app/_components/*` and `lib/mock/landing.ts` are gone: step 2 moved the shell into
+`components/layout/`, the landing sections into `features/landing/components/`, the room list
+into `features/room/`, the auth form into `features/auth/components/`, and the landing
+stylesheet to `styles/hd.css`, which step 2 ② then converted to Tailwind and deleted.
+`lib/api.ts` is the last
+pre-restructure file. It now calls `lib/http.ts` instead of holding its own token and retry
+logic, but it is still scheduled to disappear. (`lib/AuthApi.ts` was a second, unused copy of
+the same auth calls and a second token store; it was deleted when `lib/auth-token.ts` landed.)
+
+`lib/session.tsx` holds the logged-in member. It is in `lib/`, not `features/auth/`, because
+`components/layout/header.tsx` needs it and `components/` cannot import `features/`. It also
+exports `useRequireLogin()`, which sends a logged-out visitor to `/login?next=<here>` and
+returns whether it redirected.
+
+## Structure rules
+
+1. Imports flow one way: `app/ -> features/ -> components/ | lib/`. `features/*` never import
+   each other. Shared code moves down to `components/` or `lib/`. Enforced by ESLint.
+2. `features/<domain>/api.ts` is the only data entry point. Mock data lives in `mock.ts` and
+   never leaks past `api.ts`. Components receive data through props only.
+3. Badge and holder-snapshot wording exists only in `lib/holder-snapshot/label.ts`. These are the
+   wallet de-anonymisation guard, so they must not be reimplemented per screen.
+   **The amount band is computed by the backend**, not here: `holderSnapshot.quantityBand`
+   arrives as a finished string (`"10~100 ETH"`, or null when unverified) and is passed
+   through. Recomputing it from a raw quantity puts the boundaries in two places, and they
+   drifted apart once already. To change the bands, change `PostHolderSnapshot.band()` in the
+   backend. `holdingMonths` likewise arrives already floored; do not round it again.
+4. One component per file. No barrel `index.ts` files; use the `@/` alias instead.
+5. File and folder names are kebab-case (`post-card.tsx`). Components and types are PascalCase.
+   Hooks are `use-*.ts`. Windows git is case-insensitive and the Vercel build is not.
+6. `"use client"` goes on the interactive leaf (button, tab, editor, vote widget), not on a
+   whole section or page. The root layout stays a server component; context providers live
+   in `app/providers.tsx` and are rendered from it.
+7. Design tokens are defined once in `styles/tokens.css` with semantic names
+   (`--color-text-primary`, not `--purple`). Components use Tailwind classes that reference
+   them. Runtime values such as a room's `accentColor` are injected as inline CSS variables.
+8. Tab, filter and sort state of any list lives in the URL query string.
+9. Loading/error boundaries: `loading.tsx` per route segment, `error.tsx` per route group,
+   inline retry inside a failed section. Toasts and modals are for action failures only.
+
+## Restructure state
+
+Step 1 (foundation, no screens) is done: tokens, self-hosted Pretendard, `components/ui/`
+primitives, the holder-snapshot wording (now `lib/holder-snapshot/`) with unit tests, `lib/` (config, format, query, http skeleton,
+utils), route group boundaries with `error.tsx`, the root `not-found.tsx`, and the ESLint
+import-direction rule.
+
+Deliberately not done yet, do not treat these as oversights:
+
+- The landing has no mock data left. The daily vote is wired (HODL-64, `features/vote/`): the
+  room board's vote box and the landing's "오늘의 투표" are the same `room-poll.tsx`, composed by
+  the pages because features cannot import each other. There is no "open polls" endpoint, so the
+  landing asks `/communities/{symbol}/poll` once per coin (`loadOpenPolls()`). Results are shown
+  only after today's (KST) participation, and the query keys carry the KST date so midnight clears
+  them. Trending rooms are wired (HODL-44); the old marquee mock was replaced by the price ticker
+  (HODL-57). Rooms come from `features/room/api.ts`; the feed from `features/landing/api.ts`.
+- `lib/http.ts` carries the bearer token and refreshes once on 401, but it still does not
+  forward cookies from a server component: that waits for `access` to move to a cookie (B-3).
+  Until then server components fetch public data only. It also does not branch on the error
+  `code`, because the code list is not agreed yet (C-5) — branch on `ApiError.status`.
+- `components/ui/` is exempt from ESLint so the shadcn copies stay diffable against upstream.
+- Storybook. It goes in now that `components/ui/` and `components/holder/` exist.
+- husky, lint-staged and GitHub Actions. They live at the repository root, outside
+  `frontend/`, so they need an explicit scope expansion and belong in their own change.
+
+### Step 2 — landing, login, deploy
+
+The boundary of step 2 is **a deployed site**, not a finished UI. One screen and a real login
+go up first.
+
+1. ✅ The landing is `app/(shell)/page.tsx`. `app/_components/landing/*` split into
+   `features/landing/components/` and `components/layout/` (header, sidebar, footer, fab).
+   The shell is rendered by `app/(shell)/layout.tsx`, which also owns the room list and the
+   connected wallets — every screen in step 3 gets them for free. The bottom tab (<900px)
+   is not built yet; the fab covers that width for now.
+2. ✅ `styles/hd.css` is gone. Screen styles now live in exactly two places: the tokens in
+   `styles/tokens.css` (colors, type scale, radii, the 900px and 1320px breakpoints, animations — exposed
+   as Tailwind utilities by the `@theme` block in `app/globals.css`) and Tailwind classes on
+   the components. The dead block at the bottom of `app/globals.css` is deleted too.
+   Inline `style` is left only for runtime values: the podium's per-rank palette, vote bar
+   widths, a room's change colour, the logo's size.
+   Buttons are `components/ui/button.tsx` — the shadcn primitive with its class strings
+   matched to the artboard. Nine call sites shared one class bundle before; they drift.
+3. ✅ `AuthDialog` is now `/login?next=` and `/signup` (A-5). `?next=` is read on the server
+   and passed down, so no `<Suspense>` boundary is needed, and `features/auth/safe-next.ts`
+   rejects anything that is not a same-site path — an unchecked `next` is an open redirect.
+4. ✅ Deployed to Vercel. `CORS_ALLOWED_ORIGINS` (not `PUBLIC_ORIGIN` — the old name in these
+   documents was wrong) includes the domain, and `AUTH_COOKIE_SECURE=true`.
+5. ✅ `tests/rendered-html.test.mjs` now checks the landing, both auth pages, and that a
+   hostile `?next=` never becomes an href.
+
+C-1 (who owns the API types) is settled: the backend's OpenAPI spec generates them.
+
+Known rough edges left by step 2, deliberately:
+
+- `app/(shell)/layout.tsx` is a client component. `access` is still in sessionStorage, so the
+  server cannot know who is logged in (B-3), and connecting a wallet calls a browser
+  extension. When `access` moves to a cookie, the room list can be fetched on the server and
+  only the interactive part stays a client component.
+- ~~The 글쓰기 buttons in the header and the fab are disabled~~ — they link to `/write` since
+  step 3 ①. The search box is still disabled with a title.
+- The top strip is rendered by the shell layout, not the landing, because it is a strip across
+  the whole screen group. It is now the price ticker (HODL-57,
+  `components/layout/price-ticker.tsx`); the mock service copy is gone.
+
+### Step 3 — the remaining four screens
+
+The order changed to **write → room board → post detail → profile/settings**. The database
+had no posts, so every list screen could only be checked empty; writing first fills them.
+
+1. ✅ `/write`, minimal: room select + title + plain `textarea` + publish
+   (`features/post/`). E-2 (the body format) is still open, but it only affects the editor —
+   the backend `content` is a 5000-character string either way, so the textarea is the only
+   thing thrown away if the format becomes rich text. Length limits in
+   `features/post/limits.ts` mirror the backend `@Size` values. `?symbol=` preselects a room.
+   After publishing it goes to `/` because the post detail screen does not exist yet.
+   Images: picked or dropped files upload immediately to `POST /media` (images only — video
+   is a YouTube link, not an upload), publish stays locked while any upload is running, and
+   the "첨부한 이미지는 인증으로 인정되지 않습니다" notice shows once an image is attached.
+   An image removed before publishing is deleted with `DELETE /media/{file}`; files left
+   behind when the tab is closed are the backend's to clean up. One YouTube link, checked
+   with the same pattern as `PostService.YOUTUBE`, previewed by its thumbnail only.
+   **E-2 settled: the body is stored as Markdown.** The editor is Tiptap (StarterKit +
+   `@tiptap/markdown`) and sends `editor.getMarkdown()` as `content`. Not Tiptap JSON:
+   the backend counts `content` up to 5000 characters and JSON is several times longer;
+   old plain-text posts are already valid Markdown; list previews strip the syntax with
+   `lib/format/plain-text.ts`. Underline is off (Markdown has no syntax for it). The
+   character count is the Markdown length, which is what the backend counts.
+   `features/post/rich-text-class.ts` holds the body styles so the post detail screen
+   renders the same way as the editor.
+   Not built yet: chart blocks (needs a place to store the frozen price data — backend),
+   images inside the body, the "이 글에 붙을 정보" preview, preview.
+   Drafts are saved on the server (`/drafts`, HODL-43), not in localStorage: the 임시저장
+   button creates one and then overwrites it, `?draft=<id>` reopens it, publishing deletes it.
+   The edit page has its own draft, one per post (`/posts/{id}/draft`, HODL-56, docs
+   `EDIT_DRAFTS_API.md`): fetched after the post (a 404 then means "no draft"; any other failure
+   stops the page, because starting from the original would let autosave overwrite the draft),
+   started from when present with a bar to switch back to the original, autosaved the same way
+   as the write page, and deleted after `PUT /posts/{id}` succeeds. Both kinds share the 10-draft
+   quota and the `/drafts` list; `sourcePostId` tells them apart and `draftHref()` in
+   `lib/routes.ts` sends an edit draft to its edit page (the write page redirects there too).
+2. ✅ Post detail `/subhodl/[symbol]/[postId]`, first pass (`features/post/components/
+post-detail.tsx`): title, author, Markdown body, images, YouTube embed
+   (youtube-nocookie), the price captured at publish time. The body is rendered by Tiptap in
+   read-only mode (`post-body.tsx`) rather than a separate Markdown renderer — same schema and
+   same styles as the editor, and anything outside the schema (raw HTML) is not rendered.
+   Landing titles and the publish redirect now link here through `lib/routes.ts`.
+   The holder snapshot block (tier badge, holding period, amount band) sits under the title.
+   Comments, like/bookmark (`post-actions.tsx`) and the author's edit/delete
+   (`post-owner-actions.tsx`, edit page `(focus)/subhodl/[symbol]/[postId]/edit`) are built.
+   Repost is left out on purpose. The post query key carries the viewer id
+   (`hooks/use-post.ts`) because `liked`/`bookmarked` depend on the token. Bookmarks and
+   drafts are listed in the mypage tabs `/mypage/bookmarks` and `/mypage/drafts`; the
+   temporary "북마크한 글" box in the right column is gone.
+   `coin-name-ko.ts` moved from `features/room/` to `lib/` because the room select needs it
+   too and features cannot import each other.
+3. ✅ Room board `/subhodl/[symbol]` (`features/room/components/room-board.tsx`): room header
+   (`GET /communities/{symbol}`), price box, candle chart, the news box (HODL-62) and the vote box (HODL-64),
+   and the 전체/인증 tabs
+   as `?tab=verified`. The post list is the latest `ROOM_POST_LIMIT` (50) posts only; the 인증
+   tab filters inside those 50. The backend now has numbered pages (`…/page`,
+   `docs/NUMBERED_PAGINATION_API.md`) and room news / poll APIs; none of them is wired yet.
+   `postCount` is the room's real total (it used to stop at 100; the "100개 이상" label is gone).
+   **Prices (HODL-61):** the browser fetches prices itself, not the backend `GET /market/prices`.
+   Coins with an Upbit KRW market use Upbit's public `/v1/ticker` (last trade price, change vs the
+   previous day's close) so the number matches the Upbit chart below it; BNB, LTC and TON, which
+   Upbit does not list, use CoinGecko's keyless `/simple/price` (KRW conversion, 24h change).
+   The price box names the source and the change basis. No API key — there is nothing secret to
+   ship. One query per source (`["market-quotes", "upbit" | "coingecko"]`), each one request for
+   all of its coins, refetched every 30 seconds (Jira asked for 5; Upbit allows a browser — a
+   request with an Origin header — one call per 10 seconds and blocks repeat offenders with 418,
+   and the keyless CoinGecko values change about once a minute — reasoning on HODL-61), paused
+   while the tab is hidden. On 429/418 it waits 60 seconds and does not retry. Only the price line
+   dims while refetching; a failed refresh keeps the last value.
+   **Chart (HODL-63):** the TradingView advanced-chart embed (chart and data both TradingView),
+   1-hour candles, Upbit KRW markets where Upbit lists the coin, otherwise a USDT market (BNB, LTC
+   on Binance, TON on OKX), named under the chart. No countdown.
+   **Ticker (HODL-57):** the shell's top strip shows prices instead of the mock service copy.
+   Upbit KRW markets only, for now — the service targets Korean users, so every change in the
+   strip is vs the previous day's close (UTC 0:00 on Upbit) and needs no per-cell basis label;
+   BNB, LTC and TON are not in the strip. It reads the same `["market-quotes", "upbit"]` query as
+   the price box, so a room screen still makes one Upbit request per 30 seconds. For foreign
+   users the plan is to switch the strip to CoinGecko (`TICKER_SOURCE`); `coingecko.ts` would
+   then have to fetch every coin, not only the three. Square board, brand frame and a static
+   LIVE badge; values change without flashing (성지's call). The strip pauses on hover; loading,
+   failure and empty responses are one still line inside the strip.
+   The landing's post card and its mapper moved down to `components/post/post-card.tsx` and
+   `lib/post-summary.ts` because the room board draws the same card.
+   The sidebar room names, the post detail room chip, and the header/FAB 글쓰기 now point at the
+   room; inside a room 글쓰기 goes to `/write?symbol=<room>`. `safeSymbol()` moved from
+   `features/post/limits.ts` to `lib/routes.ts`.
+
+Mock data is fine for layout, but keep G-5's rule: where the backend has no number, show
+"준비 중" or a fixed label rather than a plausible fake. A screen full of invented numbers
+becomes the spec.
+
+## Working rules
+
+- Base new work on the latest `origin/develop` and work on a `<type>/<what>` branch. `<type>` is
+  the Conventional Commit type the change mostly is — `feat/`, `fix/`, `refactor/`, `docs/`,
+  `test/`, `chore/`; `<what>` is a few kebab-case words naming the area, not a ticket number
+  (`refactor/screen-structure`, `feat/post-editor`). Mixed work takes the type of its largest part.
+  ⚠️ This is a `frontend/` rule. The repository root still says `feature/...`, and two things
+  actually depend on it: the `Backend feature check` workflow only runs on `feature/**`, and the
+  `create-pr` skill refuses a head branch that does not start with `feature/`. Neither is a
+  frontend file — do not change them from a frontend task. Open frontend PRs yourself rather
+  than through `create-pr`.
+- Keep backend changes out of frontend tasks unless the user explicitly expands the scope.
+- Preserve unrelated user changes. Never stash, reset, or delete them to make a task easier.
+- Never commit `.env*` files, tokens, or API credentials.
+- Use Conventional Commit subjects: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`.
+- Write the Korean subject as a **noun phrase**, not a sentence: `refactor: 타이포 스케일 토큰화`,
+  not `refactor: 타이포 스케일을 토큰으로 올린다`. The body is ordinary prose and ends in `~다`.
+  The subject names what changed; the body says why.
+- **Do not add AI attribution to commits or pull requests.** No `Co-Authored-By:` for an
+  assistant, no session links, no "generated with" footers. The commit author is the person
+  who ran the task. This applies to every agent working in this repository.
+- **The committer must be the person too, not the agent.** Both author and committer are
+  `gjtjdwl <panggoon6@gmail.com>`. `git am`, `rebase` and `cherry-pick` rewrite the committer
+  to the local git identity, and a cloud session's default identity is `Claude`, which GitHub
+  then shows as "gjtjdwl and claude committed". Set `user.name` / `user.email` (or pass
+  `-c user.name=... -c user.email=...`) before any of those.
+
+## Never minify or collapse source
+
+Write one statement per line. Do not collapse a component, a rule set, or a JSX subtree
+onto a single line to save space.
+
+## Contract with the backend
+
+- `features/*/types.ts` mirror the backend DTOs field for field. When an endpoint's response
+  changes, update the type in the same commit as the code that reads it.
+- Runtime response validation (zod) only for money/PII responses: `/me/assets`, snapshots,
+  wallet. Everything else trusts the type.
+- `GET /api/v1/me/assets` returns an object, not an array: `walletCount`, `exchangeCount`,
+  `assets`, `unresolvedAssets` and `walletAssets` (Swagger `AssetPortfolioResponse`). It returns
+  200 with `syncStatus: PARTIAL` when one source fails; the quantities are then a subtotal.
+- Posts and comments carry `holderSnapshot` (`HolderSnapshotResponse`). The badge tier comes from
+  `holderStatus` (`HOLDER` | `EMPTY` | `UNKNOWN` | `NOT_CONNECTED`) and, for `HOLDER`,
+  `verificationLevel` (`WALLET` | `EXCHANGE`) — see `tierOf()` in `lib/holder-snapshot/label.ts`.
+  Do not infer anything from `walletCount`. Check `verificationAvailability` first; only
+  `SUPPORTED` rooms get a badge. `quantityBand` is a finished string or null (posts only;
+  comments have none), `holdingMonths` is an already-floored integer or null.
+- The server refreshes holdings itself when a post or comment is saved (HODL-45). The client
+  does not call `/me/assets` before publishing.
+- OpenAPI spec: https://cryptalk-api.hojun.xyz/v3/api-docs — the accurate endpoint list.
+  `pnpm gen:api` writes it to `lib/api-schema.ts`; run it after any backend change and commit
+  the result. `GET /feed` (cursor + size, returns `{items, nextCursor, hasMore}`) already
+  exists; the older documents claiming there is no global feed are out of date.
+- **Every field of every response type is optional in `lib/api-schema.ts`.** The backend does
+  not emit `required` on response schemas, so springdoc marks all of them `?`. Request bodies
+  are correct. Until the backend fixes this, a feature that needs a non-optional field
+  narrows it in its own `types.ts` and says why — do not spread `?` through the components.
+- `holdingMonths` is always `null` until an EVM indexer populates `holdingSince`. Render the
+  fixed label `보유 기간 미확인`; do not build UI that assumes a value.
+- Public post and comment responses do not carry wallet addresses. Do not reintroduce them.
+- `POST /posts` ignores a client-supplied `assetPrice`; the server captures the price itself.
+- Auth uses `loginId`, not email: `{ loginId, password }` to log in, plus `nickname` to sign
+  up. `refresh` is an httpOnly cookie today; `access` is in sessionStorage and is being moved
+  to an httpOnly cookie (backend task). Until then, server components cannot render
+  logged-in state.
+- `lib/api-schema.ts` is the accurate list of endpoints. Do not copy it into a document; the
+  copy goes stale and someone writes against it.
+- Open backend requests are listed in the Notion page "구조 고민하기" → "백엔드와 논의할 항목".
+
+## Fonts
+
+Pretendard is self-hosted through `next/font/local` (subset woff2, `app/fonts.ts`). Do not load
+fonts from Google Fonts or a CDN `<link>`.
+
+## Verification
+
+Run from `frontend/`, in order:
+
+1. `pnpm exec tsc --noEmit`
+2. `pnpm run lint`
+3. `pnpm test` — Vitest unit suite, no build needed
+4. `pnpm run build`
+5. `pnpm run test:html` — rendered-HTML check; it builds again, so run it after step 4 only
+   when the change can affect the rendered page
+
+CI runs steps 1-3. Do not put `test:html` in CI as well; it would make the build run twice.
+
+Playwright e2e tests need the backend running; they are run locally, not in CI, for now.

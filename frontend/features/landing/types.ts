@@ -1,0 +1,30 @@
+/**
+ * 랜딩 뷰 모델.
+ *
+ * `lib/mock/landing.ts` 가 타입과 목데이터를 같이 들고 있던 것을 갈랐다.
+ * 목데이터는 `./mock.ts`, 화면에 내려가는 모양은 여기다.
+ *
+ * 사이드바의 방 목록은 랜딩만의 것이 아니라 셸의 것이라 여기 없다.
+ * `components/layout/types.ts` 의 `SidebarRoom` 을 본다.
+ */
+
+import type { PostSummary } from "@/lib/post-summary";
+
+/**
+ * 지금 뜨는 방 한 줄. `GET /communities/stats?window=24h` 에서 온다(HODL-44).
+ * 순위는 서버가 매긴 순서 그대로다. 숫자는 전부 최근 24시간이다.
+ */
+export type TrendingRoom = {
+  rank: number;
+  symbol: string;
+  name: string;
+  posts: number;
+  comments: number;
+  /** 최근 24시간 글 · 댓글 · 좋아요를 남긴 회원 수. 순위 기준이 이 사람 수다. */
+  participants: number;
+};
+
+/**
+ * 전체 글 한 줄. 방 게시판과 같은 카드라 모양은 `lib/post-summary.ts` 에 있다.
+ */
+export type FeedPost = PostSummary;

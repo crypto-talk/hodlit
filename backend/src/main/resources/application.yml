@@ -25,17 +25,27 @@ server:
   port: ${PORT:8080}
 
 cryptalk:
+  admin:
+    member-ids: ${ADMIN_MEMBER_IDS:}
   jwt:
     secret: ${JWT_SECRET:change-this-local-secret-to-at-least-32-bytes}
     access-token-minutes: 15
     refresh-token-days: 14
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
-  asset:
-    ethereum-rpc-url: ${ETHEREUM_RPC_URL:}
-    eth-krw-price: ${ETH_KRW_PRICE:0}
+  alchemy:
+    api-key: ${ALCHEMY_API_KEY:}
+    base-url: ${ALCHEMY_BASE_URL:https://api.g.alchemy.com}
+  exchange:
+    encryption-key: ${EXCHANGE_CREDENTIAL_ENCRYPTION_KEY:}
+    upbit-base-url: https://api.upbit.com
+    bithumb-base-url: https://api.bithumb.com
+    coinone-base-url: https://api.coinone.co.kr
   auth:
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  test-pages:
+    enabled: ${CRYPTALK_TEST_PAGES_ENABLED:false}
+    walletconnect-project-id: ${WALLETCONNECT_PROJECT_ID:}
   media:
     storage-path: ${MEDIA_STORAGE_PATH:./uploads}
   market-price:

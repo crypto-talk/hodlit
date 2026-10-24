@@ -1,0 +1,27 @@
+# 저장소에는 항상 LF로 저장한다. 체크아웃 시 형태는 각 환경 설정을 따른다.
+* text=auto eol=lf
+
+# 배포 서버에서 그대로 실행되는 스크립트는 LF를 강제한다.
+*.sh text eol=lf
+gradlew text eol=lf
+
+# 바이너리는 변환하지 않는다.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.jar binary
+*.pdf binary
+
+# 자동 생성 파일은 GitHub PR에서 접어 둔다. 로컬 diff는 그대로 볼 수 있다.
+pnpm-lock.yaml linguist-generated
+frontend/lib/api-schema.ts linguist-generated
+backend/test-console/package-lock.json linguist-generated
+# Generated SDK contains whitespace inside JavaScript template literals.
+backend/src/main/resources/test-pages/walletconnect.bundle.js linguist-generated -whitespace
+backend/src/main/resources/test-pages/walletconnect.bundle.js.LEGAL.txt linguist-generated -whitespace

@@ -1,0 +1,137 @@
+/*
+ * 디자인 토큰 단일 원본 (D-1).
+ *
+ * 값의 출처는 Claude Design 캔버스 아트보드(Hodlit 랜딩)다.
+ *
+ * ⚠️ 이 파일은 화면이 없던 1단계에 만들어져서 랜딩 목업과 값이 어긋나 있었다.
+ * `--brand` 가 파랑(#3563e9)인데 배지 토큰만 아트보드 보라(#6e56f0)라, 한 파일
+ * 안에서도 갈라져 있었다. 아트보드 쪽으로 맞췄다. 색을 바꾸려면 여기만 고친다.
+ *
+ * 규칙
+ *   - 값은 여기에만 둔다. 컴포넌트는 Tailwind 클래스로만 쓴다.
+ *   - 이름은 의미 기반이다. `--purple` 이 아니라 `--text-primary`.
+ *   - Tailwind 노출은 `app/globals.css` 의 `@theme inline` 이 담당한다.
+ *     거기서 `--text-primary` 는 `--color-text-primary` 로 매핑되고
+ *     `text-text-primary` / `bg-surface` 같은 유틸리티가 된다.
+ *   - 다크 값은 D-6 에 따라 이번에는 채우지 않는다. 블록만 준비한다.
+ */
+
+:root {
+  /* 면 */
+  --canvas: #f6f6f8;
+  --surface: #ffffff;
+  --surface-muted: #f6f6f8;
+  /* 아트보드에 없다. 반투명 헤더가 필요해지면 쓴다. */
+  --surface-raised: rgba(255, 255, 255, 0.96);
+
+  /* 글자 */
+  --text-primary: #1a1a1f;
+  --text-muted: #6b6b75;
+  /* 아트보드는 회색이 두 단계뿐이다. 이건 404 화면에서만 쓰는 보조값이다. */
+  --text-subtle: #9099a7;
+  --text-inverse: #ffffff;
+
+  /* 선 */
+  --border-subtle: #e6e6eb;
+  /* 아트보드에 없다. hover 테두리는 --text-muted 를 쓴다. */
+  --border-strong: #dfe3e8;
+
+  /* 브랜드 강조. shadcn 의 --accent(은은한 hover 배경)와 구분해 brand 로 둔다. */
+  --brand: #6e56f0;
+  --brand-hover: #5c46d8;
+  /* 연보라. 배지와 2위 카드가 쓴다. */
+  --brand-soft: #ccccff;
+  /* rgb() 의 알파 표기에 넣으려고 채널만 따로 둔다. FAB 그림자가 쓴다. */
+  --brand-channels: 110 86 240;
+
+  /* 상태. 시세 등락에 쓴다. */
+  --success: #15803d;
+  /* 아트보드에 없다. */
+  --success-soft: #effbf6;
+  --danger: #dc2626;
+
+  /*
+   * 방 강조색. `GET /api/v1/coins` 의 accentColor 가 런타임 값이라
+   * 서버에서 받은 뒤 style={{ "--room-accent": accentColor }} 로 덮어쓴다.
+   * CSS 변수가 필수인 이유가 이것이다.
+   */
+  --room-accent: var(--brand);
+
+  /*
+   * 배지. 값을 다시 적지 않고 위 토큰을 가리킨다. 배지 색만 따로 가야 할 일이
+   * 생기면 그때 값을 넣는다.
+   */
+  --badge-wallet-bg: var(--brand);
+  --badge-wallet-text: var(--text-inverse);
+  --badge-exchange-bg: var(--brand-soft);
+  --badge-exchange-text: var(--text-primary);
+  --badge-none-text: var(--text-muted);
+  --badge-none-border: var(--border-subtle);
+
+  /*
+   * 차트 범주 색 (HODL-67 자산 원형 차트). 순서대로 쓰고 돌려 쓰지 않는다 — 다섯 개를
+   * 넘는 코인은 회색 "기타"로 묶는다. 색약 구분 · 인접 색 차이를 검사한 순서다.
+   * 3 · 4 · 5 번은 흰 바탕 대비가 3:1 아래라 색만으로 읽히지 않게 범례 글자를 늘 같이 둔다.
+   */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-other: var(--text-subtle);
+
+  /*
+   * 타이포 스케일. 아트보드가 쓰는 여섯 단계가 전부다.
+   * 굵기는 스케일에 묶지 않는다 — 같은 크기로 400 과 600 을 둘 다 쓴다.
+   * `app/globals.css` 가 이걸 Tailwind 의 `text-h2` `text-body` 로 노출한다.
+   */
+  --type-display: 3rem; /* 48px */
+  --type-display-leading: 1.3;
+  --type-h1: 1.5rem; /* 24px */
+  --type-h1-leading: 1.3;
+  --type-h2: 1.25rem; /* 20px */
+  --type-h2-leading: 1.3;
+  --type-body: 0.9375rem; /* 15px */
+  --type-body-leading: 1.55;
+  --type-sm: 0.8125rem; /* 13px */
+  --type-sm-leading: 1.5;
+  --type-xs: 0.75rem; /* 12px */
+  --type-xs-leading: 1.4;
+
+  /*
+   * 반경. Tailwind 의 --radius-* 키와 이름이 겹치지 않도록 --corner-* 로 둔다.
+   * 아트보드는 6px 과 12px 두 단계만 쓴다. md 는 그 사이를 메우는 값이다.
+   */
+  --corner-sm: 0.375rem;
+  --corner-md: 0.625rem;
+  --corner-lg: 0.75rem;
+
+  /*
+   * shadcn/ui 프리미티브가 참조하는 이름. 값은 위 토큰을 가리키기만 한다.
+   * shadcn 컴포넌트를 새로 추가했는데 색이 비면 여기에 줄을 추가한다.
+   */
+  --background: var(--surface);
+  --foreground: var(--text-primary);
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--brand);
+  --primary-foreground: var(--text-inverse);
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-muted);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--text-inverse);
+  --border: var(--border-subtle);
+  --input: var(--border-strong);
+  --ring: var(--brand);
+}
+
+/* D-6: 구조만 준비하고 값은 비워 둔다. 다크 대응은 디자인 산출물이 나온 뒤. */
+:root[data-theme="dark"] {
+  /* 의도적으로 비어 있음 */
+}

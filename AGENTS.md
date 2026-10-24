@@ -3,7 +3,7 @@
 ## Repository map
 
 - `backend/`: Java 24, Spring Boot 3.5, Gradle, JPA, Liquibase, MySQL API.
-- `frontend/`: React/Vinext source. It is not deployed by this Umbrel backend pipeline.
+- `frontend/`: React/Next.js source. It is not deployed by this Umbrel backend pipeline.
 - `docs/`: human-readable API and handoff documentation.
 - `.github/workflows/deploy-backend.yml`: deploys backend-related changes pushed to `develop`.
 - `deploy-backend.sh`: production deployment entry point for the self-hosted runner.
@@ -36,3 +36,4 @@
 - A push to `develop` that touches backend deployment paths builds, tests, deploys, and health-checks production.
 
 Read `backend/AGENTS.md` before changing anything under `backend/`.
+Read `frontend/AGENTS.md` before changing anything under `frontend/`.

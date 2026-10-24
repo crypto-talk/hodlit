@@ -7,3 +7,35 @@ databaseChangeLog:
       file: db/changelog/004-social-features.sql
   - include:
       file: db/changelog/005-social-api-completion.sql
+  - include:
+      file: db/changelog/006-login-id.sql
+  - include:
+      file: db/changelog/007-expand-coin-catalog.sql
+  - include:
+      file: db/changelog/008-evm-holder-foundation.sql
+  - include:
+      file: db/changelog/009-exchange-connections.sql
+  - include:
+      file: db/changelog/010-post-drafts.sql
+  - include:
+      file: db/changelog/011-exchange-holder-proof.sql
+  - include:
+      file: db/changelog/012-exchange-account-identity.sql
+  - include:
+      file: db/changelog/011-holder-status.sql
+  - include:
+      file: db/changelog/011-community-activity.sql
+  - include:
+      file: db/changelog/011-edit-drafts.sql
+  - include:
+      file: db/changelog/011-comment-replies.sql
+  - include:
+      file: db/changelog/011-community-news.sql
+  - include:
+      file: db/changelog/011-community-polls.sql
+  - include:
+      file: db/changelog/013-polygon-native-holder.sql
+  - include:
+      file: db/changelog/014-room-operation-status.sql
+  - include:
+      file: db/changelog/015-public-profile-indexes.sql

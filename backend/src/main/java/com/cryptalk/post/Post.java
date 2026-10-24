@@ -81,14 +81,11 @@ public class Post {
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void update(String title, String content, String tradingViewSymbol, String tradingViewInterval,
-                       String tradingViewAnalysis, BigDecimal assetPrice, String assetPriceCurrency,
-                       Instant assetPriceAt, String assetPriceSource, String youtubeUrl,
+                       String tradingViewAnalysis, String youtubeUrl,
                        String youtubeVideoId, String youtubeThumbnailUrl) {
         this.title = title.trim(); this.content = content.trim();
         this.tradingViewSymbol = tradingViewSymbol; this.tradingViewInterval = tradingViewInterval;
-        this.tradingViewAnalysis = tradingViewAnalysis; this.assetPrice = assetPrice;
-        this.assetPriceCurrency = assetPriceCurrency; this.assetPriceAt = assetPriceAt;
-        this.assetPriceSource = assetPriceSource; this.youtubeUrl = youtubeUrl;
+        this.tradingViewAnalysis = tradingViewAnalysis; this.youtubeUrl = youtubeUrl;
         this.youtubeVideoId = youtubeVideoId; this.youtubeThumbnailUrl = youtubeThumbnailUrl;
         this.updatedAt = Instant.now();
     }

@@ -1,0 +1,11 @@
+node_modules
+.claude
+.next
+out
+dist
+pnpm-lock.yaml
+next-env.d.ts
+public
+
+# openapi-typescript 생성물. `pnpm gen:api` 결과와 diff 가 나지 않게 둔다.
+lib/api-schema.ts

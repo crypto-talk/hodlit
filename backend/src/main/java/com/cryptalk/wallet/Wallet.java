@@ -23,6 +23,9 @@ public class Wallet {
     public Wallet(Member member, String address) {
         this.member = member; this.address = address.toLowerCase(); this.chainType = "EVM"; this.createdAt = Instant.now();
     }
+    public Long getId() { return id; }
     public Member getMember() { return member; }
+    public String getChainType() { return chainType; }
     public String getAddress() { return address; }
+    public Instant getCreatedAt() { return createdAt; }
 }

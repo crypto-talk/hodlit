@@ -12,12 +12,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cryptalk.coin.Coin;
+import com.cryptalk.asset.AlchemyPortfolioClient;
+import com.cryptalk.member.MemberRepository;
+import com.cryptalk.wallet.Wallet;
+import com.cryptalk.wallet.WalletRepository;
 import com.cryptalk.market.MarketPriceService;
 import com.cryptalk.market.MarketPriceService.PriceQuote;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,30 +34,51 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import java.time.Duration;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 class SocialApiTest {
     @Autowired MockMvc mvc;
+    @Autowired com.cryptalk.coin.CoinRepository coins;
     @Autowired ObjectMapper json;
+    @Autowired MemberRepository members;
+    @Autowired WalletRepository wallets;
     @MockitoBean MarketPriceService marketPrices;
+    @MockitoBean AlchemyPortfolioClient alchemy;
 
     @BeforeEach
     void prices() {
+        when(alchemy.isConfigured()).thenReturn(true);
+        walletBalance(new BigDecimal("12.5"));
         when(marketPrices.currentPrice(any(Coin.class), nullable(String.class))).thenAnswer(invocation -> {
             Coin coin = invocation.getArgument(0);
             String requested = invocation.getArgument(1);
             String currency = requested == null ? "USD" : requested;
-            return new PriceQuote(coin.getSymbol(), new BigDecimal("4321.25"), currency, Instant.parse("2026-09-01T00:00:00Z"), "COINGECKO");
+            return quote(coin, currency);
+        });
+        when(marketPrices.currentPrices(anyList(), nullable(String.class))).thenAnswer(invocation -> {
+            List<Coin> coins = invocation.getArgument(0);
+            String requested = invocation.getArgument(1);
+            String currency = requested == null ? "KRW" : requested;
+            return coins.stream().map(coin -> quote(coin, currency)).toList();
         });
     }
 
     @Test
     void supportsRichPostAndSocialInteractions() throws Exception {
-        Account author = signup("social-author@example.com", "작성자");
-        Account reader = signup("social-reader@example.com", "독자");
+        Account author = signup("social-author", "작성자");
+        Account reader = signup("social-reader", "독자");
+        wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
+            "0x3333333333333333333333333333333333333333"));
+        mvc.perform(get("/api/v1/me/assets").header("Authorization", bearer(author.token())))
+            .andExpect(status().isOk());
 
         MockMultipartFile image = new MockMultipartFile("file", "chart.png", "image/png", new byte[]{1, 2, 3});
         MvcResult upload = mvc.perform(multipart("/api/v1/media").file(image).header("Authorization", bearer(author.token())))
@@ -82,14 +110,22 @@ class SocialApiTest {
             .andExpect(jsonPath("$.priceSnapshot.capturedAt").isNotEmpty())
             .andExpect(jsonPath("$.youtube.videoId").value("dQw4w9WgXcQ"))
             .andExpect(jsonPath("$.youtube.thumbnailUrl").value("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"))
+            .andExpect(jsonPath("$.holderSnapshot.verificationAvailability").value("SUPPORTED"))
+            .andExpect(jsonPath("$.holderSnapshot.verificationLevel").value("WALLET"))
+            .andExpect(jsonPath("$.holderSnapshot.quantityBand").value("10~100 ETH"))
             .andReturn();
+        String publishedPriceAt = json.readTree(created.getResponse().getContentAsString())
+            .get("priceSnapshot").get("capturedAt").asText();
         long postId = json.readTree(created.getResponse().getContentAsString()).get("id").asLong();
 
         mvc.perform(post("/api/v1/posts/{postId}/likes", postId).header("Authorization", bearer(reader.token())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.likes").value(1)).andExpect(jsonPath("$.liked").value(true));
         MvcResult comment = mvc.perform(post("/api/v1/posts/{postId}/comments", postId).header("Authorization", bearer(reader.token()))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"좋은 분석이에요\"}"))
-            .andExpect(status().isOk()).andReturn();
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.holderSnapshot.verificationAvailability").value("SUPPORTED"))
+            .andExpect(jsonPath("$.holderSnapshot.verificationLevel").value("UNVERIFIED"))
+            .andReturn();
         long commentId = json.readTree(comment.getResponse().getContentAsString()).get("id").asLong();
         mvc.perform(patch("/api/v1/comments/{commentId}", commentId).header("Authorization", bearer(reader.token()))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"수정된 댓글입니다\"}"))
@@ -130,8 +166,9 @@ class SocialApiTest {
         mvc.perform(put("/api/v1/posts/{postId}", postId).header("Authorization", bearer(author.token()))
                 .contentType(MediaType.APPLICATION_JSON).content(updateBody))
             .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("수정된 ETH 분석"))
-            .andExpect(jsonPath("$.priceSnapshot.currency").value("KRW"))
-            .andExpect(jsonPath("$.priceSnapshot.source").value("COINGECKO"));
+            .andExpect(jsonPath("$.priceSnapshot.currency").value("USDT"))
+            .andExpect(jsonPath("$.priceSnapshot.capturedAt").value(publishedPriceAt))
+            .andExpect(jsonPath("$.holderSnapshot.verificationAvailability").value("SUPPORTED"));
 
         String fileName = mediaUrl.substring(mediaUrl.lastIndexOf('/') + 1);
         mvc.perform(delete("/api/v1/media/{fileName}", fileName).header("Authorization", bearer(author.token())))
@@ -156,10 +193,153 @@ class SocialApiTest {
 
         mvc.perform(get("/api/v1/market/prices/ETH").param("currency", "KRW"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.source").value("COINGECKO"));
+        mvc.perform(get("/api/v1/market/prices").param("currency", "KRW"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].symbol").value("BTC"))
+            .andExpect(jsonPath("$[0].change24h").value(2.75))
+            .andExpect(jsonPath("$[4].symbol").value("DOGE"));
     }
 
-    private Account signup(String email, String nickname) throws Exception {
-        String body = "{\"email\":\"" + email + "\",\"password\":\"strong-password-123\",\"nickname\":\"" + nickname + "\"}";
+    @ParameterizedTest
+    @CsvSource({"UNKNOWN,false", "PARTIAL,false", "UNKNOWN,true", "PARTIAL,true"})
+    void publicationRefreshesAndReportsUnknownOnAnySourceFailure(String rpcStatus, boolean savedAssets) throws Exception {
+        String suffix = rpcStatus.toLowerCase() + (savedAssets ? "-saved" : "-new");
+        Account author = signup("rpc-" + suffix, "RPC " + suffix);
+        wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
+            "0x" + java.util.UUID.randomUUID().toString().replace("-", "") + "12345678"));
+        if (savedAssets) {
+            mvc.perform(get("/api/v1/me/assets").header("Authorization", bearer(author.token())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.assets[0].verified").value(true));
+        }
+
+        when(alchemy.fetch(anyList(), any(Duration.class)))
+            .thenReturn(new AlchemyPortfolioClient.Result(List.of(), List.of("eth-mainnet"), true, rpcStatus, Instant.now()));
+        mvc.perform(get("/api/v1/me/assets").header("Authorization", bearer(author.token())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.unresolvedAssets[0].holderStatus").value("UNKNOWN"));
+        clearInvocations(alchemy);
+
+        MvcResult result = mvc.perform(post("/api/v1/posts")
+                .header("Authorization", bearer(author.token()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"coinSymbol":"ETH","title":"RPC 장애 중 작성","content":"잔액 인증과 글 작성은 독립적입니다."}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.holderSnapshot.verificationLevel").value("UNVERIFIED"))
+            .andExpect(jsonPath("$.holderSnapshot.walletCount").value(1))
+            .andExpect(jsonPath("$.holderSnapshot.syncStatus").value("PARTIAL"))
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("UNKNOWN"))
+            .andReturn();
+        JsonNode response = json.readTree(result.getResponse().getContentAsString());
+        long postId = response.get("id").asLong();
+        mvc.perform(get("/api/v1/posts/{postId}", postId)
+                .header("Authorization", bearer(author.token())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.verifiedHolder").value(false));
+        org.junit.jupiter.api.Assertions.assertTrue(response.get("assetValueKrw").isNull());
+        mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
+                .header("Authorization", bearer(author.token()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"RPC 장애 중 댓글\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.holderSnapshot.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("UNKNOWN"));
+        org.mockito.Mockito.verify(alchemy,org.mockito.Mockito.times(2)).fetch(anyList(), any(Duration.class));
+    }
+
+    @Test
+    void repliesStayOneLevelDeepAndCannotTargetAnotherPost() throws Exception {
+        Account author = signup("reply-author", "답글작성자");
+        long postId = replyPost(author);
+        long otherPost = replyPost(author);
+        long root = createReply(author, postId, null).get("id").asLong();
+        JsonNode reply = createReply(author, postId, root);
+        long replyId = reply.get("id").asLong();
+        org.junit.jupiter.api.Assertions.assertEquals(root, reply.get("parentCommentId").asLong());
+        org.junit.jupiter.api.Assertions.assertEquals("답글작성자", reply.get("replyToNickname").asText());
+        JsonNode next = createReply(author, postId, replyId);
+        org.junit.jupiter.api.Assertions.assertEquals(root, next.get("parentCommentId").asLong());
+        org.junit.jupiter.api.Assertions.assertEquals(replyId, next.get("replyToCommentId").asLong());
+        mvc.perform(post("/api/v1/posts/{postId}/comments", otherPost)
+                .header("Authorization", bearer(author.token())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"bad\",\"replyToCommentId\":" + root + "}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
+                .header("Authorization", bearer(author.token())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"bad\",\"replyToCommentId\":-1}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"anonymous\"}"))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/comments/{id}", replyId).header("Authorization", bearer(author.token())))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/posts/{postId}/comments", postId))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[1].parentCommentId").value(root))
+            .andExpect(jsonPath("$[1].replyToCommentId").isEmpty());
+        mvc.perform(delete("/api/v1/comments/{id}", root).header("Authorization", bearer(author.token())))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/posts/{postId}/comments", postId))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+    }
+
+    private long replyPost(Account author) throws Exception {
+        var room = coins.findBySymbolIgnoreCaseAndActiveTrue("BTC").orElseThrow();
+        room.changeOperationStatus(com.cryptalk.coin.RoomOperationStatus.OPEN);
+        coins.saveAndFlush(room);
+        var result = mvc.perform(post("/api/v1/posts").header("Authorization", bearer(author.token()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"coinSymbol\":\"BTC\",\"title\":\"reply test\",\"content\":\"body\"}"))
+            .andExpect(status().isOk()).andReturn();
+        return json.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+    }
+
+    private JsonNode createReply(Account author, long postId, Long target) throws Exception {
+        var result = mvc.perform(post("/api/v1/posts/{postId}/comments", postId)
+                .header("Authorization", bearer(author.token())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"reply\",\"replyToCommentId\":" + target + "}"))
+            .andExpect(status().isOk()).andReturn();
+        return json.readTree(result.getResponse().getContentAsString());
+    }
+
+    @Test
+    void directPublicationRefreshesWithoutAClientAssetCallAndRecordsCurrentBalance() throws Exception {
+        Account author = signup("fresh-publication", "서버갱신");
+        wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
+            "0x" + java.util.UUID.randomUUID().toString().replace("-", "") + "12345678"));
+        var created = mvc.perform(post("/api/v1/posts").header("Authorization", bearer(author.token()))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"coinSymbol\":\"ETH\",\"title\":\"server refresh\",\"content\":\"body\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.verifiedHolder").value(true))
+            .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("HOLDER"))
+            .andReturn();
+        long postId = json.readTree(created.getResponse().getContentAsString()).path("id").asLong();
+        walletBalance(BigDecimal.ZERO);
+        mvc.perform(post("/api/v1/posts/{id}/comments", postId).header("Authorization", bearer(author.token()))
+            .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"after selling\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.holderSnapshot.holderStatus").value("EMPTY"));
+        mvc.perform(get("/api/v1/posts/{id}", postId))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.holderSnapshot.holderStatus").value("HOLDER"));
+        verify(alchemy, times(2)).fetch(anyList(), any(Duration.class));
+    }
+
+    private void walletBalance(BigDecimal quantity) {
+        when(alchemy.fetch(anyList(), any(Duration.class))).thenAnswer(call -> {
+            List<String> addresses = call.getArgument(0);
+            var tokens = addresses.stream().map(address -> new AlchemyPortfolioClient.Token(address, "eth-mainnet", 1,
+                null, "ETH", "Ethereum", 18, quantity.movePointRight(18).toBigIntegerExact().toString(), quantity, "READY")).toList();
+            return new AlchemyPortfolioClient.Result(tokens, List.of(), true, "READY", Instant.now());
+        });
+    }
+
+    private PriceQuote quote(Coin coin, String currency) {
+        return new PriceQuote(coin.getSymbol(), new BigDecimal("4321.25"), currency, new BigDecimal("2.75"),
+            Instant.parse("2026-09-01T00:00:00Z"), "COINGECKO");
+    }
+
+    private Account signup(String loginId, String nickname) throws Exception {
+        String body = "{\"loginId\":\"" + loginId + "\",\"password\":\"strong-password-123\",\"nickname\":\"" + nickname + "\"}";
         MvcResult result = mvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isOk()).andReturn();
         JsonNode response = json.readTree(result.getResponse().getContentAsString());

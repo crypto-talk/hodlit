@@ -1,8 +1,6 @@
 node_modules
-.vinext
 .next
-dist
-.wrangler
 .git
 .env*
 npm-debug.log*
+pnpm-debug.log*

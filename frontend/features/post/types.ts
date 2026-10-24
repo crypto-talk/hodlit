@@ -1,0 +1,167 @@
+import type { Tier } from "@/lib/holder-snapshot/types";
+
+/**
+ * 글쓰기 화면이 쓰는 뷰 모델.
+ *
+ * 백엔드 DTO 는 `lib/api-schema.ts` 에 생성돼 있다. 응답 타입은 모든 필드가
+ * 선택(`?`)이라 `api.ts` 에서 한 번 좁혀 여기 모양으로 넘긴다.
+ */
+
+/** 방 선택 드롭다운의 한 줄. */
+export type WriteRoom = {
+  symbol: string;
+  /** 보유 인증 지원 여부. 서버의 `verificationAvailability` 를 따른다. */
+  verifiable: boolean;
+  /** 한글명. 매핑표에 없으면 백엔드 영문명. */
+  name: string;
+};
+
+/** 발행 직후 화면이 알아야 하는 것. 글 상세 화면이 생기면 이 id 로 이동한다. */
+export type PublishedPost = {
+  id: number;
+  coinSymbol: string;
+};
+
+/**
+ * 업로드가 끝난 이미지.
+ *
+ * `url` 은 백엔드가 준 상대 경로(`/api/v1/media/<uuid>.jpg`)다. 발행할 때는
+ * 이 값을 그대로 보낸다. 서버가 이 경로로 업로드 기록을 찾아 글에 묶는다.
+ */
+export type UploadedImage = {
+  url: string;
+};
+
+/**
+ * 글쓰기 입력값.
+ *
+ * 차트는 아직 없다. 본문 포맷(E-2) 결정은 에디터에만 걸리고, 백엔드
+ * `content` 는 어느 쪽이든 5000자 문자열이다.
+ */
+export type PostDraft = {
+  coinSymbol: string;
+  title: string;
+  content: string;
+  /** 업로드가 끝난 이미지만. 올린 순서가 글의 순서다. */
+  images: UploadedImage[];
+  /** 비어 있으면 보내지 않는다. */
+  youtubeUrl: string;
+};
+
+/**
+ * 글에 붙은 보유 정보를 화면 문구로 바꾼 것. 문구는 전부
+ * `lib/holder-snapshot/label.ts` 가 만든다(구조 규칙 3).
+ */
+export type HolderView = {
+  /** 이 코인이 보유 인증을 지원하는지. false 면 배지·기간·구간을 그리지 않는다. */
+  verifiable: boolean;
+  tier: Tier;
+  /** 서버가 완성한 구간. 미인증이면 null. */
+  amount: string | null;
+  holding: string;
+};
+
+/** 글 상세 뷰 모델. */
+export type PostDetail = {
+  id: number;
+  coinSymbol: string;
+  title: string;
+  /** Markdown. 예전 글은 평문이고, 평문도 그대로 유효한 Markdown 이다. */
+  content: string;
+  /** 댓글에서 "작성자" 표시에 쓴다. 응답에 없으면 null. */
+  authorId: number | null;
+  authorNickname: string;
+  createdAt: string;
+  /** 수정된 적이 있으면 true. 스냅샷은 그대로고 본문만 바뀐다. */
+  edited: boolean;
+  images: { id: string; src: string }[];
+  youtubeVideoId: string | null;
+  /** 작성 시점 가격. 서버가 발행 순간 찍은 값이다. */
+  price: { value: number; currency: string } | null;
+  comments: number;
+  /** 발행 시점에 고정된 보유 정보. 응답에 없으면 null. */
+  holder: HolderView | null;
+} & PostReactions;
+
+/**
+ * 좋아요 · 북마크 상태. 누를 때마다 서버가 글 전체를 돌려주는데, 화면이 바꿔
+ * 끼우는 것은 이 부분뿐이다.
+ *
+ * `liked` · `bookmarked` 는 요청에 토큰이 실렸을 때만 의미가 있다. 로그인 전에
+ * 받은 글은 둘 다 false 다.
+ */
+export type PostReactions = {
+  likes: number;
+  liked: boolean;
+  bookmarked: boolean;
+};
+
+/**
+ * 수정 화면이 처음에 채우는 값.
+ *
+ * 글 상세 뷰 모델과 따로 둔 이유: 수정은 백엔드에 다시 보낼 원래 값이 필요하다
+ * (이미지의 상대 경로, 유튜브 원래 주소, 화면에 안 그리는 TradingView 값).
+ */
+export type EditablePost = {
+  id: number;
+  coinSymbol: string;
+  title: string;
+  content: string;
+  authorId: number | null;
+  /** `url` 은 백엔드 상대 경로, `src` 는 미리보기용 주소. */
+  images: { url: string; src: string }[];
+  youtubeUrl: string;
+  /**
+   * 화면에는 없지만 PUT 이 덮어쓰는 값. 빼고 보내면 서버가 null 로 지운다.
+   * 받은 그대로 돌려보낸다.
+   */
+  tradingView: { symbol?: string; interval?: string; analysis?: string } | null;
+};
+
+/** 수정해서 보낼 값. 방과 보유 정보 · 작성 시점 가격은 바꿀 수 없다. */
+export type PostEdit = {
+  id: number;
+  title: string;
+  content: string;
+  images: UploadedImage[];
+  youtubeUrl: string;
+  tradingView: EditablePost["tradingView"];
+};
+
+/**
+ * 임시저장 (HODL-43). 서버가 빈 방 · 제목 · 본문도 받아서 전부 비어 있을 수 있다.
+ * 이미지는 수정 화면과 같은 모양 — `url` 은 상대 경로, `src` 는 미리보기 주소.
+ *
+ * 새 글 임시저장과 글 수정 임시저장(HODL-56)이 같은 목록 · 같은 10개 한도를 쓴다.
+ * 둘을 가르는 것은 `sourcePostId` 하나다.
+ */
+export type Draft = {
+  id: number;
+  updatedAt: string;
+  coinSymbol: string;
+  title: string;
+  content: string;
+  images: { url: string; src: string }[];
+  youtubeUrl: string;
+  /** 수정 중인 원래 글 번호. 새 글 임시저장이면 null. 서버가 정하고 바꿀 수 없다. */
+  sourcePostId: number | null;
+};
+
+/** 임시저장 목록 한 줄. */
+export type DraftSummary = Pick<
+  Draft,
+  "id" | "updatedAt" | "coinSymbol" | "title" | "sourcePostId"
+>;
+
+/** 임시저장할 값. 글쓰기 화면에 있는 것만 보낸다. */
+export type DraftInput = Pick<Draft, "coinSymbol" | "title" | "content" | "youtubeUrl"> & {
+  images: UploadedImage[];
+};
+
+/**
+ * 글 수정 임시저장할 값. 서버는 통째로 덮어써서 빠진 값을 null 로 지우므로, 화면에 없는
+ * TradingView 값도 원래 글에서 받은 그대로 싣는다.
+ */
+export type EditDraftInput = DraftInput & {
+  tradingView: EditablePost["tradingView"];
+};

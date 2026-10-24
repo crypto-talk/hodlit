@@ -6,7 +6,7 @@
 
 ```text
 cryptalk/
-├── frontend/   # Vinext/React 웹 애플리케이션
+├── frontend/   # Next.js/React 웹 애플리케이션
 ├── backend/    # Java 24 + Spring Boot API
 └── docker-compose.yml
 ```
@@ -144,12 +144,12 @@ npm run dev
 - cursor 기반 랜딩·팔로잉 피드, 게시글·댓글 수정, 좋아요, 재게시, 북마크 API
 - 소유권 기반 이미지·영상 관리와 게시글 삭제 시 실제 파일 정리
 - 사용자 팔로우와 TradingView 분석·서버 조회 가격 스냅샷·YouTube Shorts 메타데이터
-- Ethereum JSON-RPC 기반 ETH 잔액 인증
+- CoinGecko 기반 KRW 실시간 시세·24시간 등락률과 Ethereum JSON-RPC 기반 ETH 잔액 인증
 - 자산 공개 범위(정확한 금액/구간/비공개)와 게시 시점 자산 스냅샷
 - MySQL 8.4 및 Liquibase 스키마 관리
 
-실제 자산 인증을 사용하려면 백엔드에 `ETHEREUM_RPC_URL`과 `ETH_KRW_PRICE`를
-설정해야 합니다. 설정하지 않은 경우 로그인과 커뮤니티 기능은 동작하지만 ETH 자산은
+실제 자산 인증을 사용하려면 백엔드에 `ETHEREUM_RPC_URL`을 설정해야 합니다.
+설정하지 않은 경우 로그인과 커뮤니티 기능은 동작하지만 ETH 자산은
 `UNAVAILABLE` 상태로 표시됩니다.
 
 인증 API의 요청·응답과 cookie 명세는 [`docs/AUTH_API.md`](docs/AUTH_API.md)를
