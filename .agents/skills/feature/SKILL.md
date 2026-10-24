@@ -1,6 +1,6 @@
 ---
 name: feature
-description: Implement, test, commit, and push a CrypTalk backend feature on a feature/... branch based on origin/develop. Use when the user invokes $feature, asks to build a backend feature through the repository feature workflow, or supplies a Jira issue key such as CT-123 for implementation. Read the Jira issue when a key is supplied, isolate work from the production checkout, and never merge or push the feature directly to develop.
+description: Implement, test, commit, and push a CrypTalk backend feature on a feature/... branch based on origin/main. Use when the user invokes $feature, asks to build a backend feature through the repository feature workflow, or supplies a Jira issue key such as CT-123 for implementation. Read the Jira issue when a key is supplied, isolate work from the production checkout, and never merge or push the feature directly to main or develop.
 ---
 
 # Backend feature workflow
@@ -28,15 +28,15 @@ Implement one bounded backend feature and leave a reviewed, tested commit on a r
 - If exactly one remote branch already starts with `feature/<ISSUE-KEY>-`, resume it instead of creating a duplicate.
 - If multiple candidates exist or an unrelated branch has the intended name, stop and ask which branch to use.
 
-Always base new work on the latest `origin/develop`. Never commit feature work on local `develop` and never push directly to remote `develop`.
+Always base new work on the latest `origin/main`. Never commit feature work on local `main` or `develop` and never push directly to either remote branch. Resume an existing task branch without automatically rebasing it or changing its base.
 
 ## 3. Isolate the work
 
 The repository root is also the Umbrel production deployment checkout. Protect it with a separate worktree:
 
-1. Run `git fetch origin develop --prune` from the repository root.
+1. Run `git fetch origin refs/heads/main:refs/remotes/origin/main --prune` from the repository root so `origin/main` is refreshed even when the remote has a narrow fetch configuration.
 2. Create a task-specific directory with `mktemp -d` under `/tmp`.
-3. Add a Git worktree inside that directory from `origin/develop`, creating the chosen branch, or from its existing remote branch when resuming.
+3. Add a Git worktree inside that directory from `origin/main`, creating the chosen branch, or from its existing remote branch when resuming.
 4. Perform all edits, tests, commits, and pushes inside the feature worktree.
 5. Do not stash, reset, clean, or alter unrelated changes in the production checkout.
 
@@ -72,7 +72,7 @@ Fix failing local tests before pushing. If neither Java nor Docker is available,
    - Use `fix`, `refactor`, `docs`, or `test` instead of `feat` when that accurately describes the change.
 4. Commit only after verification or an explicit note that verification must occur in CI.
 5. Push with upstream tracking: `git push -u origin <branch>`.
-6. Never force-push, merge into `develop`, create a release, or deploy production under this skill.
+6. Never force-push, merge into `main` or `develop`, create a release, or deploy production under this skill.
 7. If GitHub CLI is available, find and monitor the matching `Backend feature check` run. On failure, inspect logs, fix the branch, test, commit, push, and monitor again.
 
 The push itself is authorized when the user invokes this skill; Jira writes and merges are not.
@@ -89,4 +89,4 @@ Report:
 - API or migration notes;
 - any remaining limitation or decision needed.
 
-After a successful push, remove only the temporary worktree with `git worktree remove` and prune its worktree metadata. Leave the production checkout on `develop` and untouched.
+After a successful push, remove only the temporary worktree with `git worktree remove` and prune its worktree metadata. Leave the production checkout on its existing branch and untouched.

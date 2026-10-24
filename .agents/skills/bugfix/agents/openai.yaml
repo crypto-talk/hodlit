@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jira Bugfix"
+  short_description: "Read Jira issues, reproduce bugs, and verify fixes"
+  default_prompt: "Use $bugfix to read Jira issue CT-123, create a task branch from the latest origin/main, reproduce the bug, fix its cause, and run regression tests."

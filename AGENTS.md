@@ -12,7 +12,7 @@
 
 - Treat `develop` as the integration and backend deployment branch.
 - Use the project-local `$feature` skill for backend feature implementation that must be committed and pushed.
-- The `$feature` skill works on `feature/...` branches based on `origin/develop`; never implement feature work directly on `develop`.
+- New `$feature` and `$bugfix` task branches start from the latest `origin/main`. Keep CrypTalk backend work on `feature/...` branches; never implement feature work or fixes directly on `main` or `develop`.
 - Do not merge a feature branch into `develop` unless the user explicitly asks.
 - Preserve unrelated user changes. Never stash, reset, or delete them to make a task easier.
 - Never commit `.env`, credentials, refresh tokens, private keys, database data, or uploaded media.
