@@ -55,9 +55,11 @@ CI runner를 별도로 구성해야 합니다. Docker 실행 권한 자체가 �
 
 ### GitHub Actions로 백엔드만 자동 배포
 
-`develop` 브랜치의 백엔드 관련 파일이 변경되면
+`main` 브랜치의 백엔드 관련 파일이 변경되면
 `.github/workflows/deploy-backend.yml`이 이 Umbrel 서버의 self-hosted runner에서
-`deploy-backend.sh`를 실행합니다. Docker 이미지 빌드 중 테스트를 실행하고, 기존
+Actions가 체크아웃한 최신 `deploy-backend.sh`를 실행합니다. 서버 checkout이
+기존 `develop` 전용이어도 `main`을 명시적으로 가져와 전환합니다.
+Docker 이미지 빌드 중 테스트를 실행하고, 기존
 MySQL은 유지한 채 백엔드 컨테이너만 교체한 후 health 상태를
 확인합니다.
 
@@ -77,13 +79,13 @@ sudo systemctl restart 'actions.runner.*'
 
 5. `/home/umbrel/cryptalk/.env`의 운영 secret과 origin 설정을 확인합니다. secret은
    GitHub Actions 로그나 저장소에 복사하지 않습니다.
-6. Runner를 처음 연결하는 경우 이 서버 checkout에 `deploy-backend.sh`가 있도록
-   `develop`을 한 번 수동으로 pull합니다.
-7. 이후 백엔드 관련 변경을 `develop`에 push하면 자동 배포됩니다. GitHub Actions
-   화면의 **Run workflow**로 수동 재배포할 수도 있습니다.
+6. 서버 checkout은 변경 사항 없이 깨끗한 상태로 유지합니다. `.env`와 DB 데이터는
+   유지되며 배포 스크립트는 Actions checkout에서 가져옵니다.
+7. 이후 백엔드 관련 변경을 `main`에 push하면 자동 배포됩니다. GitHub Actions
+   화면의 **Run workflow**에서 `main`을 선택하여 수동 재배포할 수도 있습니다.
 
 Runner는 저장소의 workflow 코드를 서버에서 실행할 권한을 갖습니다. 이 workflow는
-pull request가 아닌 보호된 `develop` 브랜치의 push에만 자동 실행되도록 유지하세요.
+pull request가 아닌 보호된 `main` 브랜치의 push에만 자동 실행되도록 유지하세요.
 
 ## GitHub에서 내려받아 재배포
 
