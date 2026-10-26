@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 APP_DIRECTORY="${CRYPTALK_APP_DIRECTORY:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
-DEPLOY_BRANCH="${CRYPTALK_BRANCH:-develop}"
+DEPLOY_BRANCH="${CRYPTALK_BRANCH:-main}"
 EXPECTED_COMMIT="${CRYPTALK_EXPECTED_COMMIT:-}"
 HEALTH_TIMEOUT_SECONDS="${CRYPTALK_HEALTH_TIMEOUT_SECONDS:-180}"
 
@@ -33,8 +33,12 @@ fi
 
 echo "Fetching $DEPLOY_BRANCH in $APP_DIRECTORY"
 previous_commit="$(git -C "$APP_DIRECTORY" rev-parse HEAD)"
-git -C "$APP_DIRECTORY" fetch origin "$DEPLOY_BRANCH"
-git -C "$APP_DIRECTORY" switch "$DEPLOY_BRANCH"
+git -C "$APP_DIRECTORY" fetch origin "refs/heads/$DEPLOY_BRANCH:refs/remotes/origin/$DEPLOY_BRANCH"
+if git -C "$APP_DIRECTORY" show-ref --verify --quiet "refs/heads/$DEPLOY_BRANCH"; then
+  git -C "$APP_DIRECTORY" switch "$DEPLOY_BRANCH"
+else
+  git -C "$APP_DIRECTORY" switch --no-track -c "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
+fi
 
 target_commit="${EXPECTED_COMMIT:-$(git -C "$APP_DIRECTORY" rev-parse "origin/$DEPLOY_BRANCH")}"
 if ! git -C "$APP_DIRECTORY" merge-base --is-ancestor "$target_commit" "origin/$DEPLOY_BRANCH"; then
