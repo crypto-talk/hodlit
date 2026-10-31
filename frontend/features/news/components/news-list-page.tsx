@@ -23,7 +23,7 @@ type Props = {
 /**
  * 방 뉴스 페이지 `/subhodl/[symbol]/news` — 방 게시판 뉴스 칸의 "더보기".
  *
- * 칸에서는 제목만 보이고, 여기서 요약 · 출처까지 본다. 20개씩 번호 페이지, 쪽은 주소(`?page=`)에 싣는다
+ * 칸에서는 제목만 보이고, 여기서 요약 · 출처까지 본다. 10개씩 번호 페이지, 쪽은 주소(`?page=`)에 싣는다
  * (구조 규칙 8). 닫힌 방(HODL-77)이면 뉴스도 403 `ROOM_CLOSED` 라 닫힌 방 안내를 보인다.
  */
 export default function NewsListPage({ symbol, page }: Props) {

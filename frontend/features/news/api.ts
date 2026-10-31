@@ -17,8 +17,8 @@ type NewsPageResponse = components["schemas"]["PageResponseNewsResponse"];
 /** 방 게시판 뉴스 칸에 보여 주는 수. 제목 한 줄씩, 투표 칸과 높이를 맞춘다. 나머지는 뉴스 페이지에서. */
 export const ROOM_NEWS_PREVIEW_SIZE = 3;
 
-/** 뉴스 페이지 한 쪽의 수. 백엔드 번호 페이지 기본값과 같다. */
-export const NEWS_PAGE_SIZE = 20;
+/** 뉴스 페이지 한 쪽의 수. 한 건이 제목 · 요약 · 출처 세 줄이라 글 목록(20)보다 적게 둔다(10-31 성지). */
+export const NEWS_PAGE_SIZE = 10;
 
 export function roomNewsQueryKey(symbol: string, page: number, size: number) {
   return ["room-news", symbol, page, size] as const;
