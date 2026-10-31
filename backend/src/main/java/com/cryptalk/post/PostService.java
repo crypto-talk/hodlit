@@ -48,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PostService {
+    private final com.cryptalk.badge.BadgeService badges;
     private final RoomAccess rooms;
     private static final Pattern YOUTUBE = Pattern.compile("^(?:https://)?(?:www\\.)?(?:youtube\\.com/(?:shorts/|watch\\?v=)|youtu\\.be/)([A-Za-z0-9_-]{11})(?:[?&].*)?$");
     private static final Comparator<FeedEvent> FEED_ORDER = (left, right) -> {
@@ -80,8 +81,9 @@ public class PostService {
                        AssetService assets, PostMediaRepository postMedia,
                        PostBookmarkRepository bookmarks, PostRepostRepository reposts,
                        MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows,
-                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc, RoomAccess rooms) {
+                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc, RoomAccess rooms, com.cryptalk.badge.BadgeService badges) {
         this.rooms = rooms;
+        this.badges = badges;
         this.posts = posts; this.likes = likes; this.comments = comments; this.members = members;
         this.coins = coins; this.assets = assets; this.postMedia = postMedia;
         this.bookmarks = bookmarks; this.reposts = reposts; this.mediaFiles = mediaFiles;
@@ -126,7 +128,7 @@ public class PostService {
         return feedPage(memberId, cursor, size, follows.findFollowingMemberIds(memberId));
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse get(Long postId, Long viewerId) {
         Post post = post(postId);
         PostResponse result = response(post, viewerId);
@@ -139,7 +141,7 @@ public class PostService {
     @Transactional(readOnly = true)
     public PostResponse pageItem(Long postId, Long viewerId) { return response(post(postId), viewerId); }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse create(Long memberId, CreatePostRequest request) {
         Member member = member(memberId);
         Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(request.coinSymbol())
@@ -151,18 +153,22 @@ public class PostService {
         BigDecimal value = verified && snapshot.getExchangeCount() == 0 && "READY".equals(snapshot.getSyncStatus())
             ? snapshot.getValueKrw() : null;
         YoutubeData youtube = youtube(request.youtubeUrl());
-        PriceQuote quote = marketPrices.currentPrice(coin, request.assetPriceCurrency());
+        PriceQuote quote = coin.getMarketPriceId() == null || coin.getMarketPriceId().isBlank()
+            ? null : marketPrices.currentPrice(coin, request.assetPriceCurrency());
         Post saved = posts.save(new Post(member, coin, request.title().trim(), request.content().trim(), value, verified,
             clean(request.tradingViewSymbol()), clean(request.tradingViewInterval()), clean(request.tradingViewAnalysis()),
-            quote.price(), quote.currency(), quote.capturedAt(), quote.source(),
+            quote == null ? null : quote.price(), quote == null ? null : quote.currency(),
+            quote == null ? null : quote.capturedAt(), quote == null ? null : quote.source(),
             youtube == null ? null : youtube.url(), youtube == null ? null : youtube.videoId(),
             youtube == null ? null : youtube.thumbnailUrl()));
-        holderSnapshots.save(new PostHolderSnapshot(saved, snapshot));
+        var holderRecord = new PostHolderSnapshot(saved, snapshot);
+        holderRecord.applyBadge(badges.capture(coin, snapshot));
+        holderSnapshots.save(holderRecord);
         saveMedia(memberId, saved, request.media(), Set.of());
         return response(saved, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse update(Long memberId, Long postId, UpdatePostRequest request) {
         Post post = post(postId);
         own(memberId, post.getMember().getId());
@@ -174,7 +180,7 @@ public class PostService {
         return response(post, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void delete(Long memberId, Long postId) {
         Post post = post(postId);
         own(memberId, post.getMember().getId());
@@ -184,27 +190,27 @@ public class PostService {
         posts.delete(post);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse like(Long memberId, Long postId) {
         Post post = post(postId); PostLikeId id = new PostLikeId(postId, memberId);
         if (!likes.existsById(id)) likes.save(new PostLike(post, member(memberId)));
         return response(post, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse unlike(Long memberId, Long postId) {
         post(postId);
         likes.deleteById(new PostLikeId(postId, memberId)); return response(post(postId), memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse bookmark(Long memberId, Long postId) {
         Post post = post(postId); PostMemberId id = new PostMemberId(postId, memberId);
         if (!bookmarks.existsById(id)) bookmarks.save(new PostBookmark(post, member(memberId)));
         return response(post, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse unbookmark(Long memberId, Long postId) {
         post(postId);
         bookmarks.deleteById(new PostMemberId(postId, memberId)); return response(post(postId), memberId);
@@ -217,14 +223,14 @@ public class PostService {
             .map(item -> response(item.getPost(), memberId)).toList();
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse repost(Long memberId, Long postId) {
         Post post = post(postId); PostMemberId id = new PostMemberId(postId, memberId);
         if (!reposts.existsById(id)) reposts.save(new PostRepost(post, member(memberId)));
         return response(post, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse unrepost(Long memberId, Long postId) {
         post(postId);
         reposts.deleteById(new PostMemberId(postId, memberId)); return response(post(postId), memberId);
@@ -365,7 +371,7 @@ public class PostService {
         HolderSnapshotResponse holderSnapshot = holderSnapshots.findById(post.getId()).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getWalletCount(),
-                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus())).orElse(null);
+                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null);
         return new PostResponse(post.getId(), post.getCoin().getSymbol(), post.getTitle(), post.getContent(), author(member),
             visible && post.isAuthorVerified(), value, assetDisplay(member.getAssetVisibility(), value),
             likes.countByPostId(post.getId()), comments.countByPostId(post.getId()), liked,

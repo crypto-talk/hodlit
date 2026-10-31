@@ -1,3 +1,4 @@
+import type { AnimalBadgeData } from "@/components/holder/animal-badge";
 import type { Tier } from "@/lib/holder-snapshot/types";
 
 /**
@@ -13,12 +14,15 @@ import type { Tier } from "@/lib/holder-snapshot/types";
  *
  * ⚠️ 수량 구간이 없다. 글은 주장이라 얼마를 걸었는지가 필요하지만, 댓글은 반응이라
  * 오래 봤는지면 충분하다. 댓글마다 금액이 붙으면 금액 순으로 권위가 생긴다.
- * 서버 응답에도 `quantityBand` 가 없다.
+ * 기존 quantityBand 필드는 없으며, 새 badge에는 작성 시점 설정의 공개 구간이 포함된다.
  */
 export type CommentHolderView = {
   /** 이 코인이 보유 인증을 지원하는지. false 면 배지 · 기간을 그리지 않는다. */
   verifiable: boolean;
   tier: Tier;
+  badge?: AnimalBadgeData | null;
+  partial?: boolean;
+  holderStatus?: string | null;
   holding: string;
 };
 

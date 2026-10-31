@@ -12,6 +12,7 @@ import { adminRoomsHref, type AdminRoomFilter } from "@/lib/routes";
 import { loadAdminRooms, setRoomStatus } from "../api";
 import type { RoomOperationStatus } from "@/lib/room-status";
 import type { AdminRoom } from "../types";
+import RoomCatalogTools from "./room-catalog-tools";
 
 type Props = {
   q: string;
@@ -43,6 +44,7 @@ export default function RoomManager({ q, status, page }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(q);
+  const [selected, setSelected] = useState<AdminRoom | null>(null);
   const [closing, setClosing] = useState<AdminRoom | null>(null);
   const cancelClose = useCallback(() => setClosing(null), []);
 
@@ -156,6 +158,7 @@ export default function RoomManager({ q, status, page }: Props) {
                 room={room}
                 pending={pendingSymbol === room.symbol}
                 disabled={change.isPending}
+                onSettings={() => setSelected(room)}
                 onOpen={() => change.mutate({ room, next: "OPEN" })}
                 onClose={() => setClosing(room)}
               />
@@ -169,6 +172,7 @@ export default function RoomManager({ q, status, page }: Props) {
         </>
       )}
 
+      <RoomCatalogTools selected={selected} close={() => setSelected(null)} />
       {closing ? (
         <CloseConfirm
           room={closing}
@@ -187,12 +191,14 @@ function RoomRow({
   disabled,
   onOpen,
   onClose,
+  onSettings,
 }: {
   room: AdminRoom;
   pending: boolean;
   disabled: boolean;
   onOpen: () => void;
   onClose: () => void;
+  onSettings: () => void;
 }) {
   const open = room.operationStatus === "OPEN";
 
@@ -218,6 +224,9 @@ function RoomRow({
         {open ? "열림" : "닫힘"}
       </span>
 
+      <Button type="button" onClick={onSettings} disabled={disabled}>
+        설정
+      </Button>
       {open ? (
         <Button type="button" className="w-20 flex-none" onClick={onClose} disabled={disabled}>
           {pending ? "닫는 중…" : "닫기"}

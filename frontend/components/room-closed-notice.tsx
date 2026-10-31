@@ -22,7 +22,7 @@ export default function RoomClosedNotice({ symbol, subject, openRooms = [] }: Pr
   return (
     <div className="rounded-lg border border-border-subtle bg-surface p-6 text-center">
       <p className="text-body font-semibold">
-        {subject ? `${room}이 닫혀 있어 ${subject}` : `${room}은 지금 닫혀 있습니다.`}
+        {subject ? `${room}이 공사 중이라 ${subject}` : `${room}은 지금 공사 중입니다.`}
       </p>
       <p className="mt-1 text-sm text-text-muted">
         글은 그대로 보존되어 있고, 방이 다시 열리면 볼 수 있습니다.

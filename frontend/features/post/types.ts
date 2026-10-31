@@ -1,3 +1,4 @@
+import type { AnimalBadgeData } from "@/components/holder/animal-badge";
 import type { Tier } from "@/lib/holder-snapshot/types";
 
 /**
@@ -61,6 +62,9 @@ export type HolderView = {
   /** 이 코인이 보유 인증을 지원하는지. false 면 배지·기간·구간을 그리지 않는다. */
   verifiable: boolean;
   tier: Tier;
+  badge?: AnimalBadgeData | null;
+  partial?: boolean;
+  holderStatus?: string | null;
   /** 서버가 완성한 구간. 미인증이면 null. */
   amount: string | null;
   holding: string;

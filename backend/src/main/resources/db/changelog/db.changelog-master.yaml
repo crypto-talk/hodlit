@@ -41,3 +41,15 @@ databaseChangeLog:
       file: db/changelog/015-public-profile-indexes.sql
   - include:
       file: db/changelog/016-member-role.sql
+  - include:
+      file: db/changelog/017-banners.sql
+  - include:
+      file: db/changelog/018-draw-events.sql
+  - include:
+      file: db/changelog/019-badge-settings.sql
+  - include:
+      file: db/changelog/020-moderation.sql
+  - include:
+      file: db/changelog/021-room-categories.sql
+  - include:
+      file: db/changelog/022-profile-asset-preferences.sql

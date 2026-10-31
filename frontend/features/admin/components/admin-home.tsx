@@ -1,4 +1,4 @@
-import { DoorOpen, Megaphone, Vote } from "lucide-react";
+import { DoorOpen, Megaphone, Vote, FileText, Users, History } from "lucide-react";
 import Link from "next/link";
 import { adminRoomsHref } from "@/lib/routes";
 
@@ -19,10 +19,23 @@ type Menu = {
 const MENUS: Menu[] = [
   {
     label: "방 관리",
-    description: "방을 열고 닫습니다",
+    description: "방 · 카테고리 · 등급 설정",
     icon: DoorOpen,
     href: adminRoomsHref(),
   },
+  {
+    label: "게시글 관리",
+    description: "글 조회 · 숨김 · 복구",
+    icon: FileText,
+    href: "/admin/posts",
+  },
+  {
+    label: "유저 관리",
+    description: "계정 조회 · 정지 · 해제",
+    icon: Users,
+    href: "/admin/members",
+  },
+  { label: "관리 이력", description: "서비스 관리 조치 기록", icon: History, href: "/admin/logs" },
   { label: "뉴스 관리", description: "방 뉴스 등록 · 수정", icon: Megaphone },
   { label: "투표 관리", description: "방 일일 투표 준비", icon: Vote },
 ];

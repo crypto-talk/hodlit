@@ -26,7 +26,7 @@ public class SearchService {
                 + CASE WHEN LOWER(p.content) LIKE :pattern ESCAPE '!' THEN 1 ELSE 0 END
                 + CASE WHEN LOWER(m.nickname) LIKE :pattern ESCAPE '!' THEN 2 ELSE 0 END) AS relevance
         FROM posts p JOIN members m ON m.id=p.member_id JOIN coins c ON c.id=p.coin_id
-        WHERE c.active=TRUE AND c.operation_status='OPEN' AND (:coinId IS NULL OR c.id=:coinId) AND (LOWER(p.title) LIKE :pattern ESCAPE '!'
+        WHERE p.hidden=FALSE AND c.active=TRUE AND c.operation_status='OPEN' AND (:coinId IS NULL OR c.id=:coinId) AND (LOWER(p.title) LIKE :pattern ESCAPE '!'
               OR LOWER(p.content) LIKE :pattern ESCAPE '!' OR LOWER(m.nickname) LIKE :pattern ESCAPE '!')
         UNION ALL
         SELECT 'COMMENT', cm.id, p.title, cm.content, m.nickname, c.symbol, p.id, cm.created_at,
@@ -34,7 +34,7 @@ public class SearchService {
                 + CASE WHEN LOWER(m.nickname) LIKE :pattern ESCAPE '!' THEN 2 ELSE 0 END)
         FROM comments cm JOIN posts p ON p.id=cm.post_id JOIN members m ON m.id=cm.member_id
              JOIN coins c ON c.id=p.coin_id
-        WHERE c.active=TRUE AND c.operation_status='OPEN' AND (:coinId IS NULL OR c.id=:coinId) AND (LOWER(cm.content) LIKE :pattern ESCAPE '!'
+        WHERE p.hidden=FALSE AND c.active=TRUE AND c.operation_status='OPEN' AND (:coinId IS NULL OR c.id=:coinId) AND (LOWER(cm.content) LIKE :pattern ESCAPE '!'
               OR LOWER(m.nickname) LIKE :pattern ESCAPE '!')
         UNION ALL
         SELECT 'ROOM', c.id, c.name, '', NULL, c.symbol, NULL, NULL, 3
@@ -61,15 +61,22 @@ public class SearchService {
 
     @Transactional(readOnly = true)
     public PageResponse<SearchItem> search(String query, int page, int size, Long coinId) {
+        return search(query, page, size, coinId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<SearchItem> search(String query, int page, int size, Long coinId, String type) {
         String q = validate(query, page, size);
+        String itemType = parseType(type, coinId);
         String escaped = q.toLowerCase(Locale.ROOT).replace("!", "!!").replace("%", "!%").replace("_", "!_");
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("pattern", "%" + escaped + "%");
         parameters.put("size", size);
         parameters.put("offset", (long) page * size);
         parameters.put("coinId", coinId);
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + ROWS + ") matched", parameters, Long.class);
-        var items = jdbc.query("SELECT * FROM (" + ROWS + ") matched ORDER BY relevance DESC, created_at DESC, item_type ASC, id DESC LIMIT :size OFFSET :offset",
+        parameters.put("type", itemType);
+        long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + ROWS + ") matched WHERE (:type IS NULL OR item_type=:type)", parameters, Long.class);
+        var items = jdbc.query("SELECT * FROM (" + ROWS + ") matched WHERE (:type IS NULL OR item_type=:type) ORDER BY relevance DESC, created_at DESC, item_type ASC, id DESC LIMIT :size OFFSET :offset",
             parameters, (rs, row) -> {
                 Timestamp createdAt = rs.getTimestamp("created_at");
                 Number postId = (Number) rs.getObject("post_id");
@@ -80,6 +87,33 @@ public class SearchService {
         return new PageResponse<>(items, page, size, total, (int) ((total + size - 1) / size),
             ((long) page + 1) * size < total, page > 0);
     }
+
+    @Transactional(readOnly = true)
+    public GroupedResults grouped(String query, int previewSize, Long coinId) {
+        validate(query, 0, previewSize);
+        return new GroupedResults(search(query, 0, previewSize, coinId, "posts"),
+            search(query, 0, previewSize, coinId, "comments"),
+            coinId == null ? search(query, 0, previewSize, null, "rooms") : null,
+            coinId == null ? search(query, 0, previewSize, null, "users") : null);
+    }
+
+    private String parseType(String type, Long coinId) {
+        if (type == null) return null;
+        String parsed = switch (type) {
+            case "posts" -> "POST";
+            case "comments" -> "COMMENT";
+            case "rooms" -> "ROOM";
+            case "users" -> "USER";
+            default -> throw new ApiException(HttpStatus.BAD_REQUEST, "type은 posts/comments/rooms/users 중 하나여야 합니다.");
+        };
+        if (coinId != null && !parsed.equals("POST") && !parsed.equals("COMMENT"))
+            throw new ApiException(HttpStatus.BAD_REQUEST, "방 내 검색은 posts/comments만 지원합니다.");
+        return parsed;
+    }
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record GroupedResults(PageResponse<SearchItem> posts, PageResponse<SearchItem> comments,
+            PageResponse<SearchItem> rooms, PageResponse<SearchItem> users) {}
 
     private String snippet(String text) {
         if (text == null) return "";

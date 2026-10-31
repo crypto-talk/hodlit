@@ -17,7 +17,12 @@ public class SearchController {
     @Operation(summary="전체 검색", description="제목/본문/작성자 포함 검색, 관련도순. page 0부터, size 기본 20.")
     @GetMapping
     com.cryptalk.common.PageResponse<SearchService.SearchItem> search(@RequestParam String q, @RequestParam(defaultValue="0") int page,
-                                   @RequestParam(defaultValue="20") int size) {
-        return search.search(q, page, size);
+                                   @RequestParam(defaultValue="20") int size, @RequestParam(required=false) String type) {
+        return search.search(q, page, size, null, type);
+    }
+    @GetMapping("/groups")
+    @Operation(summary = "분류별 검색 미리보기", description = "글·댓글·방·사용자별 독립 목록과 건수. previewSize 기본 5, 최대 100.")
+    SearchService.GroupedResults groups(@RequestParam String q, @RequestParam(defaultValue = "5") int previewSize) {
+        return search.grouped(q, previewSize, null);
     }
 }
