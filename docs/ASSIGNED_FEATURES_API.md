@@ -1,6 +1,6 @@
 # Assigned feature implementation
 
-This change extends the current main branch. Existing public profile APIs (HODL-75) and room operation APIs (HODL-77) are reused rather than duplicated. Backend changes remain on a feature branch; merging and deployment are separate actions.
+This change extends the current main branch. Existing public profile APIs (HODL-75) and room operation APIs (HODL-77) are reused rather than duplicated. The administrator frame/home and room-status screen merged into main during implementation are also retained and extended; the newer closed-room, draft, news and poll UI changes are preserved. Backend changes remain on a feature branch; merging and deployment are separate actions.
 
 ## Issue map
 
@@ -98,7 +98,7 @@ SearchItem preserves type/id/label/excerpt/authorNickname/roomSymbol/postId/crea
 - `GET /api/v1/admin/communities/{symbol}/badge-config`: symbol, version, ordered tiers.
 - `PUT` same path: `{expectedVersion,tiers:[{name,minimumQuantity,icon,color,effect},...]}`.
 
-Management UI: `/admin?tab=rooms`, select a room's 등급 설정. Tiers can be added, edited, reordered, removed and previewed in detail/list/comment sizes. Minimum values are sent as decimal strings, avoiding JavaScript floating-point conversion.
+Management UI: `/admin/rooms`, select a room's 설정. Tiers can be added, edited, reordered, removed and previewed in detail/list/comment sizes. Minimum values are sent as decimal strings, avoiding JavaScript floating-point conversion.
 
 The first minimum is zero, only positive verified holdings receive a badge. Subsequent minima strictly increase. Each upper bound is the next minimum (exclusive), last is unbounded; no explicit overlapping/gapped upper bounds are accepted. Decimal precision is 18 integer + 18 fractional digits, max 20 tiers. Writes lock the room and compare expectedVersion, returning 409 for stale settings. Old versions are retained.
 
@@ -110,7 +110,7 @@ Current asset/profile band display uses the current configuration where availabl
 
 ## Administrator moderation (HODL-85)
 
-Management UI: `/admin?tab=posts|members|logs`. `GET /api/v1/admin/access` checks current DB role; there is no new client-side role source of truth.
+Management UI: `/admin/posts`, `/admin/members`, `/admin/logs`. `GET /api/v1/admin/access` checks current DB role; there is no new client-side role source of truth.
 
 - `GET /api/v1/admin/posts` or `/members`: q, optional state=true/false, page,size.
 - `GET .../{id}`: administrator detail, including hidden post body.

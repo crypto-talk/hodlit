@@ -4,6 +4,7 @@ import { config } from "@/lib/config";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
 import { ApiError, http } from "@/lib/http";
 import { hasPostId, toPostSummary, type PostSummary } from "@/lib/post-summary";
+import { isOpenRoom } from "@/lib/room-status";
 import type {
   Draft,
   DraftInput,
@@ -28,7 +29,7 @@ import type {
  */
 
 type Schemas = components["schemas"];
-type CoinResponse = Schemas["CoinResponse"] & { operationStatus?: string };
+type CoinResponse = Schemas["CoinResponse"];
 type PostResponse = Schemas["PostResponse"];
 type CreatePostRequest = Schemas["CreatePostRequest"];
 type UpdatePostRequest = Schemas["UpdatePostRequest"];
@@ -43,18 +44,19 @@ const MEDIA_PREFIX = "/api/v1/media/";
  *
  * 사이드바의 방 목록(`features/room`)은 10개로 자르고 시세까지 붙인다. 여기는
  * 고를 수 있는 방이 전부 필요하고 시세는 필요 없어서 따로 부른다.
+ *
+ * 닫힌 방(HODL-77)도 `open: false` 로 남긴다. 고르는 칸에는 열린 방만 보이고, 닫힌 방은
+ * 안내 문구와 임시저장 목록의 "닫힌 방" 표시에 쓴다.
  */
 export async function loadWriteRooms(): Promise<WriteRoom[]> {
   const coins = await http<CoinResponse[]>("/api/v1/coins");
 
-  return coins
-    .filter(hasSymbol)
-    .filter((coin) => coin.operationStatus === "OPEN")
-    .map((coin) => ({
-      symbol: coin.symbol,
-      verifiable: isVerifiable(coin.verificationAvailability),
-      name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
-    }));
+  return coins.filter(hasSymbol).map((coin) => ({
+    symbol: coin.symbol,
+    verifiable: isVerifiable(coin.verificationAvailability),
+    name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
+    open: isOpenRoom(coin),
+  }));
 }
 
 /**
@@ -169,9 +171,7 @@ export async function loadPost(postId: number): Promise<PostDetail> {
           // 서버가 완성해서 주는 문자열이다. 여기서 다시 계산하지 않는다.
           amount: snapshot.quantityBand ?? null,
           holding: holdingPeriodLabel(snapshot.holdingMonths),
-          badge: (
-            snapshot as { badge?: import("@/components/holder/animal-badge").AnimalBadgeData }
-          ).badge,
+          badge: snapshot.badge,
           partial: snapshot.syncStatus === "PARTIAL",
           holderStatus: snapshot.holderStatus,
         }

@@ -22,11 +22,13 @@ describe("방 운영 상태에 따른 글쓰기 선택", () => {
         verificationAvailability: "SUPPORTED",
       },
     ]);
-    expect((await loadWriteRooms()).map((room) => room.symbol)).toEqual(["BTC"]);
+    expect((await loadWriteRooms()).filter((room) => room.open).map((room) => room.symbol)).toEqual(
+      ["BTC"],
+    );
   });
 
-  it("상태가 확인되지 않은 방은 쓰기 가능한 방으로 추정하지 않는다", async () => {
+  it("운영 상태가 누락된 구형 응답은 기존 호환 정책을 따른다", async () => {
     vi.mocked(http).mockResolvedValue([{ symbol: "ETH", name: "Ethereum" }]);
-    expect(await loadWriteRooms()).toEqual([]);
+    expect((await loadWriteRooms())[0].open).toBe(true);
   });
 });

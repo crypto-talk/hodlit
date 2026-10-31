@@ -154,6 +154,11 @@ test("server-renders the Hodlit application", async (t) => {
   await t.test("관리 화면은 서버에서 사용자 데이터를 미리 노출하지 않는다", async () => {
     const response = await fetch(`${origin}/admin`, { headers: { accept: "text/html" } });
     assert.equal(response.status, 200);
-    assert.match(await response.text(), /로그인 상태 확인 중/);
+    assert.match(await response.text(), /불러오는 중/);
+    for (const path of ["/admin/rooms", "/admin/posts", "/admin/members", "/admin/logs"]) {
+      const section = await fetch(`${origin}${path}`, { headers: { accept: "text/html" } });
+      assert.equal(section.status, 200);
+      assert.match(await section.text(), /불러오는 중/);
+    }
   });
 });

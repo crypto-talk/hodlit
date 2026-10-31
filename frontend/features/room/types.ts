@@ -9,7 +9,6 @@ import type { PostSummary } from "@/lib/post-summary";
 
 /** 방 머리. `GET /communities/{symbol}` 에서 온다. */
 export type RoomInfo = {
-  operationStatus: "OPEN" | "CLOSE";
   symbol: string;
   /** 한글명. 매핑표에 없으면 백엔드 영문명. */
   name: string;
@@ -20,6 +19,8 @@ export type RoomInfo = {
   verifiable: boolean;
   /** 방 강조색. 없으면 null 이고 화면은 브랜드색을 쓴다. */
   accentColor: string | null;
+  /** 관리자가 닫은 방(HODL-77). 글 · 시세 · 투표 · 뉴스 대신 안내만 보인다. */
+  closed: boolean;
 };
 
 /** 방 글 목록 한 쪽. `GET /communities/{symbol}/posts/page` 에서 온다. */

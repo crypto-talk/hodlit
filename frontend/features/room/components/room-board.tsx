@@ -2,12 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import RoomClosed from "@/components/room-closed";
+import RoomClosedNotice from "@/components/room-closed-notice";
 import { Button } from "@/components/ui/button";
 import { UNSUPPORTED_LABEL } from "@/lib/holder-snapshot/label";
 import { ApiError } from "@/lib/http";
 import { writeHref } from "@/lib/routes";
-import { loadRoom } from "../api";
+import { loadRoom, loadRooms } from "../api";
 import type { RoomInfo } from "../types";
 import RoomChart from "./room-chart";
 import RoomPosts, { type RoomTab } from "./room-posts";
@@ -41,6 +41,9 @@ type Props = {
  * 아직 없는 것
  *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
  *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
+ *
+ * 닫힌 방(HODL-77)이면 시세 · 투표 · 뉴스 · 글을 부르지 않고 안내와 열린 방 링크만 둔다.
+ * 어차피 글 · 투표 · 뉴스는 403 으로 막힌다.
  */
 export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
   const room = useQuery({ queryKey: ["room", symbol], queryFn: () => loadRoom(symbol) });
@@ -74,7 +77,8 @@ export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
   }
 
   const info = room.data;
-  if (info.operationStatus === "CLOSE") return <RoomClosed symbol={symbol} />;
+
+  if (info.closed) return <ClosedRoom symbol={info.symbol} />;
 
   return (
     <div
@@ -101,6 +105,12 @@ export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
       <RoomPosts symbol={info.symbol} tab={tab} page={page} verifiable={info.verifiable} />
     </div>
   );
+}
+
+function ClosedRoom({ symbol }: { symbol: string }) {
+  // 사이드바와 같은 목록(열린 방만). 못 받아도 안내와 홈 링크는 보인다.
+  const openRooms = useQuery({ queryKey: ["open-rooms"], queryFn: loadRooms });
+  return <RoomClosedNotice symbol={symbol} openRooms={openRooms.data} />;
 }
 
 function RoomHeader({ info }: { info: RoomInfo }) {

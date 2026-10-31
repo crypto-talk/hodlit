@@ -1,6 +1,5 @@
 "use client";
 
-import { Check } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -120,7 +119,13 @@ function PollFrame({
   );
 }
 
-/** 참여 전. 하나를 고르고 낸다. */
+/**
+ * 참여 전. 선택지를 가로로 두고, 하나를 누르면 그 자리에서 한 번 더 확인한 뒤 낸다.
+ *
+ * 예전엔 세로 라디오 목록 + "투표하기" 버튼이라 칸이 높았다(10-31 레이아웃 A안으로 줄임).
+ * 누르자마자 내지 않는 이유: 낸 뒤에는 바꿀 수 없어서 잘못 누른 것을 되돌릴 길이 없다.
+ * 선택지가 많으면(최대 10개) 줄을 넘겨 감싼다.
+ */
 function Ballot({
   poll,
   symbol,
@@ -135,9 +140,16 @@ function Ballot({
   const [picked, setPicked] = useState<number | null>(null);
   const requireLogin = useRequireLogin();
   const vote = useVote(symbol, memberId, today);
+  const pickedChoice = poll.choices.find((choice) => choice.id === picked) ?? null;
+
+  const pick = (choiceId: number) => {
+    // 로그인 전이면 고르는 순간 로그인 화면으로. 확인까지 가서 막히면 두 번 누른 셈이다.
+    if (requireLogin()) return;
+    setPicked((current) => (current === choiceId ? null : choiceId));
+  };
 
   const submit = () => {
-    if (picked === null || requireLogin()) return;
+    if (picked === null) return;
     vote.mutate({ pollId: poll.id, choiceId: picked });
   };
 
@@ -145,7 +157,7 @@ function Ballot({
     <div className="mt-2">
       <p className="text-sm font-semibold text-text-primary">{poll.question}</p>
 
-      <div role="radiogroup" aria-label={poll.question} className="mt-3 flex flex-col gap-2">
+      <div role="radiogroup" aria-label={poll.question} className="mt-3 flex flex-wrap gap-2">
         {poll.choices.map((choice) => {
           const on = picked === choice.id;
           return (
@@ -156,36 +168,37 @@ function Ballot({
               aria-checked={on}
               disabled={vote.isPending}
               className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-left text-sm transition-colors disabled:cursor-default",
+                "min-w-20 flex-1 cursor-pointer rounded-sm border px-3 py-2 text-center text-sm transition-colors disabled:cursor-default",
                 on
                   ? "border-brand bg-brand-soft font-semibold text-text-primary"
                   : "border-border-subtle bg-surface text-text-primary hover:border-text-muted",
               )}
-              onClick={() => setPicked(choice.id)}
+              onClick={() => pick(choice.id)}
             >
-              <span
-                aria-hidden
-                className={cn(
-                  "flex size-4 flex-none items-center justify-center rounded-full border",
-                  on ? "border-brand bg-brand text-text-inverse" : "border-border-strong",
-                )}
-              >
-                {on ? <Check className="size-3" strokeWidth={3} /> : null}
-              </span>
               {choice.label}
             </button>
           );
         })}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Button variant="primary" disabled={picked === null || vote.isPending} onClick={submit}>
-          {vote.isPending ? "보내는 중…" : "투표하기"}
-        </Button>
-        <p className="text-xs text-text-muted">
-          참여하면 오늘 결과가 보입니다. 낸 뒤에는 바꿀 수 없습니다.
-        </p>
-      </div>
+      {pickedChoice ? (
+        <div className="mt-3">
+          <p className="text-xs text-text-muted">
+            <b className="font-semibold text-text-primary">{pickedChoice.label}</b>로 참여할까요? 낸
+            뒤에는 바꿀 수 없습니다.
+          </p>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button type="button" onClick={() => setPicked(null)} disabled={vote.isPending}>
+              취소
+            </Button>
+            <Button type="button" variant="primary" onClick={submit} disabled={vote.isPending}>
+              {vote.isPending ? "보내는 중…" : "참여"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-text-muted">참여하면 오늘 결과가 보입니다.</p>
+      )}
     </div>
   );
 }

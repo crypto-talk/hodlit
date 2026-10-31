@@ -40,9 +40,6 @@ export default function Sidebar({ rooms, wallets, onConnectWallet, connecting }:
           >
             <span className="flex-none text-sm font-semibold">{room.symbol}</span>
             <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{room.name}</span>
-            {room.operationStatus === "CLOSE" && (
-              <span className="text-xs text-text-muted">공사 중</span>
-            )}
           </Link>
         ))}
       </div>

@@ -4,6 +4,7 @@ import { isVerifiable } from "@/lib/holder-snapshot/label";
 import { http } from "@/lib/http";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { hasPostId, toPostSummary } from "@/lib/post-summary";
+import { isOpenRoom } from "@/lib/room-status";
 import type { RoomInfo, RoomPostPage } from "./types";
 
 /**
@@ -21,8 +22,8 @@ import type { RoomInfo, RoomPostPage } from "./types";
  */
 
 type Schemas = components["schemas"];
-type CoinResponse = Schemas["CoinResponse"] & { operationStatus?: "OPEN" | "CLOSE" };
-type CommunityResponse = Omit<Schemas["CommunityResponse"], "coin"> & { coin?: CoinResponse };
+type CoinResponse = Schemas["CoinResponse"];
+type CommunityResponse = Schemas["CommunityResponse"];
 type PostPageResponse = Schemas["PageResponsePostResponse"];
 
 const ROOM_LIMIT = 10;
@@ -31,26 +32,28 @@ const ROOM_LIMIT = 10;
 export const ROOM_PAGE_SIZE = 20;
 
 /**
- * 사이드바 '전체 방'.
+ * 사이드바 '전체 방'. 닫힌 방(HODL-77)은 빼고 열린 방만.
  *
  * 등락률은 뺐다(HODL-59). 그래서 시세를 같이 부르지 않는다.
+ * 닫힌 방 안내의 "열린 방" 링크도 이 목록을 쓴다.
  */
 export async function loadRooms(): Promise<SidebarRoom[]> {
   const coins = await http<CoinResponse[]>("/api/v1/coins");
 
   return coins
     .filter(hasSymbol)
+    .filter(isOpenRoom)
     .slice(0, ROOM_LIMIT)
     .map((coin) => ({
       symbol: coin.symbol,
       // 백엔드는 영문명만 준다. 한글명 필드가 생기면 coinNameKo 를 지운다(D-4).
       name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
-      operationStatus: coin.operationStatus,
     }));
 }
 
 /**
  * 방 머리. 없는 방이면 404 이고, 화면은 `ApiError.status` 로 구분한다.
+ * 닫힌 방도 200 으로 오고(`postCount` 는 0), `closed` 로 알린다.
  */
 export async function loadRoom(symbol: string): Promise<RoomInfo> {
   const community = await http<CommunityResponse>(
@@ -62,12 +65,12 @@ export async function loadRoom(symbol: string): Promise<RoomInfo> {
 
   return {
     symbol: resolved,
-    operationStatus: coin?.operationStatus ?? "CLOSE",
     name: coinNameKo(resolved, coin?.name ?? resolved),
     description: community.description ?? "",
     postCount,
     verifiable: isVerifiable(coin?.verificationAvailability),
     accentColor: coin?.accentColor || null,
+    closed: coin ? !isOpenRoom(coin) : false,
   };
 }
 

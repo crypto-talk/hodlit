@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { animalBadgeExplanation } from "@/lib/holder-snapshot/label";
 
 export type AnimalBadgeData = {
   version?: number;
@@ -28,7 +29,7 @@ export default function AnimalBadge({
 }) {
   const [expanded, setExpanded] = useState(false);
   if (!badge?.name) return null;
-  const explanation = `${badge.name} · ${badge.quantityBand ?? ""} · 작성 시점 기준, 정확 수량 비공개`;
+  const explanation = animalBadgeExplanation(badge);
   const color = ["coral", "mint", "blue", "purple", "gold"].includes(badge.color ?? "")
     ? badge.color
     : "blue";

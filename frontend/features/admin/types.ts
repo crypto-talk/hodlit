@@ -7,6 +7,7 @@ export type Page<T> = {
 
 export type AdminRoom = {
   id: number;
+  catalogName?: string;
   symbol: string;
   name: string;
   active: boolean;
@@ -47,3 +48,5 @@ export type ModerationLog = {
   reason: string;
   created_at: string;
 };
+
+export type AdminRoomPage = Page<AdminRoom>;
