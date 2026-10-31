@@ -4,14 +4,17 @@ import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import RoomClosedNotice from "@/components/room-closed-notice";
 import { Button } from "@/components/ui/button";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
 import { editHref, postHref } from "@/lib/routes";
+import { isRoomClosedError } from "@/lib/room-status";
 import { useSession } from "@/lib/session";
 import { deleteDraft, loadEditDraft, loadEditablePost, saveEditDraft, updatePost } from "../api";
 import { useImageUploads } from "../hooks/use-image-uploads";
+import { useWriteRooms } from "../hooks/use-write-rooms";
 import { CONTENT_MAX, TITLE_MAX, draftProblem } from "../limits";
 import type { Draft, EditDraftInput, EditablePost } from "../types";
 import BodyEditor from "./body-editor";
@@ -42,6 +45,9 @@ type Start = "draft" | "post";
  * 임시저장(HODL-56): 글 하나에 하나, `/posts/{id}/draft`. 들어올 때 먼저 찾고, 있으면 그
  * 내용으로 시작한다(원래 글로 되돌릴 수 있다). 고치면 글쓰기와 같은 방식으로 자동저장하고,
  * 수정을 저장하면 지운다. 원래 글은 저장 버튼을 누르기 전까지 바뀌지 않는다.
+ *
+ * 닫힌 방(HODL-77)의 글은 원래 글부터 403 `ROOM_CLOSED` 로 막힌다. 닫힌 방 안내만 보인다.
+ * 수정본 임시저장은 서버에 남아 있어 방이 다시 열리면 이어 고칠 수 있다.
  */
 export default function EditForm({ postId, symbol }: Props) {
   const router = useRouter();
@@ -72,6 +78,10 @@ export default function EditForm({ postId, symbol }: Props) {
 
   if (!restored || loggedOut || post.isPending) {
     return <p className="text-sm text-text-muted">불러오는 중…</p>;
+  }
+
+  if (post.isError && isRoomClosedError(post.error)) {
+    return <ClosedRoom symbol={symbol} />;
   }
 
   if (post.isError) {
@@ -390,6 +400,19 @@ function savedTime(value: string): string {
   return Number.isNaN(at.getTime()) ? "" : SAVED_TIME.format(at);
 }
 
+function ClosedRoom({ symbol }: { symbol: string }) {
+  const rooms = useWriteRooms();
+  return (
+    <div className="w-full max-w-180">
+      <RoomClosedNotice
+        symbol={symbol}
+        subject="글을 수정할 수 없습니다."
+        openRooms={rooms.data?.filter((room) => room.open)}
+      />
+    </div>
+  );
+}
+
 function Notice({
   message,
   onRetry,
@@ -418,6 +441,9 @@ function Notice({
 
 /** 에러 code 목록은 아직 합의 전이라(C-5) 상태 코드로만 나눈다. */
 function saveErrorMessage(error: Error): string {
+  if (isRoomClosedError(error)) {
+    return "방이 닫혀 수정을 저장하지 못했습니다. 방이 다시 열리면 저장할 수 있습니다.";
+  }
   if (error instanceof ApiError) {
     if (error.status === 401) return "로그인이 만료됐습니다. 다시 로그인해 주세요.";
     if (error.status === 403) return "내가 쓴 글만 수정할 수 있습니다.";
@@ -429,6 +455,9 @@ function saveErrorMessage(error: Error): string {
 
 /** 임시저장 실패. 고친 내용은 화면에 그대로 있으니 그 사실을 같이 말한다. */
 function draftErrorMessage(error: Error): string {
+  if (isRoomClosedError(error)) {
+    return "방이 닫혀 임시저장하지 못했습니다. 고친 내용은 화면에 그대로 있습니다.";
+  }
   if (error instanceof ApiError) {
     if (error.status === 401) return "로그인이 만료됐습니다. 다시 로그인해 주세요.";
     // 새 글 임시저장과 합쳐 10개가 찼다. 서버 문구가 그 이유를 말한다.

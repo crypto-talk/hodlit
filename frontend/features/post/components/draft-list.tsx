@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/lib/session";
 import { deleteDraft, loadDrafts } from "../api";
+import { useClosedRoomSymbols } from "../hooks/use-write-rooms";
 import DraftRow from "./draft-row";
 
 type Props = {
@@ -26,6 +27,8 @@ export default function DraftList({ currentId, onDeleted }: Props) {
     queryFn: loadDrafts,
     enabled: !!member,
   });
+
+  const closedRooms = useClosedRoomSymbols();
 
   const remove = useMutation({
     mutationFn: deleteDraft,
@@ -73,6 +76,7 @@ export default function DraftList({ currentId, onDeleted }: Props) {
             <DraftRow
               key={draft.id}
               draft={draft}
+              roomClosed={closedRooms.has(draft.coinSymbol)}
               current={draft.id === currentId}
               deleting={remove.isPending}
               onDelete={remove.mutate}
