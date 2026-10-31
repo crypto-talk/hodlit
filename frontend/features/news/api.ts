@@ -14,18 +14,25 @@ import type { RoomNewsItem, RoomNewsPage } from "./types";
 type NewsResponse = components["schemas"]["NewsResponse"];
 type NewsPageResponse = components["schemas"]["PageResponseNewsResponse"];
 
-/** 방 게시판 뉴스 칸 한 쪽에 보여 주는 수. 칸이 투표 옆 반쪽이라 짧게 둔다. */
-export const ROOM_NEWS_PAGE_SIZE = 3;
+/** 방 게시판 뉴스 칸에 보여 주는 수. 제목 한 줄씩, 투표 칸과 높이를 맞춘다. 나머지는 뉴스 페이지에서. */
+export const ROOM_NEWS_PREVIEW_SIZE = 3;
 
-export function roomNewsQueryKey(symbol: string, page: number) {
-  return ["room-news", symbol, page] as const;
+/** 뉴스 페이지 한 쪽의 수. 한 건이 제목 · 요약 · 출처 세 줄이라 글 목록(20)보다 적게 둔다(10-31 성지). */
+export const NEWS_PAGE_SIZE = 10;
+
+export function roomNewsQueryKey(symbol: string, page: number, size: number) {
+  return ["room-news", symbol, page, size] as const;
 }
 
 /** `page` 는 화면 기준 1부터. API 는 0부터라 하나 뺀다. 최신순은 서버가 정한다. */
-export async function loadRoomNews(symbol: string, page: number): Promise<RoomNewsPage> {
+export async function loadRoomNews(
+  symbol: string,
+  page: number,
+  size: number,
+): Promise<RoomNewsPage> {
   const query = new URLSearchParams({
     page: String(Math.max(0, page - 1)),
-    size: String(ROOM_NEWS_PAGE_SIZE),
+    size: String(size),
   });
   const result = await http<NewsPageResponse>(
     `/api/v1/communities/${encodeURIComponent(symbol)}/news?${query}`,
