@@ -1,12 +1,11 @@
+import type { RoomOperationStatus } from "@/lib/room-status";
+
 /**
  * 관리자 화면 타입.
  *
- * 백엔드 `RoomAdminService.RoomResponse` (docs/ROOM_OPERATION_API.md). 아직 생성 타입
- * (`lib/api-schema.ts`)에 없어서 손으로 적는다. 스키마를 다시 생성하면 그쪽으로 옮긴다.
+ * 응답 원본은 생성 타입(`RoomResponse` · `PageResponseRoomResponse`)이고, 모든 필드가 선택(`?`)이라
+ * 화면이 쓰는 모양으로 `api.ts` 에서 좁힌다.
  */
-
-/** 방 운영 상태. 닫힌 방은 글 · 댓글 · 투표 · 뉴스가 `403 ROOM_CLOSED` 로 막힌다. */
-export type RoomOperationStatus = "OPEN" | "CLOSE";
 
 export type AdminRoom = {
   id: number;

@@ -1,7 +1,9 @@
+import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { http } from "@/lib/http";
+import type { RoomOperationStatus } from "@/lib/room-status";
 import type { AdminRoomFilter } from "@/lib/routes";
-import type { AdminRoom, AdminRoomPage, RoomOperationStatus } from "./types";
+import type { AdminRoom, AdminRoomPage } from "./types";
 
 /**
  * 관리자 API (HODL-77 · HODL-78).
@@ -16,20 +18,10 @@ const ADMIN_ROOMS = "/api/v1/admin/communities";
 /** 한 쪽에 보이는 방 수. 코인이 20개라 지금은 한 쪽에 다 들어간다. */
 export const ADMIN_ROOM_PAGE_SIZE = 20;
 
-type RoomResponse = {
-  id?: number;
-  symbol?: string;
-  name?: string;
-  active?: boolean;
-  operationStatus?: string;
-};
-
-type RoomPageResponse = {
-  items?: RoomResponse[];
-  page?: number;
-  totalPages?: number;
-  totalElements?: number;
-};
+type Schemas = components["schemas"];
+type RoomResponse = Schemas["RoomResponse"];
+type RoomPageResponse = Schemas["PageResponseRoomResponse"];
+type ChangeStatusRequest = Schemas["ChangeStatusRequest"];
 
 const STATUS_PARAM: Record<AdminRoomFilter, RoomOperationStatus> = {
   open: "OPEN",
@@ -77,7 +69,7 @@ export async function setRoomStatus(
 ): Promise<AdminRoom | null> {
   const result = await http<RoomResponse>(`${ADMIN_ROOMS}/${encodeURIComponent(symbol)}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ operationStatus }),
+    body: JSON.stringify({ operationStatus } satisfies ChangeStatusRequest),
   });
   return toRoom(result)[0] ?? null;
 }
@@ -90,7 +82,8 @@ function toRoom(room: RoomResponse): AdminRoom[] {
       symbol: room.symbol,
       name: coinNameKo(room.symbol, room.name ?? room.symbol),
       active: room.active ?? true,
-      operationStatus: room.operationStatus === "OPEN" ? "OPEN" : "CLOSE",
+      // 값이 없으면 열린 것으로 본다. 사용자 화면의 `isOpenRoom()` 과 같은 기준이다.
+      operationStatus: room.operationStatus === "CLOSE" ? "CLOSE" : "OPEN",
     },
   ];
 }

@@ -537,6 +537,26 @@ export interface paths {
         patch: operations["update_4"];
         trace?: never;
     };
+    "/api/v1/admin/communities/{symbol}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 방 운영 상태 변경
+         * @description OPEN은 정상 이용, CLOSE는 ROOM_CLOSED 오류로 콘텐츠 접근·참여를 차단합니다. 데이터는 보존합니다.
+         */
+        patch: operations["changeStatus"];
+        trace?: never;
+    };
     "/api/v1/search": {
         parameters: {
             query?: never;
@@ -637,6 +657,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/members/{memberId}/posts/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 회원이 작성한 공개 글 페이지
+         * @description 최신순. 운영 중인 방의 글만 조회하며 작성 당시 보유 기록을 제공합니다. page=0, size=20 기본, size 최대 100.
+         */
+        get: operations["posts_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/members/{memberId}/following": {
         parameters: {
             query?: never;
@@ -697,6 +737,46 @@ export interface paths {
         };
         /** 팔로워 페이지 조회 */
         get: operations["followers_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{memberId}/comments/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 회원이 작성한 공개 댓글 페이지
+         * @description 최신순. 운영 중인 방의 댓글·답글만 조회합니다. 댓글 보유 기록은 수량 구간을 공개하지 않습니다. page=0, size=20 기본, size 최대 100.
+         */
+        get: operations["comments_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/by-nickname/{nickname}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 닉네임으로 공개 프로필 조회
+         * @description 현재 닉네임으로 조회합니다. 공개 글·댓글 수와 마지막 저장 시점의 공개 자산 구간을 반환합니다.
+         */
+        get: operations["profile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1191,6 +1271,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/communities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 관리자 방 목록 조회
+         * @description 이름·심볼 검색(q), OPEN/CLOSE 필터(operationStatus), 번호 페이지를 지원합니다.
+         */
+        get: operations["list_5"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/wallets/{walletId}": {
         parameters: {
             query?: never;
@@ -1238,6 +1338,7 @@ export interface components {
             nickname?: string;
             avatarColor?: string;
         };
+        /** @description 작성 당시 확인된 잔액 기준의 불변 보유 기록. 일부 조회 실패 시에도 양수 부분합은 HOLDER로 인증하며 PARTIAL을 유지합니다. 수량 구간은 확인된 부분합 기준입니다. */
         HolderSnapshotResponse: {
             verificationAvailability?: string;
             verificationLevel?: string;
@@ -1500,6 +1601,21 @@ export interface components {
         UpdateCommentRequest: {
             content: string;
         };
+        ChangeStatusRequest: {
+            operationStatus: string;
+        };
+        RoomResponse: {
+            /** Format: int64 */
+            id?: number;
+            symbol?: string;
+            name?: string;
+            active?: boolean;
+            /**
+             * @description 방 운영 상태. OPEN: 정상 이용, CLOSE: 콘텐츠 접근·참여 차단
+             * @enum {string}
+             */
+            operationStatus?: "OPEN" | "CLOSE";
+        };
         PageResponseSearchItem: {
             items?: components["schemas"]["SearchItem"][];
             /** Format: int32 */
@@ -1554,6 +1670,44 @@ export interface components {
             hasNext?: boolean;
             hasPrevious?: boolean;
         };
+        PageResponsePublicProfilePost: {
+            items?: components["schemas"]["PublicProfilePost"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
+        /** @description 작성 당시 저장된 글 보유 기록. 회원이 현재 자산 비공개이면 holderSnapshot은 null입니다. */
+        PostSnapshotResponse: {
+            verificationAvailability?: string;
+            verificationLevel?: string;
+            verifiedHolder?: boolean;
+            quantityBand?: string;
+            /** Format: int32 */
+            holdingMonths?: number;
+            /** Format: date-time */
+            capturedAt?: string;
+            syncStatus?: string;
+            holderStatus?: string;
+        };
+        PublicProfilePost: {
+            /** Format: int64 */
+            id?: number;
+            coinSymbol?: string;
+            title?: string;
+            content?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            holderSnapshot?: components["schemas"]["PostSnapshotResponse"];
+        };
         MemberSummary: {
             /** Format: int64 */
             id?: number;
@@ -1572,6 +1726,76 @@ export interface components {
             totalPages?: number;
             hasNext?: boolean;
             hasPrevious?: boolean;
+        };
+        /** @description 작성 당시 저장된 댓글 보유 기록. 기존 댓글 계약에 따라 수량 구간도 제공하지 않습니다. */
+        CommentSnapshotResponse: {
+            verificationAvailability?: string;
+            verificationLevel?: string;
+            verifiedHolder?: boolean;
+            /** Format: int32 */
+            holdingMonths?: number;
+            /** Format: date-time */
+            capturedAt?: string;
+            syncStatus?: string;
+            holderStatus?: string;
+        };
+        PageResponsePublicProfileComment: {
+            items?: components["schemas"]["PublicProfileComment"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
+        PublicProfileComment: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            postId?: number;
+            postTitle?: string;
+            coinSymbol?: string;
+            content?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            parentCommentId?: number;
+            /** Format: int64 */
+            replyToCommentId?: number;
+            replyToNickname?: string;
+            holderSnapshot?: components["schemas"]["CommentSnapshotResponse"];
+        };
+        /** @description 공개 프로필. 자산 비공개 회원은 assets가 빈 배열입니다. 지갑 주소·정확 수량·평가금액은 반환하지 않습니다. */
+        PublicProfile: {
+            /** Format: int64 */
+            id?: number;
+            nickname?: string;
+            avatarColor?: string;
+            /** Format: date-time */
+            joinedAt?: string;
+            /** Format: int64 */
+            postCount?: number;
+            /** Format: int64 */
+            commentCount?: number;
+            assets?: components["schemas"]["PublicProfileAsset"][];
+        };
+        /** @description 마지막 저장 시점의 확인된 보유 자산. 정확 수량 대신 구간, 보유 시작일 대신 개월만 제공합니다. 외부 자산 조회를 실행하지 않습니다. */
+        PublicProfileAsset: {
+            coinSymbol?: string;
+            coinName?: string;
+            quantityBand?: string;
+            /** Format: int32 */
+            holdingMonths?: number;
+            verificationLevel?: string;
+            syncStatus?: string;
+            /** Format: date-time */
+            capturedAt?: string;
         };
         WalletResponse: {
             /** Format: int64 */
@@ -1703,6 +1927,11 @@ export interface components {
             /** Format: int64 */
             chainId?: number;
             assetType?: string;
+            /**
+             * @description 방 운영 상태. OPEN: 정상 이용, CLOSE: 콘텐츠 접근·참여 차단
+             * @enum {string}
+             */
+            operationStatus?: "OPEN" | "CLOSE";
         };
         CommunityResponse: {
             coin?: components["schemas"]["CoinResponse"];
@@ -1767,6 +1996,19 @@ export interface components {
             hasNext?: boolean;
             hasPrevious?: boolean;
         };
+        PageResponseRoomResponse: {
+            items?: components["schemas"]["RoomResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -1796,6 +2038,17 @@ export interface operations {
                     "*/*": components["schemas"]["PostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     update: {
@@ -1822,6 +2075,17 @@ export interface operations {
                     "*/*": components["schemas"]["PostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     delete: {
@@ -1841,6 +2105,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -1862,6 +2137,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DraftResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -1890,6 +2176,17 @@ export interface operations {
                     "*/*": components["schemas"]["DraftResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     update_1: {
@@ -1916,6 +2213,17 @@ export interface operations {
                     "*/*": components["schemas"]["NewsResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     delete_1: {
@@ -1935,6 +2243,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -1956,6 +2275,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DraftResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -1984,6 +2314,17 @@ export interface operations {
                     "*/*": components["schemas"]["DraftResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     delete_2: {
@@ -2003,6 +2344,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -2028,6 +2380,17 @@ export interface operations {
                     "*/*": components["schemas"]["PostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     repost: {
@@ -2048,6 +2411,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PostResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2072,6 +2446,17 @@ export interface operations {
                     "*/*": components["schemas"]["PostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     like: {
@@ -2092,6 +2477,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PostResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2116,6 +2512,17 @@ export interface operations {
                     "*/*": components["schemas"]["PostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     list: {
@@ -2136,6 +2543,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CommentResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2164,6 +2582,17 @@ export interface operations {
                     "*/*": components["schemas"]["CommentResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     bookmark: {
@@ -2186,6 +2615,17 @@ export interface operations {
                     "*/*": components["schemas"]["PostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     unbookmark: {
@@ -2206,6 +2646,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PostResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2234,6 +2685,17 @@ export interface operations {
                     "*/*": components["schemas"]["PollResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     close: {
@@ -2253,6 +2715,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -2276,6 +2749,17 @@ export interface operations {
                     "*/*": components["schemas"]["FollowStats"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     unfollow: {
@@ -2296,6 +2780,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["FollowStats"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2325,6 +2820,17 @@ export interface operations {
                     "*/*": components["schemas"]["StoredMedia"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     connect: {
@@ -2349,6 +2855,17 @@ export interface operations {
                     "*/*": components["schemas"]["MemberResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     nonce: {
@@ -2371,6 +2888,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["NonceResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2399,6 +2927,17 @@ export interface operations {
                     "*/*": components["schemas"]["ConnectionResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     disconnect: {
@@ -2419,6 +2958,17 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     list_1: {
@@ -2437,6 +2987,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DraftResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2461,6 +3022,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DraftResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2489,6 +3061,17 @@ export interface operations {
                     "*/*": components["schemas"]["PollResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     list_2: {
@@ -2512,6 +3095,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PageResponseNewsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2540,6 +3134,17 @@ export interface operations {
                     "*/*": components["schemas"]["NewsResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     signup: {
@@ -2564,6 +3169,17 @@ export interface operations {
                     "*/*": components["schemas"]["AuthResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     refresh: {
@@ -2584,6 +3200,17 @@ export interface operations {
                     "*/*": components["schemas"]["AuthResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     logout: {
@@ -2601,6 +3228,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -2626,6 +3264,17 @@ export interface operations {
                     "*/*": components["schemas"]["AuthResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     me: {
@@ -2644,6 +3293,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2670,6 +3330,17 @@ export interface operations {
                     "*/*": components["schemas"]["MemberResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     visibility: {
@@ -2694,6 +3365,17 @@ export interface operations {
                     "*/*": components["schemas"]["MemberResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     delete_3: {
@@ -2713,6 +3395,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -2740,6 +3433,54 @@ export interface operations {
                     "*/*": components["schemas"]["CommentResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    changeStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RoomResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     search: {
@@ -2762,6 +3503,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PageResponseSearchItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2789,6 +3541,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseCommentResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     posts: {
@@ -2813,6 +3576,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponsePostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_3: {
@@ -2833,6 +3607,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PollResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2857,6 +3642,53 @@ export interface operations {
                     "*/*": components["schemas"]["FollowStats"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    posts_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponsePublicProfilePost"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     following: {
@@ -2877,6 +3709,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["MemberSummary"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2904,6 +3747,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseMemberSummary"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     followers: {
@@ -2924,6 +3778,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["MemberSummary"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2951,6 +3816,86 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseMemberSummary"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    comments_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponsePublicProfileComment"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                nickname: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicProfile"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_4: {
@@ -2973,6 +3918,17 @@ export interface operations {
                     "*/*": string;
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     delete_4: {
@@ -2993,6 +3949,17 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     wallets: {
@@ -3011,6 +3978,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["WalletResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3036,6 +4014,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseWalletResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     walletAssets: {
@@ -3054,6 +4043,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["WalletAssetPortfolioResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3076,6 +4076,17 @@ export interface operations {
                     "*/*": components["schemas"]["ConnectionResponse"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     assets: {
@@ -3096,6 +4107,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AssetResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3121,6 +4143,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseConnectionResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     bookmarks: {
@@ -3139,6 +4172,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PostResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3164,6 +4208,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponsePostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     assets_1: {
@@ -3182,6 +4237,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AssetPortfolioResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3204,6 +4270,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PriceQuote"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3230,6 +4307,17 @@ export interface operations {
                     "*/*": components["schemas"]["PriceQuote"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     feed: {
@@ -3251,6 +4339,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["FeedPageResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3276,6 +4375,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseFeedItemResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     followingFeed: {
@@ -3297,6 +4407,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["FeedPageResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3322,6 +4443,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseFeedItemResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     community: {
@@ -3342,6 +4474,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CommunityResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3366,6 +4509,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StatisticsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3394,6 +4548,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseSearchItem"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     list_4: {
@@ -3416,6 +4581,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PostResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3444,6 +4620,17 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponsePostResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     current_2: {
@@ -3464,6 +4651,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PollResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3488,6 +4686,17 @@ export interface operations {
                     "*/*": components["schemas"]["StatisticsResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     coins: {
@@ -3506,6 +4715,17 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CoinResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3531,6 +4751,53 @@ export interface operations {
                     "*/*": components["schemas"]["PageResponseCoinResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    list_5: {
+        parameters: {
+            query?: {
+                q?: string;
+                operationStatus?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseRoomResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     disconnect_1: {
@@ -3550,6 +4817,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };

@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import TierBadge from "@/components/holder/tier-badge";
+import RoomClosedNotice from "@/components/room-closed-notice";
 import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
+import { isRoomClosedError } from "@/lib/room-status";
 import { roomHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { usePost } from "../hooks/use-post";
+import { useWriteRooms } from "../hooks/use-write-rooms";
 import PostActions from "./post-actions";
 import PostBody from "./post-body";
 import PostOwnerActions from "./post-owner-actions";
@@ -31,6 +34,8 @@ type Props = {
  *
  * 글쓴이에게는 제목 위 줄에 수정 · 삭제(`post-owner-actions.tsx`)가 붙는다.
  *
+ * 닫힌 방(HODL-77)의 글은 403 `ROOM_CLOSED` 로 온다. 없는 글이 아니라 닫힌 방이라고 알린다.
+ *
  * 아직 없는 것: 재게시 (이번 범위에서 뺐다)
  */
 export default function PostDetailView({ postId, symbol }: Props) {
@@ -39,6 +44,10 @@ export default function PostDetailView({ postId, symbol }: Props) {
 
   if (post.isPending) {
     return <p className="text-sm text-text-muted">불러오는 중…</p>;
+  }
+
+  if (post.isError && isRoomClosedError(post.error)) {
+    return <ClosedRoom symbol={symbol} />;
   }
 
   if (post.isError) {
@@ -170,5 +179,16 @@ export default function PostDetailView({ postId, symbol }: Props) {
         />
       </div>
     </article>
+  );
+}
+
+function ClosedRoom({ symbol }: { symbol: string }) {
+  const rooms = useWriteRooms();
+  return (
+    <RoomClosedNotice
+      symbol={symbol}
+      subject="글을 볼 수 없습니다."
+      openRooms={rooms.data?.filter((room) => room.open)}
+    />
   );
 }

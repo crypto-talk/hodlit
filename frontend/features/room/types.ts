@@ -19,6 +19,8 @@ export type RoomInfo = {
   verifiable: boolean;
   /** 방 강조색. 없으면 null 이고 화면은 브랜드색을 쓴다. */
   accentColor: string | null;
+  /** 관리자가 닫은 방(HODL-77). 글 · 시세 · 투표 · 뉴스 대신 안내만 보인다. */
+  closed: boolean;
 };
 
 /** 방 글 목록 한 쪽. `GET /communities/{symbol}/posts/page` 에서 온다. */
