@@ -4,7 +4,7 @@ import { isVerifiable } from "@/lib/holder-snapshot/label";
 import { http } from "@/lib/http";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { hasPostId, toPostSummary } from "@/lib/post-summary";
-import { isOpenRoom, type WithOperationStatus } from "@/lib/room-status";
+import { isOpenRoom } from "@/lib/room-status";
 import type { RoomInfo, RoomPostPage } from "./types";
 
 /**
@@ -22,8 +22,7 @@ import type { RoomInfo, RoomPostPage } from "./types";
  */
 
 type Schemas = components["schemas"];
-// `operationStatus` 는 생성 타입에 아직 없다(HODL-77). 다시 생성하면 덧붙인 부분을 지운다.
-type CoinResponse = Schemas["CoinResponse"] & WithOperationStatus;
+type CoinResponse = Schemas["CoinResponse"];
 type CommunityResponse = Schemas["CommunityResponse"];
 type PostPageResponse = Schemas["PageResponsePostResponse"];
 
@@ -60,8 +59,7 @@ export async function loadRoom(symbol: string): Promise<RoomInfo> {
   const community = await http<CommunityResponse>(
     `/api/v1/communities/${encodeURIComponent(symbol)}`,
   );
-  // 방 머리의 코인에도 `operationStatus` 가 실린다. 생성 타입에 없어 넓혀 읽는다.
-  const coin = community.coin as CoinResponse | undefined;
+  const coin = community.coin;
   const resolved = coin?.symbol ?? symbol;
   const postCount = community.postCount ?? 0;
 

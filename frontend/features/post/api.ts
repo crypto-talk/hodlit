@@ -4,7 +4,7 @@ import { config } from "@/lib/config";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
 import { ApiError, http } from "@/lib/http";
 import { hasPostId, toPostSummary, type PostSummary } from "@/lib/post-summary";
-import { isOpenRoom, type WithOperationStatus } from "@/lib/room-status";
+import { isOpenRoom } from "@/lib/room-status";
 import type {
   Draft,
   DraftInput,
@@ -29,8 +29,7 @@ import type {
  */
 
 type Schemas = components["schemas"];
-// `operationStatus` 는 생성 타입에 아직 없다(HODL-77). 다시 생성하면 덧붙인 부분을 지운다.
-type CoinResponse = Schemas["CoinResponse"] & WithOperationStatus;
+type CoinResponse = Schemas["CoinResponse"];
 type PostResponse = Schemas["PostResponse"];
 type CreatePostRequest = Schemas["CreatePostRequest"];
 type UpdatePostRequest = Schemas["UpdatePostRequest"];

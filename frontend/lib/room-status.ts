@@ -1,3 +1,4 @@
+import type { components } from "@/lib/api-schema";
 import { ApiError } from "@/lib/http";
 
 /**
@@ -10,14 +11,16 @@ import { ApiError } from "@/lib/http";
  * 방 목록 · 글 · 글쓰기가 모두 같은 판단을 해서 lib 에 둔다(features 끼리 참조 불가).
  */
 
-/** 코인 응답의 운영 상태. 생성 타입(`lib/api-schema.ts`)에 아직 없어서 손으로 적는다. */
-export type WithOperationStatus = { operationStatus?: string };
+/** 방 운영 상태. 코인 응답과 관리자 방 응답이 같은 값을 쓴다. */
+export type RoomOperationStatus = NonNullable<
+  components["schemas"]["CoinResponse"]["operationStatus"]
+>;
 
 /**
  * 열린 방인지. 값이 없으면 열린 것으로 본다 — 백엔드가 필드를 빼먹었다고 방이 전부
  * 사라지면 안 된다. 닫힌 방에 들어가면 어차피 서버가 403 으로 막는다.
  */
-export function isOpenRoom(coin: WithOperationStatus): boolean {
+export function isOpenRoom(coin: { operationStatus?: RoomOperationStatus }): boolean {
   return coin.operationStatus !== "CLOSE";
 }
 

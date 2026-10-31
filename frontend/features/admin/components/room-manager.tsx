@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
 import { adminRoomsHref, type AdminRoomFilter } from "@/lib/routes";
 import { loadAdminRooms, setRoomStatus } from "../api";
-import type { AdminRoom, RoomOperationStatus } from "../types";
+import type { RoomOperationStatus } from "@/lib/room-status";
+import type { AdminRoom } from "../types";
 
 type Props = {
   q: string;
