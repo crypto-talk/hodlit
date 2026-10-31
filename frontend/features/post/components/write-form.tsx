@@ -3,13 +3,16 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
 import { draftHref, postHref } from "@/lib/routes";
 import { unsupportedNotice } from "@/lib/holder-snapshot/label";
+import { isRoomClosedError } from "@/lib/room-status";
 import { useSession } from "@/lib/session";
-import { deleteDraft, loadDraft, loadWriteRooms, publishPost, saveDraft } from "../api";
+import { deleteDraft, loadDraft, publishPost, saveDraft } from "../api";
 import { useImageUploads } from "../hooks/use-image-uploads";
+import { WRITE_ROOMS_KEY, useWriteRooms } from "../hooks/use-write-rooms";
 import { CONTENT_MAX, TITLE_MAX, draftProblem } from "../limits";
 import BodyEditor from "./body-editor";
 import CharCounter from "./char-counter";
@@ -37,6 +40,10 @@ const FIELD =
  *   - 차트 블록, 본문 중간에 이미지 끼워 넣기
  *   - "이 글에 붙을 정보" 미리보기 (`/me/assets` + badge 문구)
  *   - 미리보기
+ *
+ * 닫힌 방(HODL-77): 고르는 칸에는 열린 방만 있다. `?symbol=` 이나 불러온 임시저장의 방이 닫혀
+ * 있으면 방만 비우고 다시 고르게 한다(제목 · 본문은 그대로). 쓰는 사이에 방이 닫혀 발행이
+ * `ROOM_CLOSED` 로 막히면 토스트로 알리고 같은 방식으로 방만 비운다.
  *
  * 임시저장(HODL-43)은 서버에 한다. 본문이 처음 채워지면 자동으로 하나 만들고,
  * 그 뒤로는 자동이든 버튼이든 같은 것을 덮어쓴다(`AUTOSAVE_DELAY`). 주소에
@@ -129,12 +136,21 @@ function WriteFields({
   // 되풀이하지 않게. 버튼으로는 계속 시도할 수 있다.
   const [autoBlocked, setAutoBlocked] = useState(false);
 
-  const rooms = useQuery({ queryKey: ["write-rooms"], queryFn: loadWriteRooms });
+  const rooms = useWriteRooms();
+  // 발행이 `ROOM_CLOSED` 로 막힌 방. 목록을 다시 받기 전에도 바로 닫힌 것으로 친다.
+  const [closedNow, setClosedNow] = useState<string[]>([]);
+  const openRooms = rooms.data?.filter((room) => room.open && !closedNow.includes(room.symbol));
 
-  // `?symbol=` 이 목록에 없는 방이면 고르지 않은 것으로 본다. 그대로 두면
-  // select 는 첫 항목을 보여주는데 발행은 다른 값으로 나간다.
-  const unknownSymbol = rooms.data && !rooms.data.some((room) => room.symbol === pickedSymbol);
+  // 고른 방이 열린 방 목록에 없으면 고르지 않은 것으로 본다. 그대로 두면 select 는 첫 항목을
+  // 보여주는데 발행은 다른 값으로 나간다. 없는 방이든 닫힌 방이든 같다.
+  const unknownSymbol = openRooms && !openRooms.some((room) => room.symbol === pickedSymbol);
   const coinSymbol = unknownSymbol ? "" : pickedSymbol;
+  // 그중 닫힌 방이면 왜 비었는지 알린다. 다른 방을 고르면 사라진다.
+  const closedPick =
+    unknownSymbol && pickedSymbol
+      ? closedNow.includes(pickedSymbol) ||
+        rooms.data?.some((room) => room.symbol === pickedSymbol && !room.open)
+      : false;
 
   const publish = useMutation({
     mutationFn: publishPost,
@@ -147,6 +163,12 @@ function WriteFields({
       }
       // 뒤로가기로 빈 글쓰기 화면에 돌아오지 않도록 replace 한다.
       router.replace(postHref(post.coinSymbol, post.id));
+    },
+    onError: (error, sent) => {
+      if (!isRoomClosedError(error)) return;
+      setClosedNow((list) => [...list, sent.coinSymbol]);
+      toast.error(`${sent.coinSymbol} 방이 닫혀 발행하지 못했습니다. 다른 방을 골라 주세요.`);
+      void queryClient.invalidateQueries({ queryKey: WRITE_ROOMS_KEY });
     },
   });
 
@@ -277,7 +299,7 @@ function WriteFields({
           disabled={!rooms.data}
         >
           <option value="">{rooms.isError ? "방 목록을 못 불러왔습니다" : "방을 고르세요"}</option>
-          {rooms.data?.map((room) => (
+          {openRooms?.map((room) => (
             <option key={room.symbol} value={room.symbol}>
               {room.symbol} · {room.name} 방
             </option>
@@ -295,6 +317,13 @@ function WriteFields({
           )}
         </p>
       </div>
+
+      {closedPick ? (
+        <p role="note" className="mt-2 text-sm text-danger">
+          {pickedSymbol} 방이 닫혀 있어 이 방에는 쓸 수 없습니다. 다른 방을 골라 주세요. 쓴 내용은
+          그대로 있습니다.
+        </p>
+      ) : null}
 
       {selectedRoom && !selectedRoom.verifiable ? (
         <p role="note" className="mt-2 text-sm text-danger">
@@ -378,6 +407,8 @@ function saveErrorMessage(error: Error): string {
  * 401 은 http 래퍼가 갱신을 한 번 시도한 뒤에도 실패한 경우다.
  */
 function publishErrorMessage(error: Error): string {
+  // 토스트와 방 선택 칸 아래 안내가 대신 말한다.
+  if (isRoomClosedError(error)) return "";
   if (error instanceof ApiError) {
     if (error.status === 401) return "로그인이 만료됐습니다. 다시 로그인해 주세요.";
     if (error.status === 404) return "이 방을 찾을 수 없습니다. 다른 방을 골라 주세요.";
