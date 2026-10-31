@@ -1,5 +1,6 @@
 import type { components } from "@/lib/api-schema";
 import { ApiError, http } from "@/lib/http";
+import { isOpenRoom } from "@/lib/room-status";
 import type { PollChoice, RoomPoll } from "./types";
 
 /**
@@ -49,10 +50,12 @@ export function openPollsQueryKey(memberId: number | null, day: string) {
  * 방 목록 순서로 돌려준다. 랜딩은 이걸 하루 단위로 섞는다(`daily-order.ts`).
  * "참여자가 많은 순"은 만들 수 없다 — 참여 전에는 서버가 표 수를 주지 않는다.
  * 방 하나가 실패해도 나머지는 보여 준다. 전부 실패했을 때만 실패로 본다.
+ * 닫힌 방(HODL-77)은 부르지 않는다. 투표가 403 으로 막혀 요청만 낭비된다.
  */
 export async function loadOpenPolls(): Promise<RoomPoll[]> {
   const coins = await http<CoinResponse[]>("/api/v1/coins");
   const symbols = coins
+    .filter(isOpenRoom)
     .map((coin) => coin.symbol)
     .filter((symbol): symbol is string => typeof symbol === "string" && symbol !== "");
   if (symbols.length === 0) return [];
