@@ -43,7 +43,7 @@ public class DraftService {
     @Transactional(readOnly = true)
     public DraftResponse get(Long memberId, Long id) { return response(owned(memberId, id)); }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public DraftResponse create(Long memberId, SaveDraftRequest request) {
         Member member = lockMember(memberId);
         if (drafts.countByMemberId(memberId) >= 10)
@@ -53,7 +53,7 @@ public class DraftService {
         return response(draft);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public DraftResponse update(Long memberId, Long id, SaveDraftRequest request) {
         lockMember(memberId);
         Draft draft = owned(memberId, id);
@@ -63,7 +63,7 @@ public class DraftService {
         return response(draft);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void delete(Long memberId, Long id) {
         lockMember(memberId);
         Draft draft = owned(memberId, id);
@@ -78,7 +78,7 @@ public class DraftService {
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "수정 초안이 없습니다.")));
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public DraftResponse saveEditDraft(Long memberId, Long postId, SaveDraftRequest request) {
         Member member = lockMember(memberId);
         requirePostOwner(memberId, postId);

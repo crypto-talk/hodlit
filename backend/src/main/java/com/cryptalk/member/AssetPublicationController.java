@@ -22,5 +22,6 @@ public class AssetPublicationController {
     public AssetPublicationService.Preference save(@AuthenticationPrincipal Jwt jwt, @PathVariable String symbol, @Valid @RequestBody VisibilityRequest body) {
         return service.save(Long.valueOf(jwt.getSubject()), symbol, body.visible());
     }
+    @io.swagger.v3.oas.annotations.media.Schema(name = "UpdateProfileCoinVisibilityRequest")
     public record VisibilityRequest(@NotNull Boolean visible) {}
 }

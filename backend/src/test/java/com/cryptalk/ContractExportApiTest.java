@@ -21,6 +21,8 @@ class ContractExportApiTest {
             .andExpect(jsonPath("$.paths['/api/v1/admin/banners']").exists())
             .andExpect(jsonPath("$.paths['/api/v1/admin/draw-events']").exists())
             .andExpect(jsonPath("$.paths['/api/v1/search/groups']").exists())
+            .andExpect(jsonPath("$.components.schemas.VisibilityRequest.properties.visibility").exists())
+            .andExpect(jsonPath("$.components.schemas.UpdateProfileCoinVisibilityRequest.properties.visible").exists())
             .andReturn().getResponse().getContentAsByteArray();
         Files.createDirectories(Path.of("build"));
         Files.write(Path.of("build/openapi.json"), spec);

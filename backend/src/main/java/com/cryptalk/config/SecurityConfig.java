@@ -38,7 +38,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/room-categories", "/api/v1/search/groups", "/api/v1/banners", "/api/v1/draw-events/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/feed", "/api/v1/feed/page", "/api/v1/posts/*", "/api/v1/media/**", "/api/v1/market/prices", "/api/v1/market/prices/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/members/*/social", "/api/v1/members/*/followers", "/api/v1/members/*/following", "/api/v1/members/*/followers/page", "/api/v1/members/*/following/page").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/members/by-nickname/*", "/api/v1/members/*/posts/page", "/api/v1/members/*/comments/page").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/members/by-nickname", "/api/v1/members/by-nickname/*", "/api/v1/members/*/posts/page", "/api/v1/members/*/comments/page").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/coins", "/api/v1/communities/**", "/api/v1/polls/*", "/api/v1/search").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments", "/api/v1/posts/*/comments/page", "/api/v1/coins/page").permitAll()
                 .anyRequest().authenticated())

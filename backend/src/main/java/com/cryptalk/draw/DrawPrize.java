@@ -18,7 +18,7 @@ public class DrawPrize {
         name = request.name().strip();
         imageUrl = request.imageUrl();
         description = request.description();
-        weight = request.weight();
+        weight = request.weight().longValueExact();
         displayOrder = request.displayOrder();
     }
     public Long getId() { return id; }

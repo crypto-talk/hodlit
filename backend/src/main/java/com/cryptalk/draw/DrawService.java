@@ -46,7 +46,7 @@ public class DrawService {
         return adminResponse(find(id));
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public AdminEvent save(Long actor, Long id, EventRequest request) {
         admins.requireAdmin(actor);
         if (!Instant.now().isBefore(request.startsAt())) throw bad("시작 시각은 현재보다 이후여야 합니다.");
@@ -61,7 +61,7 @@ public class DrawService {
         return adminResponse(event);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public AdminEvent replacePrizes(Long actor, Long id, List<PrizeRequest> requests) {
         admins.requireAdmin(actor);
         DrawEvent event = lock(id);
@@ -71,7 +71,7 @@ public class DrawService {
         for (PrizeRequest request : requests) {
             if (!names.add(request.name().strip())) throw bad("상품명이 중복되었습니다.");
             validateImage(actor, request.imageUrl());
-            try { total = Math.addExact(total, request.weight()); }
+            try { total = Math.addExact(total, request.weight().longValueExact()); }
             catch (ArithmeticException exception) { throw bad("가중치 합계가 너무 큽니다."); }
         }
         prizes.deleteByEventId(id);
@@ -81,7 +81,7 @@ public class DrawService {
         return adminResponse(event);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public AdminEvent status(Long actor, Long id, String status) {
         admins.requireAdmin(actor);
         DrawEvent event = lock(id);
@@ -112,7 +112,7 @@ public class DrawService {
         return new Participation(results.findByEventIdAndMemberId(id, actor).map(r -> result(r, true)).orElse(null));
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public Result draw(Long actor, Long id) {
         requireMember(actor);
         DrawEvent event = lock(id); // Serializes draws and settings across all application instances.
@@ -174,11 +174,12 @@ public class DrawService {
     public record EventRequest(@NotBlank @Size(max = 100) String title, @NotNull @Size(max = 2000) String description,
             @NotNull Instant startsAt, @NotNull Instant endsAt) {}
     public record PrizeRequest(@NotBlank @Size(max = 100) String name, @NotBlank @Size(max = 1000) String imageUrl,
-            @NotNull @Size(max = 1000) String description, @NotNull @Positive Long weight, @NotNull @Min(0) Integer displayOrder) {}
+            @NotNull @Size(max = 1000) String description, @NotNull @DecimalMin("1") @DecimalMax("9223372036854775807") @Digits(integer = 19, fraction = 0) java.math.BigDecimal weight, @NotNull @Min(0) Integer displayOrder) {}
     public record AdminPrize(Long id, String name, String imageUrl, String description, long weight, int displayOrder) {}
     public record PublicPrize(Long id, String name, String imageUrl, String description, int displayOrder) {}
     public record AdminEvent(Long id, String title, String description, Instant startsAt, Instant endsAt, String status, List<AdminPrize> prizes) {}
     public record PublicEvent(Long id, String title, String description, Instant startsAt, Instant endsAt, String status, boolean canParticipate, List<PublicPrize> prizes) {}
+    @io.swagger.v3.oas.annotations.media.Schema(name = "DrawOutcome")
     public record Result(Long id, Long eventId, Long prizeId, String prizeName, String imageUrl, Instant capturedAt, boolean existing) {}
     public record Participation(Result result) {}
 }

@@ -55,9 +55,18 @@ class AssignedFeaturesApiTest {
             .andExpect(jsonPath("$.coin.categoryId").value(category)).andExpect(jsonPath("$.coin.verificationAvailability").value("NOT_SUPPORTED"));
         mvc.perform(delete("/api/v1/admin/room-categories/{id}", category).with(jwt().jwt(t -> t.subject("100000"))))
             .andExpect(status().isConflict());
+        mvc.perform(patch("/api/v1/admin/communities/TEST2/status").with(jwt().jwt(t -> t.subject("100000")))
+            .contentType(MediaType.APPLICATION_JSON).content("{\"operationStatus\":\"OPEN\"}")).andExpect(status().isOk());
+        String published = mvc.perform(post("/api/v1/posts").with(jwt().jwt(t -> t.subject(Long.toString(user))))
+            .contentType(MediaType.APPLICATION_JSON).content("{\"coinSymbol\":\"TEST2\",\"title\":\"retained\",\"content\":\"body\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.priceSnapshot").doesNotExist())
+            .andReturn().getResponse().getContentAsString();
+        long postId = json.readTree(published).get("id").asLong();
         mvc.perform(delete("/api/v1/admin/communities/TEST2").with(jwt().jwt(t -> t.subject("100000"))))
             .andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/communities/TEST2")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/posts/{id}", postId)).andExpect(status().isNotFound());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM posts WHERE id=?", Long.class, postId)).isEqualTo(1);
         mvc.perform(post("/api/v1/admin/communities").with(jwt().jwt(t -> t.subject("100000")))
             .contentType(MediaType.APPLICATION_JSON).content(room)).andExpect(status().isConflict());
         mvc.perform(patch("/api/v1/admin/communities/TEST2").with(jwt().jwt(t -> t.subject("100000")))
@@ -118,6 +127,16 @@ class AssignedFeaturesApiTest {
         assertThat(snapshot.getBadge().getName()).isEqualTo("돌고래");
         mvc.perform(get("/api/v1/members/by-nickname/needle-user")).andExpect(status().isOk())
             .andExpect(jsonPath("$.assets.length()").value(0));
+    }
+
+    @Test
+    void looksUpNicknamesWithReservedUrlCharactersWithoutChangingTheirIdentity() throws Exception {
+        members.saveAndFlush(new Member("고래/물고기 #1", "#123456"));
+        mvc.perform(get("/api/v1/members/by-nickname").param("nickname", "고래/물고기 #1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.nickname").value("고래/물고기 #1"))
+            .andExpect(jsonPath("$.walletAddress").doesNotExist());
+        mvc.perform(get("/api/v1/members/by-nickname").param("nickname", ""))
+            .andExpect(status().isBadRequest());
     }
 
     @Test

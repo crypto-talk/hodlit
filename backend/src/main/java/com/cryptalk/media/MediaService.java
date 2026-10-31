@@ -62,7 +62,7 @@ public class MediaService {
         }
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public StoredMedia store(Long memberId, MultipartFile file) {
         Member member = members.findById(memberId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
@@ -86,7 +86,7 @@ public class MediaService {
         return new StoredMedia(mediaType, "/api/v1/media/" + fileName, contentType, file.getSize());
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void delete(Long memberId, String fileName) {
         MediaAsset asset = assets.lockByFileName(fileName)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "미디어를 찾을 수 없습니다."));

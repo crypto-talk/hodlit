@@ -19,7 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.hikari.transaction-isolation=TRANSACTION_REPEATABLE_READ")
 @AutoConfigureMockMvc
 class DrawApiTest {
     @Autowired MockMvc mvc;
@@ -48,6 +48,11 @@ class DrawApiTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACTIVE\"}")).andExpect(status().isBadRequest());
             String prizes = json.writeValueAsString(Map.of("prizes", List.of(Map.of("name", "Gift", "description", "Record only",
                 "imageUrl", "https://example.com/gift.png", "weight", 1, "displayOrder", 0))));
+            for (String invalidWeight : new String[] {"0", "1.5", "9223372036854775808"}) {
+                mvc.perform(put(path + "/prizes").with(jwt().jwt(t -> t.subject(Long.toString(admin))))
+                    .contentType(MediaType.APPLICATION_JSON).content(prizes.replace("\"weight\":1", "\"weight\":" + invalidWeight)))
+                    .andExpect(status().isBadRequest());
+            }
             mvc.perform(put(path + "/prizes").with(jwt().jwt(t -> t.subject(Long.toString(admin))))
                 .contentType(MediaType.APPLICATION_JSON).content(prizes)).andExpect(status().isOk());
             service.status(admin, event, "ACTIVE");

@@ -23,6 +23,14 @@ public class PublicProfileController {
         return profiles.byNickname(nickname);
     }
 
+    @Operation(summary = "검색어 파라미터로 공개 프로필 조회", description = "슬래시 등 URL 예약 문자가 포함된 닉네임도 조회합니다. 기존 경로 방식과 동일한 공개 정보만 반환합니다.")
+    @GetMapping("/by-nickname")
+    PublicProfileDtos.ProfileResponse profileQuery(@RequestParam String nickname) {
+        if (nickname.isBlank() || nickname.length() > 40)
+            throw new com.cryptalk.common.ApiException(org.springframework.http.HttpStatus.BAD_REQUEST, "닉네임은 1~40자여야 합니다.");
+        return profiles.byNickname(nickname);
+    }
+
     @Operation(summary = "회원이 작성한 공개 글 페이지", description = "최신순. 운영 중인 방의 글만 조회하며 작성 당시 보유 기록을 제공합니다. page=0, size=20 기본, size 최대 100.")
     @GetMapping("/{memberId}/posts/page")
     PageResponse<PublicProfileDtos.PostResponse> posts(@PathVariable Long memberId,

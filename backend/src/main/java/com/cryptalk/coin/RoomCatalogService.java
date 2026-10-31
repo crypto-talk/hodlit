@@ -104,6 +104,7 @@ public class RoomCatalogService {
     public record UpdateRoom(@NotBlank @Size(max = 80) String name, @NotNull @Min(0) Integer displayOrder,
             @Positive Long categoryId, @NotNull Boolean active) {}
     public record CategoryRequest(@NotBlank @Size(max = 80) String name, @NotNull @Min(0) Integer displayOrder) {}
+    @io.swagger.v3.oas.annotations.media.Schema(name = "RoomCatalogResponse")
     public record RoomResponse(Long id, String symbol, String name, boolean active, RoomOperationStatus operationStatus, int displayOrder, Long categoryId) {}
     public record CategoryResponse(Long id, String name, int displayOrder) {}
 }

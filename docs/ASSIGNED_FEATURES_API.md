@@ -45,7 +45,7 @@ Editable fields:
 
 Title is 1–100 chars, alt text 1–200, URLs up to 1000, order nonnegative. Link is nullable/empty, a same-site absolute path, or an HTTP(S) URL without user credentials. Protocol-relative links, executable schemes, control characters and backslashes are rejected.
 
-Upload images through existing `POST /api/v1/media` multipart `file`. Existing limits apply (25 MiB; JPEG/PNG/WebP/GIF for banners). The image must have a stored upload record belonging to the acting administrator, and must not be attached to a post or draft. Banner references protect managed media from direct deletion, post claims and draft claims. Deleting a banner does not delete an image used elsewhere.
+Upload images through existing `POST /api/v1/media` multipart `file`. Existing limits apply (25 MiB; JPEG/PNG/WebP/GIF for banners). The image must have a stored upload record belonging to the acting administrator, and must not be attached to a post or draft. Publication, draft and media mutations also use READ_COMMITTED and check references after locking the media row. Banner references protect managed media from direct deletion, post claims and draft claims. Deleting a banner does not delete an image used elsewhere.
 
 `GET /api/v1/banners` is public and returns only visible banners ordered by displayOrder then ID, with id/imageUrl/altText/linkUrl/displayOrder. No banner result cache is introduced. Admin responses additionally carry title, visibility and creation/update timestamps. For browser image sources prepend the configured backend origin to managed relative URLs.
 
@@ -73,7 +73,7 @@ Admin base: `/api/v1/admin/draw-events`:
 
 Timestamp values include UTC/offset. New/edited draft starts must be in the future and before the end. Configure and activate before the event starts. Once published, configuration is frozen; pause/resume remains available until the end. Resume does not reset participation. Prize weights are positive 64-bit integers with overflow-checked sum, 1–100 prizes, distinct names. Each prize probability is weight/sum. Images are HTTPS URLs or existing unused managed images owned by the acting administrator. Managed images referenced by prize configurations or recorded outcomes cannot be deleted or claimed by posts/drafts.
 
-An event-row pessimistic lock serializes configuration changes, pauses and draws across application instances. The database additionally enforces unique(event_id,member_id). The locked transaction checks existing results before availability so retries after pause/end still recover the original outcome. Selection uses SecureRandom and stores immutable name/image snapshots in the same transaction. Invalid/unavailable events return 409 without consuming participation. Nonexistent resources return 404, invalid settings 400, unauthenticated requests 401, non-admin settings requests 403.
+Draw/configuration writes explicitly use READ_COMMITTED, so a transaction that waits for a lock observes outcomes/settings committed by the previous holder even when the MySQL datasource default is REPEATABLE_READ. An event-row pessimistic lock serializes configuration changes, pauses and draws across application instances. The database additionally enforces unique(event_id,member_id). The locked transaction checks existing results before availability so retries after pause/end still recover the original outcome. Selection uses SecureRandom and stores immutable name/image snapshots in the same transaction. Invalid/unavailable events return 409 without consuming participation. Nonexistent resources return 404, invalid settings 400, unauthenticated requests 401, non-admin settings requests 403.
 
 The event-level lock intentionally favors correctness over extreme throughput for this initial implementation. No application-memory-only participation guard is used.
 
@@ -123,7 +123,7 @@ No permanent content/member deletion is introduced. Hidden posts are excluded fr
 
 Existing `/api/v1/admin/communities` list/status endpoints are reused. Add:
 
-- POST base: `{symbol,name,displayOrder,categoryId?}`. Symbol 2–20 ASCII letters/digits normalized uppercase; name 1–80; order nonnegative. New room is active but CLOSE with NOT_SUPPORTED verification, no inferred market/token configuration.
+- POST base: `{symbol,name,displayOrder,categoryId?}`. Symbol 2–20 ASCII letters/digits normalized uppercase; name 1–80; order nonnegative. New room is active but CLOSE with NOT_SUPPORTED verification, no inferred market/token configuration. Once opened, it supports posts without a price snapshot until a real market integration exists; no invented price is stored.
 - PATCH `/{symbol}`: `{name,displayOrder,categoryId:null|id,active}`. Reactivating a removed room keeps it closed until an explicit status change.
 - DELETE `/{symbol}`: soft-delete by active=false and CLOSE, preserving all content and preventing same-symbol recreation.
 - GET/POST `/api/v1/admin/room-categories`; PATCH/DELETE `/{id}`. Body `{name,displayOrder}`. Single-level categories, a room has one category or none. Assigned categories cannot be deleted, including inactive rooms; move/unassign first (409 otherwise).
@@ -133,7 +133,7 @@ Settings are transactional with DB foreign keys/uniqueness, and mutations appear
 
 ## Public profile and privacy (HODL-75)
 
-Nickname changes retain the current policy: only the current nickname resolves, with no historical nickname redirect. The profile route consumes the existing nickname lookup and member post/comment page APIs. It renders only returned coarse holdings, captured activity snapshots and whole-month holding labels; no wallet addresses or exact asset quantity fields are used.
+Nickname changes retain the current policy: only the current nickname resolves, with no historical nickname redirect. The profile route uses GET /api/v1/members/by-nickname?nickname=... so reserved URL characters in valid nicknames remain addressable; the existing /by-nickname/{nickname} endpoint remains supported. It consumes the existing nickname lookup and member post/comment page APIs. It renders only returned coarse holdings, captured activity snapshots and whole-month holding labels; no wallet addresses or exact asset quantity fields are used.
 
 `GET /api/v1/me/asset-visibility` returns per-coin publication choices. `PUT /api/v1/me/asset-visibility/{symbol}` takes `{visible:boolean}`. The authenticated member is always derived from JWT. Profile assets and profile activity holder snapshots respect per-coin preferences, with the member-wide HIDDEN setting taking precedence. Choices can be edited in `/mypage/assets`. They do not rewrite the public snapshots already attached to a published post/comment.
 
