@@ -118,3 +118,28 @@ export const MYPAGE_BOOKMARKS_HREF = "/mypage/bookmarks";
 
 /** 마이페이지 임시저장 탭. 새 글과 글 수정 임시저장을 합쳐 10개까지. */
 export const MYPAGE_DRAFTS_HREF = "/mypage/drafts";
+
+/**
+ * 관리자 메인. 통계 자리와 관리 메뉴가 있다. 들어올 수 있는지는 백엔드 관리자 API 의
+ * 응답(403)으로 정한다 — 주소를 숨기는 것은 보안이 아니다.
+ */
+export const ADMIN_HREF = "/admin";
+
+/** 관리자 방 관리 목록의 열림/닫힘 필터. 주소에는 소문자로 싣는다. */
+export type AdminRoomFilter = "open" | "closed";
+
+/**
+ * 관리자 방 관리. 검색어 · 열림/닫힘 필터 · 쪽은 쿼리스트링이다(구조 규칙 8).
+ * `page` 는 1부터 세고 1쪽은 주소에 적지 않는다.
+ */
+export function adminRoomsHref(
+  options: { q?: string; status?: AdminRoomFilter | null; page?: number } = {},
+): string {
+  const query = new URLSearchParams();
+  const q = options.q?.trim();
+  if (q) query.set("q", q);
+  if (options.status) query.set("status", options.status);
+  if (options.page && options.page > 1) query.set("page", String(options.page));
+  const search = query.toString();
+  return search ? `/admin/rooms?${search}` : "/admin/rooms";
+}
