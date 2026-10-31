@@ -52,7 +52,7 @@ class AssetServiceTest {
         cached.capture(BigDecimal.TEN, BigDecimal.TEN, true, "VERIFIED", 1);
         ReflectionTestUtils.setField(cached, "capturedAt", Instant.now().minus(Duration.ofHours(2)));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(cached));
-        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, prices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class))
+        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, prices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class), mock(com.cryptalk.badge.BadgeService.class))
             .snapshotForPublication(7L, eth);
         assertFalse(published.isVerified());
         assertEquals("STALE", published.getSyncStatus());
@@ -97,7 +97,7 @@ class AssetServiceTest {
             "KRW", new BigDecimal("-3.45"), Instant.parse("2026-09-02T12:49:50Z"), "COINGECKO"));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(snapshot));
         when(snapshots.findByMemberIdOrderByCoinDisplayOrder(7L)).thenReturn(List.of(snapshot));
-        AssetService service = new AssetService(snapshots, coins, members, wallets, marketPrices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class));
+        AssetService service = new AssetService(snapshots, coins, members, wallets, marketPrices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class), mock(com.cryptalk.badge.BadgeService.class));
 
         AssetService.AssetResponse asset = service.refreshAndList(7L).get(0);
 

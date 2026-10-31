@@ -37,12 +37,18 @@ public class MediaService {
         "video/quicktime", "mov"
     );
 
+    private final com.cryptalk.banner.BannerRepository banners;
+    private final com.cryptalk.draw.DrawPrizeRepository drawPrizes;
+    private final com.cryptalk.draw.DrawResultRepository drawResults;
     private final Path root;
     private final MediaAssetRepository assets;
     private final MemberRepository members;
 
     public MediaService(@Value("${cryptalk.media.storage-path}") String storagePath,
-                        MediaAssetRepository assets, MemberRepository members) {
+                        MediaAssetRepository assets, MemberRepository members, com.cryptalk.banner.BannerRepository banners, com.cryptalk.draw.DrawPrizeRepository drawPrizes, com.cryptalk.draw.DrawResultRepository drawResults) {
+        this.banners = banners;
+        this.drawPrizes = drawPrizes;
+        this.drawResults = drawResults;
         this.root = Path.of(storagePath).toAbsolutePath().normalize();
         this.assets = assets; this.members = members;
     }
@@ -86,6 +92,8 @@ public class MediaService {
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "미디어를 찾을 수 없습니다."));
         if (!asset.getMember().getId().equals(memberId))
             throw new ApiException(HttpStatus.FORBIDDEN, "업로드한 사용자만 미디어를 삭제할 수 있습니다.");
+        if (protectedImage("/api/v1/media/" + fileName))
+            throw new ApiException(HttpStatus.CONFLICT, "배너 또는 이벤트에서 사용하는 이미지입니다.");
         if (asset.getPost() != null)
             throw new ApiException(HttpStatus.CONFLICT, "게시글에 연결된 미디어는 게시글 수정 또는 삭제로 제거해 주세요.");
         if (asset.getDraftId() != null)
@@ -98,6 +106,7 @@ public class MediaService {
         String fileName = managedFileName(url);
         if (fileName == null) return;
         MediaAsset asset = assets.lockByFileName(fileName).orElse(null);
+        if (protectedImage(url)) throw new ApiException(HttpStatus.CONFLICT, "배너 또는 이벤트에서 사용하는 이미지입니다.");
         if (asset == null && allowLegacyMissing) return;
         if (asset == null) throw new ApiException(HttpStatus.BAD_REQUEST, "업로드 기록이 없는 미디어 URL입니다.");
         if (!asset.getMember().getId().equals(memberId))
@@ -117,7 +126,7 @@ public class MediaService {
         // Lock before checking protection so draft saves and deletion cannot race.
         for (String fileName : new java.util.TreeSet<>(fileNames)) {
             MediaAsset asset = assets.lockByFileName(fileName).orElse(null);
-            if (asset != null && asset.getDraftId() != null) {
+            if (protectedImage("/api/v1/media/" + fileName) || (asset != null && asset.getDraftId() != null)) {
                 fileNames.remove(fileName);
             } else if (asset != null) {
                 // Entity deletion keeps Hibernate's context consistent when the post is deleted next.
@@ -156,6 +165,7 @@ public class MediaService {
         for (String fileName : retained) {
             MediaAsset asset = assets.lockByFileName(fileName)
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "업로드 기록이 없는 미디어 URL입니다."));
+            if (protectedImage("/api/v1/media/" + fileName)) throw new ApiException(HttpStatus.CONFLICT, "배너 또는 이벤트에서 사용하는 이미지입니다.");
             if (!asset.getMember().getId().equals(memberId))
                 throw new ApiException(HttpStatus.FORBIDDEN, "본인이 업로드한 미디어만 임시저장할 수 있습니다.");
             if (asset.getPost() != null) {
@@ -167,6 +177,10 @@ public class MediaService {
                 throw new ApiException(HttpStatus.CONFLICT, "이미 다른 초안에 연결된 미디어입니다.");
             asset.attachDraft(draftId);
         }
+    }
+
+    private boolean protectedImage(String url) {
+        return banners.existsByImageUrl(url) || drawPrizes.existsByImageUrl(url) || drawResults.existsByImageUrl(url);
     }
 
     public Resource load(String fileName) {

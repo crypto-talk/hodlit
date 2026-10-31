@@ -48,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PostService {
+    private final com.cryptalk.badge.BadgeService badges;
     private final RoomAccess rooms;
     private static final Pattern YOUTUBE = Pattern.compile("^(?:https://)?(?:www\\.)?(?:youtube\\.com/(?:shorts/|watch\\?v=)|youtu\\.be/)([A-Za-z0-9_-]{11})(?:[?&].*)?$");
     private static final Comparator<FeedEvent> FEED_ORDER = (left, right) -> {
@@ -80,8 +81,9 @@ public class PostService {
                        AssetService assets, PostMediaRepository postMedia,
                        PostBookmarkRepository bookmarks, PostRepostRepository reposts,
                        MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows,
-                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc, RoomAccess rooms) {
+                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc, RoomAccess rooms, com.cryptalk.badge.BadgeService badges) {
         this.rooms = rooms;
+        this.badges = badges;
         this.posts = posts; this.likes = likes; this.comments = comments; this.members = members;
         this.coins = coins; this.assets = assets; this.postMedia = postMedia;
         this.bookmarks = bookmarks; this.reposts = reposts; this.mediaFiles = mediaFiles;
@@ -157,7 +159,9 @@ public class PostService {
             quote.price(), quote.currency(), quote.capturedAt(), quote.source(),
             youtube == null ? null : youtube.url(), youtube == null ? null : youtube.videoId(),
             youtube == null ? null : youtube.thumbnailUrl()));
-        holderSnapshots.save(new PostHolderSnapshot(saved, snapshot));
+        var holderRecord = new PostHolderSnapshot(saved, snapshot);
+        holderRecord.applyBadge(badges.capture(coin, snapshot));
+        holderSnapshots.save(holderRecord);
         saveMedia(memberId, saved, request.media(), Set.of());
         return response(saved, memberId);
     }
@@ -365,7 +369,7 @@ public class PostService {
         HolderSnapshotResponse holderSnapshot = holderSnapshots.findById(post.getId()).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getWalletCount(),
-                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus())).orElse(null);
+                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null);
         return new PostResponse(post.getId(), post.getCoin().getSymbol(), post.getTitle(), post.getContent(), author(member),
             visible && post.isAuthorVerified(), value, assetDisplay(member.getAssetVisibility(), value),
             likes.countByPostId(post.getId()), comments.countByPostId(post.getId()), liked,

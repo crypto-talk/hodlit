@@ -50,9 +50,9 @@ public class CoinController {
     }
     private CoinResponse response(Coin coin) {
         return new CoinResponse(coin.getId(), coin.getSymbol(), coin.getName(), coin.getChainType(), coin.getAccentColor(),
-            coin.getVerificationAvailability().name(), coin.getChainId(), coin.getAssetType(), coin.getOperationStatus());
+            coin.getVerificationAvailability().name(), coin.getChainId(), coin.getAssetType(), coin.getOperationStatus(), coin.getCategoryId());
     }
     public record CoinResponse(Long id, String symbol, String name, String chainType, String accentColor,
-                               String verificationAvailability, Long chainId, String assetType, RoomOperationStatus operationStatus) {}
+                               String verificationAvailability, Long chainId, String assetType, RoomOperationStatus operationStatus, Long categoryId) {}
     public record CommunityResponse(CoinResponse coin, long postCount, String description) {}
 }

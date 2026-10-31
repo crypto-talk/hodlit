@@ -38,6 +38,26 @@ public class Coin {
 
     public RoomOperationStatus getOperationStatus() { return operationStatus; }
     public void changeOperationStatus(RoomOperationStatus status) { this.operationStatus = status; }
+    @Column(name = "category_id") private Long categoryId;
+    public Long getCategoryId() { return categoryId; }
+    public int getDisplayOrder() { return displayOrder; }
+    public Coin(String symbol, String name, int displayOrder, Long categoryId) {
+        this.symbol = symbol;
+        this.name = name;
+        this.displayOrder = displayOrder;
+        this.categoryId = categoryId;
+        chainType = "OTHER";
+        accentColor = "#64748b";
+        verificationAvailability = VerificationAvailability.NOT_SUPPORTED;
+        active = true;
+    }
+    public void updateCatalog(String name, int displayOrder, Long categoryId, boolean active) {
+        this.name = name;
+        this.displayOrder = displayOrder;
+        this.categoryId = categoryId;
+        this.active = active;
+        if (!active) operationStatus = RoomOperationStatus.CLOSE;
+    }
     protected Coin() {}
     public void enableVerification() { this.verificationAvailability = VerificationAvailability.SUPPORTED; }
     public boolean isActive() { return active; }
