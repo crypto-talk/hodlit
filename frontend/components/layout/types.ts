@@ -8,6 +8,7 @@
  */
 
 export type SidebarRoom = {
+  operationStatus?: "OPEN" | "CLOSE";
   symbol: string;
   name: string;
   /** 지금 보고 있는 방이면 true. 방 게시판에서 쓴다. */

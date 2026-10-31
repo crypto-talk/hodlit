@@ -9,6 +9,7 @@ import type { PostSummary } from "@/lib/post-summary";
 
 /** 방 머리. `GET /communities/{symbol}` 에서 온다. */
 export type RoomInfo = {
+  operationStatus: "OPEN" | "CLOSE";
   symbol: string;
   /** 한글명. 매핑표에 없으면 백엔드 영문명. */
   name: string;

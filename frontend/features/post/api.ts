@@ -28,7 +28,7 @@ import type {
  */
 
 type Schemas = components["schemas"];
-type CoinResponse = Schemas["CoinResponse"];
+type CoinResponse = Schemas["CoinResponse"] & { operationStatus?: string };
 type PostResponse = Schemas["PostResponse"];
 type CreatePostRequest = Schemas["CreatePostRequest"];
 type UpdatePostRequest = Schemas["UpdatePostRequest"];
@@ -47,11 +47,14 @@ const MEDIA_PREFIX = "/api/v1/media/";
 export async function loadWriteRooms(): Promise<WriteRoom[]> {
   const coins = await http<CoinResponse[]>("/api/v1/coins");
 
-  return coins.filter(hasSymbol).map((coin) => ({
-    symbol: coin.symbol,
-    verifiable: isVerifiable(coin.verificationAvailability),
-    name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
-  }));
+  return coins
+    .filter(hasSymbol)
+    .filter((coin) => coin.operationStatus === "OPEN")
+    .map((coin) => ({
+      symbol: coin.symbol,
+      verifiable: isVerifiable(coin.verificationAvailability),
+      name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
+    }));
 }
 
 /**
@@ -166,6 +169,11 @@ export async function loadPost(postId: number): Promise<PostDetail> {
           // 서버가 완성해서 주는 문자열이다. 여기서 다시 계산하지 않는다.
           amount: snapshot.quantityBand ?? null,
           holding: holdingPeriodLabel(snapshot.holdingMonths),
+          badge: (
+            snapshot as { badge?: import("@/components/holder/animal-badge").AnimalBadgeData }
+          ).badge,
+          partial: snapshot.syncStatus === "PARTIAL",
+          holderStatus: snapshot.holderStatus,
         }
       : null,
   };

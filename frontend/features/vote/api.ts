@@ -53,6 +53,7 @@ export function openPollsQueryKey(memberId: number | null, day: string) {
 export async function loadOpenPolls(): Promise<RoomPoll[]> {
   const coins = await http<CoinResponse[]>("/api/v1/coins");
   const symbols = coins
+    .filter((coin) => coin.operationStatus === "OPEN")
     .map((coin) => coin.symbol)
     .filter((symbol): symbol is string => typeof symbol === "string" && symbol !== "");
   if (symbols.length === 0) return [];

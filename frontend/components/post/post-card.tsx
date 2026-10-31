@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AnimalBadge from "@/components/holder/animal-badge";
 import TierBadge from "@/components/holder/tier-badge";
 import type { PostSummary } from "@/lib/post-summary";
 import { roomHref } from "@/lib/routes";
@@ -46,9 +47,13 @@ export default function PostCard({ post, showRoom = true }: Props) {
             {post.symbol}
           </Link>
         ) : null}
-        {/* 공개 프로필 화면이 아직 없어 링크가 아니다. 프로필이 생기면 링크로 바꾼다. */}
-        <span className="text-xs text-text-muted">{post.nick}</span>
-        {post.verifiable ? <TierBadge tier={post.tier} symbol={post.symbol} /> : null}
+        <Link href={`/@${encodeURIComponent(post.nick)}`} className="text-xs text-text-muted">
+          {post.nick}
+        </Link>
+        <AnimalBadge badge={post.badge} position="list" />
+        {post.verifiable ? (
+          <TierBadge tier={post.tier} symbol={post.symbol} holderStatus={post.holderStatus} />
+        ) : null}
         {post.range ? (
           <span className="flex-none rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
             {post.range}

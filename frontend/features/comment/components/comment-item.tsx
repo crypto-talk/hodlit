@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import AnimalBadge from "@/components/holder/animal-badge";
+import Link from "next/link";
 import TierBadge from "@/components/holder/tier-badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format/time";
@@ -105,9 +107,18 @@ export default function CommentItem({
       className={`scroll-mt-24 py-4 ${highlighted ? "-mx-3 animate-flash rounded-sm px-3" : ""}`}
     >
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-semibold text-text-primary">{comment.nickname}</span>
+        <Link
+          href={`/@${encodeURIComponent(comment.nickname)}`}
+          className="font-semibold text-text-primary"
+        >
+          {comment.nickname}
+        </Link>
         {byPostAuthor ? <span className="text-xs font-bold text-text-primary">작성자</span> : null}
-        {holder ? <TierBadge tier={holder.tier} symbol={symbol} /> : null}
+        {holder && <AnimalBadge badge={holder.badge} position="comment" />}
+        {holder?.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}
+        {holder ? (
+          <TierBadge tier={holder.tier} symbol={symbol} holderStatus={holder.holderStatus} />
+        ) : null}
         {holder && isHolderTier(holder.tier) ? (
           <span className="text-xs text-text-muted">{holder.holding}</span>
         ) : null}

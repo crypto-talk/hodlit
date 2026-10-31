@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import RoomClosed from "@/components/room-closed";
 import { Button } from "@/components/ui/button";
 import { UNSUPPORTED_LABEL } from "@/lib/holder-snapshot/label";
 import { ApiError } from "@/lib/http";
@@ -73,6 +74,7 @@ export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
   }
 
   const info = room.data;
+  if (info.operationStatus === "CLOSE") return <RoomClosed symbol={symbol} />;
 
   return (
     <div

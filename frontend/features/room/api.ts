@@ -21,8 +21,8 @@ import type { RoomInfo, RoomPostPage } from "./types";
  */
 
 type Schemas = components["schemas"];
-type CoinResponse = Schemas["CoinResponse"];
-type CommunityResponse = Schemas["CommunityResponse"];
+type CoinResponse = Schemas["CoinResponse"] & { operationStatus?: "OPEN" | "CLOSE" };
+type CommunityResponse = Omit<Schemas["CommunityResponse"], "coin"> & { coin?: CoinResponse };
 type PostPageResponse = Schemas["PageResponsePostResponse"];
 
 const ROOM_LIMIT = 10;
@@ -45,6 +45,7 @@ export async function loadRooms(): Promise<SidebarRoom[]> {
       symbol: coin.symbol,
       // 백엔드는 영문명만 준다. 한글명 필드가 생기면 coinNameKo 를 지운다(D-4).
       name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
+      operationStatus: coin.operationStatus,
     }));
 }
 
@@ -61,6 +62,7 @@ export async function loadRoom(symbol: string): Promise<RoomInfo> {
 
   return {
     symbol: resolved,
+    operationStatus: coin?.operationStatus ?? "CLOSE",
     name: coinNameKo(resolved, coin?.name ?? resolved),
     description: community.description ?? "",
     postCount,

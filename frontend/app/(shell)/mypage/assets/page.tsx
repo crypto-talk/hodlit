@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AssetPrivacy from "@/features/profile/components/asset-privacy";
 import PortfolioView from "@/features/portfolio/components/portfolio-view";
 
 export const metadata: Metadata = {
@@ -7,5 +8,10 @@ export const metadata: Metadata = {
 
 /** 마이페이지 내 자산 탭 (HODL-67). */
 export default function MypageAssetsPage() {
-  return <PortfolioView />;
+  return (
+    <>
+      <PortfolioView />
+      <AssetPrivacy />
+    </>
+  );
 }
