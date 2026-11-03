@@ -36,6 +36,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/test", "/test/", "/test/*").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/room-categories", "/api/v1/search/groups", "/api/v1/banners", "/api/v1/draw-events/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/polls/*/results").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/feed", "/api/v1/feed/page", "/api/v1/posts/*", "/api/v1/media/**", "/api/v1/market/prices", "/api/v1/market/prices/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/members/*/social", "/api/v1/members/*/followers", "/api/v1/members/*/following", "/api/v1/members/*/followers/page", "/api/v1/members/*/following/page").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/members/by-nickname", "/api/v1/members/by-nickname/*", "/api/v1/members/*/posts/page", "/api/v1/members/*/comments/page").permitAll()

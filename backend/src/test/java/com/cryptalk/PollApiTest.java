@@ -32,6 +32,9 @@ class PollApiTest {
     @Autowired ObjectMapper json;
     @Autowired PollService polls;
     @MockitoBean(name="pollClock") Clock clock;
+    @MockitoBean com.cryptalk.market.MarketPriceService prices;
+    @MockitoBean com.cryptalk.asset.AssetService assets;
+    @Autowired com.cryptalk.coin.CoinRepository coins;
     long user;
     String body = "{\"question\":\"ETH direction?\",\"choices\":[\"Up\",\"Down\"]}";
 
@@ -141,5 +144,149 @@ class PollApiTest {
         return json.readTree(mvc.perform(post("/api/v1/communities/ETH/polls")
             .with(jwt().jwt(token -> token.subject("100000"))).contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+    }
+
+    @Test
+    void publishesPastAndClosedResultsButProtectsActiveToday() throws Exception {
+        var poll = create();
+        long id = poll.path("id").asLong();
+        polls.vote(user,id,poll.path("choices").get(0).path("id").asLong());
+        mvc.perform(get("/api/v1/polls/{id}/results",id).param("to","2026-10-09"))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/polls/{id}/results",id).param("to","2026-10-09")
+            .with(jwt().jwt(t -> t.subject("100000")))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/polls/{id}/results",id).param("to","2026-10-09")
+            .with(jwt().jwt(t -> t.subject(Long.toString(user)))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].totalVotes").value(1));
+        mvc.perform(get("/api/v1/communities/ETH/polls/results"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-09T15:00:00Z"));
+        mvc.perform(get("/api/v1/polls/{id}/results",id))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].day").value("2026-10-09"))
+            .andExpect(jsonPath("$.items[0].choices[1].voteCount").value(0));
+        polls.vote(user,id,poll.path("choices").get(1).path("id").asLong());
+        polls.close(100000L,id);
+        mvc.perform(get("/api/v1/polls/{id}",id)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalVotes").value(1)).andExpect(jsonPath("$.participatedToday").value(false));
+        mvc.perform(get("/api/v1/polls/{id}/results",id))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.items[0].day").value("2026-10-10"));
+    }
+
+    @Test
+    void paginatesSameDayQuestionsAndRestrictsMyHistoryToTheAuthenticatedMember() throws Exception {
+        var first = create();
+        polls.vote(user,first.path("id").asLong(),first.path("choices").get(0).path("id").asLong());
+        var second = create();
+        polls.vote(user,second.path("id").asLong(),second.path("choices").get(1).path("id").asLong());
+        polls.close(100000L,second.path("id").asLong());
+        mvc.perform(get("/api/v1/communities/ETH/polls/results").param("size","1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.hasNext").value(true))
+            .andExpect(jsonPath("$.items[0].pollId").value(second.path("id").asLong()));
+        mvc.perform(get("/api/v1/communities/ETH/polls/results").param("size","1").param("page","1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].pollId").value(first.path("id").asLong()));
+        mvc.perform(get("/api/v1/me/votes")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/me/votes").with(jwt().jwt(t -> t.subject("100000"))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get("/api/v1/me/votes").with(jwt().jwt(t -> t.subject(Long.toString(user)))).param("size","1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.items[0].choiceLabel").value("Down"));
+        for (String path : java.util.List.of("/api/v1/me/votes","/api/v1/communities/ETH/polls/results",
+                "/api/v1/polls/"+first.path("id").asLong()+"/results")) {
+            mvc.perform(get(path).with(jwt().jwt(t -> t.subject(Long.toString(user)))).param("size","101"))
+                .andExpect(status().isBadRequest());
+            mvc.perform(get(path).with(jwt().jwt(t -> t.subject(Long.toString(user)))).param("page","-1"))
+                .andExpect(status().isBadRequest());
+        }
+        mvc.perform(get("/api/v1/polls/{id}/results",first.path("id").asLong()).param("to","2026-10-10"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/polls/{id}/results",first.path("id").asLong())
+            .param("from","2026-10-09").param("to","2026-10-08")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/polls/999999/results")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/communities/BTC/polls/results")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/communities/NONE/polls/results")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void capturesImmutableSnapshotsAndKeepsQuantitiesAndPricesOutOfResponses() throws Exception {
+        var coin = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow();
+        var asset = new com.cryptalk.asset.AssetSnapshot(members.findById(user).orElseThrow(),coin);
+        asset.capture(new java.math.BigDecimal("2"),new java.math.BigDecimal("100000"),true,"VERIFIED",1);
+        // JPA may load a different Coin instance for the vote transaction.
+        when(assets.snapshotForPublication(org.mockito.ArgumentMatchers.eq(user),org.mockito.ArgumentMatchers.any())).thenReturn(asset);
+        when(prices.currentPrice(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.eq("USD")))
+            .thenReturn(new com.cryptalk.market.MarketPriceService.PriceQuote("ETH",new java.math.BigDecimal("2500"),
+                "USD",null,Instant.parse("2026-10-09T14:59:58Z"),"COINGECKO"));
+        var poll = create();
+        long id = poll.path("id").asLong();
+        polls.vote(user,id,poll.path("choices").get(0).path("id").asLong());
+        var row = jdbc.queryForMap("SELECT * FROM poll_votes WHERE poll_id=?",id);
+        assertThat(row.get("quantity_band")).isEqualTo("1~10 ETH");
+        assertThat(row.get("holder_status")).isEqualTo("HOLDER");
+        assertThat((java.math.BigDecimal)row.get("price")).isEqualByComparingTo("2500");
+        assertThat(row.get("price_source")).isEqualTo("COINGECKO");
+        asset.capture(java.math.BigDecimal.ZERO,java.math.BigDecimal.ZERO,false,"VERIFIED",1);
+        String response = mvc.perform(get("/api/v1/me/votes").with(jwt().jwt(t -> t.subject(Long.toString(user)))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].votedAt").value("2026-10-09T14:59:59Z"))
+            .andExpect(jsonPath("$.items[0].result.holderResults[0].holderStatus").value("HOLDER"))
+            .andReturn().getResponse().getContentAsString();
+        assertThat(response).doesNotContain("quantity","price","wallet");
+        assertThat(jdbc.queryForObject("SELECT holder_status FROM poll_votes WHERE poll_id=?",String.class,id)).isEqualTo("HOLDER");
+    }
+
+    @Test
+    void leavesLegacySnapshotsUnknownAndAcceptsVotesDuringPriceOutage() throws Exception {
+        var poll = create();
+        long id = poll.path("id").asLong();
+        long choice = poll.path("choices").get(0).path("id").asLong();
+        jdbc.update("INSERT INTO poll_votes(poll_id,member_id,choice_id,vote_date) VALUES(?,?,?,?)",id,user,choice,"2026-10-08");
+        mvc.perform(get("/api/v1/me/votes").with(jwt().jwt(t -> t.subject(Long.toString(user)))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].votedAt").doesNotExist())
+            .andExpect(jsonPath("$.items[0].result.holderResults[0].holderStatus").value("UNKNOWN"));
+        when(prices.currentPrice(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any()))
+            .thenThrow(new ApiException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"offline"));
+        polls.vote(user,id,choice);
+        assertThat(jdbc.queryForObject("SELECT price FROM poll_votes WHERE poll_id=? AND vote_date='2026-10-09'",java.math.BigDecimal.class,id)).isNull();
+        assertThat(jdbc.queryForObject("SELECT holder_status FROM poll_votes WHERE poll_id=? AND vote_date='2026-10-09'",String.class,id)).isEqualTo("NOT_CONNECTED");
+    }
+
+    @Test
+    void capturesFinalKstDayWhenSnapshotRefreshCrossesMidnight() throws Exception {
+        var poll = create();
+        when(assets.snapshotForPublication(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any()))
+            .thenAnswer(invocation -> {
+                when(clock.instant()).thenReturn(Instant.parse("2026-10-09T15:00:00Z"));
+                return null;
+            });
+        var result = polls.vote(user,poll.path("id").asLong(),poll.path("choices").get(0).path("id").asLong());
+        assertThat(result.day()).isEqualTo(java.time.LocalDate.parse("2026-10-10"));
+        mvc.perform(get("/api/v1/me/votes").with(jwt().jwt(t -> t.subject(Long.toString(user)))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].day").value("2026-10-10"))
+            .andExpect(jsonPath("$.items[0].votedAt").value("2026-10-09T15:00:00Z"));
+    }
+
+    @Test
+    void aggregatesHolderGroupsAndPreservesPrivateHistoryAfterRoomClosure() throws Exception {
+        var poll = create();
+        long id = poll.path("id").asLong();
+        long up = poll.path("choices").get(0).path("id").asLong();
+        long down = poll.path("choices").get(1).path("id").asLong();
+        jdbc.update("INSERT INTO poll_votes(poll_id,member_id,choice_id,vote_date,holder_status) VALUES(?,?,?,?,?)",id,user,up,"2026-10-08","HOLDER");
+        jdbc.update("INSERT INTO poll_votes(poll_id,member_id,choice_id,vote_date,holder_status) VALUES(?,?,?,?,?)",id,100000L,down,"2026-10-08","EMPTY");
+        mvc.perform(get("/api/v1/polls/{id}/results",id))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].totalVotes").value(2))
+            .andExpect(jsonPath("$.items[0].holderResults[0].holderStatus").value("EMPTY"))
+            .andExpect(jsonPath("$.items[0].holderResults[0].choices[0].voteCount").value(0))
+            .andExpect(jsonPath("$.items[0].holderResults[1].holderStatus").value("HOLDER"))
+            .andExpect(jsonPath("$.items[0].holderResults[1].choices[0].voteCount").value(1));
+        jdbc.update("UPDATE coins SET operation_status='CLOSE' WHERE symbol='ETH'");
+        try {
+            mvc.perform(get("/api/v1/polls/{id}/results",id)).andExpect(status().isForbidden());
+            mvc.perform(get("/api/v1/me/votes").with(jwt().jwt(t -> t.subject(Long.toString(user)))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].result.totalVotes").value(2));
+        } finally {
+            jdbc.update("UPDATE coins SET operation_status='OPEN' WHERE symbol='ETH'");
+        }
     }
 }

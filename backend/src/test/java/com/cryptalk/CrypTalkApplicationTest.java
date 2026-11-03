@@ -54,6 +54,9 @@ class CrypTalkApplicationTest {
 
         assertTrue(operationCount >= 83);
         assertTrue(document.path("paths").has("/api/v1/communities/stats"));
+        assertTrue(document.path("paths").has("/api/v1/communities/{symbol}/polls/results"));
+        assertTrue(document.path("paths").has("/api/v1/polls/{pollId}/results"));
+        assertTrue(document.path("paths").has("/api/v1/me/votes"));
         assertTrue(document.path("paths").has("/api/v1/communities/{symbol}/stats"));
         assertTrue(document.path("paths").has("/api/v1/members/by-nickname/{nickname}"));
         assertTrue(document.path("paths").has("/api/v1/members/{memberId}/posts/page"));

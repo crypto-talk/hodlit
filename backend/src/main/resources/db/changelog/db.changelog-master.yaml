@@ -53,3 +53,5 @@ databaseChangeLog:
       file: db/changelog/021-room-categories.sql
   - include:
       file: db/changelog/022-profile-asset-preferences.sql
+  - include:
+      file: db/changelog/023-poll-vote-history.sql

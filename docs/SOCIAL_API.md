@@ -355,3 +355,7 @@ API에서 `503`이지만, 발행 경로에서는 성공한 거래소 조회를 �
 | 활성 코인 심볼이 없음 | `404 Not Found` |
 | 코인은 있지만 가격 공급자 ID가 없음 | `422 Unprocessable Entity` |
 | 가격 공급자 timeout, 장애, rate limit 또는 응답 누락 | `503 Service Unavailable` |
+
+## 투표 기록 확장
+
+일일 투표의 지난 결과·본인 기록·참여 시점 스냅샷 계약은 [POLL_HISTORY_API.md](POLL_HISTORY_API.md)를 참고하세요.
