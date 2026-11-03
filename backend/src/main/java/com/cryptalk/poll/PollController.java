@@ -3,6 +3,8 @@ package com.cryptalk.poll;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import com.cryptalk.common.PageResponse;
+import java.time.LocalDate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -21,10 +23,32 @@ public class PollController {
         return polls.current(symbol,member(jwt));
     }
 
-    @Operation(summary="투표 조회",description="결과는 해당 KST 날짜에 참여한 사용자만 볼 수 있습니다.")
+    @Operation(summary="투표 조회",description="진행 중인 오늘 결과는 참여자만, 종료된 투표의 오늘 결과는 공개합니다.")
     @GetMapping("/polls/{pollId}")
     PollDtos.PollResponse get(@PathVariable Long pollId,@AuthenticationPrincipal Jwt jwt) {
         return polls.get(pollId,member(jwt));
+    }
+
+    @Operation(summary="방 지난 투표 결과",description="KST 어제까지와 종료된 투표의 오늘 집계를 날짜·투표별로 조회합니다.")
+    @GetMapping("/communities/{symbol}/polls/results")
+    PageResponse<PollDtos.DailyResult> roomResults(@PathVariable String symbol,
+            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        return polls.roomResults(symbol,page,size);
+    }
+
+    @Operation(summary="투표 날짜별 결과",description="from/to는 KST 날짜(양 끝 포함). 진행 중인 오늘은 참여자만 조회 가능합니다.")
+    @GetMapping("/polls/{pollId}/results")
+    PageResponse<PollDtos.DailyResult> results(@PathVariable Long pollId,@AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required=false) LocalDate from,@RequestParam(required=false) LocalDate to,
+            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        return polls.results(pollId,member(jwt),from,to,page,size);
+    }
+
+    @Operation(summary="내 투표 기록",description="인증된 본인의 선택·투표 시각·그날의 집계를 조회합니다. 가격·수량 구간은 비공개입니다.")
+    @GetMapping("/me/votes")
+    PageResponse<PollDtos.VoteHistory> myVotes(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        return polls.myVotes(member(jwt),page,size);
     }
 
     @Operation(summary="운영자 방 투표 생성",description="새 질문 생성 시 기존 활성 질문은 종료하고 기록은 유지합니다.")
