@@ -90,6 +90,11 @@ export function toCommentView(comment: CommentResponse & { id: number }): Commen
           verifiable: isVerifiable(snapshot.verificationAvailability),
           tier: tierOf(snapshot.verificationLevel, snapshot.verifiedHolder, snapshot.holderStatus),
           holding: holdingPeriodLabel(snapshot.holdingMonths),
+          badge: (
+            snapshot as { badge?: import("@/components/holder/animal-badge").AnimalBadgeData }
+          ).badge,
+          partial: snapshot.syncStatus === "PARTIAL",
+          holderStatus: snapshot.holderStatus,
         }
       : null,
     // null 필드는 응답에서 아예 빠진다(`non_null`). 예전 댓글(답글 기능 전)은 셋 다 없는 루트다.

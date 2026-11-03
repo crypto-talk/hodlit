@@ -53,6 +53,12 @@ export default function MypageFrame({ children }: { children: React.ReactNode })
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-h1 font-bold">마이페이지</h1>
+        <Link href={`/@${encodeURIComponent(member.nickname)}`} className="text-sm text-brand">
+          내 공개 프로필
+        </Link>
+        <Link href="/admin" className="ml-4 text-sm text-brand">
+          서비스 관리
+        </Link>
         <p className="mt-1 text-sm text-text-muted">{member.nickname} · 나만 보는 화면입니다</p>
       </div>
 

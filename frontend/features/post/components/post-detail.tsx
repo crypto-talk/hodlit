@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import AnimalBadge from "@/components/holder/animal-badge";
 import TierBadge from "@/components/holder/tier-badge";
 import RoomClosedNotice from "@/components/room-closed-notice";
 import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
@@ -91,7 +92,12 @@ export default function PostDetailView({ postId, symbol }: Props) {
       </div>
 
       <h1 className="mt-4 text-h1 font-semibold break-words text-text-primary">{data.title}</h1>
-      <p className="mt-2 text-sm font-semibold text-text-primary">{data.authorNickname}</p>
+      <Link
+        href={`/@${encodeURIComponent(data.authorNickname)}`}
+        className="mt-2 block text-sm font-semibold text-text-primary"
+      >
+        {data.authorNickname}
+      </Link>
 
       {data.holder && !data.holder.verifiable ? (
         <p className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4 text-sm text-text-muted">
@@ -106,7 +112,13 @@ export default function PostDetailView({ postId, symbol }: Props) {
           className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <TierBadge tier={data.holder.tier} symbol={room} />
+            <AnimalBadge badge={data.holder.badge} position="detail" />
+            <TierBadge
+              tier={data.holder.tier}
+              symbol={room}
+              holderStatus={data.holder.holderStatus}
+            />
+            {data.holder.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}
             {isHolderTier(data.holder.tier) ? (
               <span className="text-sm font-semibold text-text-primary">{data.holder.holding}</span>
             ) : null}

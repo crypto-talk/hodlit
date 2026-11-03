@@ -122,6 +122,7 @@ public class AuthService {
     }
 
     private LoginResult issueTokens(Member member, String address) {
+        if (member.isSuspended()) throw new ApiException(HttpStatus.FORBIDDEN, "이용이 정지된 계정입니다.");
         byte[] bytes = new byte[32]; random.nextBytes(bytes);
         String rawRefresh = HexFormat.of().formatHex(bytes);
         refreshTokens.save(new RefreshToken(member, hash(rawRefresh), Instant.now().plusSeconds(refreshTokenDays * 86400)));

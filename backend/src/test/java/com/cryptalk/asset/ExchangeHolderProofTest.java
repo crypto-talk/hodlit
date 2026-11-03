@@ -110,7 +110,7 @@ class ExchangeHolderProofTest {
         final Coin btc = coin(1L,"BTC");
         final AssetSnapshot ethSnapshot = new AssetSnapshot(member,eth);
         final AssetSnapshot btcSnapshot = new AssetSnapshot(member,btc);
-        final AssetService service = new AssetService(snapshots,coins,members,wallets,prices,alchemy,exchanges);
+        final AssetService service = new AssetService(snapshots,coins,members,wallets,prices,alchemy,exchanges,mock(com.cryptalk.badge.BadgeService.class));
         Fixture() {
             when(members.lockById(7L)).thenReturn(Optional.of(member));
             Wallet wallet = mock(Wallet.class);

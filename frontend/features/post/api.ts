@@ -171,6 +171,9 @@ export async function loadPost(postId: number): Promise<PostDetail> {
           // 서버가 완성해서 주는 문자열이다. 여기서 다시 계산하지 않는다.
           amount: snapshot.quantityBand ?? null,
           holding: holdingPeriodLabel(snapshot.holdingMonths),
+          badge: snapshot.badge,
+          partial: snapshot.syncStatus === "PARTIAL",
+          holderStatus: snapshot.holderStatus,
         }
       : null,
   };

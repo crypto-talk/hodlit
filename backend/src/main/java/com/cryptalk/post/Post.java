@@ -8,9 +8,11 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "posts")
+@org.hibernate.annotations.SQLRestriction("hidden = false")
 public class Post {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(nullable = false) private boolean hidden;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "member_id")
     private Member member;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "coin_id")

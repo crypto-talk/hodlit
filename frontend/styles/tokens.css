@@ -135,3 +135,113 @@
 :root[data-theme="dark"] {
   /* 의도적으로 비어 있음 */
 }
+
+/* Publication-time animal badge presets */
+:root {
+  --animal-coral: #b84f45;
+  --animal-mint: #16745f;
+  --animal-blue: #245ab5;
+  --animal-purple: #7943ab;
+  --animal-gold: #8b6616;
+}
+.animal-coral {
+  --animal-color: var(--animal-coral);
+}
+.animal-mint {
+  --animal-color: var(--animal-mint);
+}
+.animal-blue {
+  --animal-color: var(--animal-blue);
+}
+.animal-purple {
+  --animal-color: var(--animal-purple);
+}
+.animal-gold {
+  --animal-color: var(--animal-gold);
+}
+.animal-badge {
+  position: relative;
+  overflow: hidden;
+  color: var(--animal-color);
+  border-color: var(--animal-color);
+  background: color-mix(in srgb, var(--animal-color) 8%, transparent);
+}
+.animal-effect-border {
+  box-shadow: 0 0 0 1px var(--animal-color);
+}
+.animal-effect-soft {
+  background: color-mix(in srgb, var(--animal-color) 15%, transparent);
+}
+.animal-effect-shine {
+  animation: animal-shine 1.2s ease-out 1;
+}
+.animal-effect-shine::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 42%,
+    color-mix(in srgb, var(--surface) 70%, transparent) 50%,
+    transparent 58%
+  );
+  animation: animal-sweep 1.2s ease-out 1 both;
+}
+@property --badge-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.animal-effect-flow {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    conic-gradient(from var(--badge-angle), var(--animal-color), transparent, var(--animal-color))
+      border-box;
+  animation: animal-border 4s linear infinite;
+}
+.animal-effect-aurora {
+  animation: animal-shine 3s ease-in-out infinite;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--animal-color) 35%, transparent);
+}
+.animal-effect-aurora::after {
+  content: "✦ · ✧";
+  pointer-events: none;
+  font-size: 0.65em;
+  animation: animal-sparkle 3s ease-in-out infinite;
+}
+@keyframes animal-border {
+  to {
+    --badge-angle: 360deg;
+  }
+}
+@keyframes animal-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes animal-sparkle {
+  50% {
+    opacity: 0.3;
+    transform: translateY(-2px);
+  }
+}
+@keyframes animal-shine {
+  50% {
+    box-shadow: 0 0 10px var(--animal-color);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animal-badge,
+  .animal-badge::before,
+  .animal-badge::after {
+    animation: none;
+  }
+  .animal-effect-shine::before {
+    display: none;
+  }
+}

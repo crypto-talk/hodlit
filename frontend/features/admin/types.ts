@@ -1,29 +1,52 @@
-import type { RoomOperationStatus } from "@/lib/room-status";
-
-/**
- * 관리자 화면 타입.
- *
- * 응답 원본은 생성 타입(`RoomResponse` · `PageResponseRoomResponse`)이고, 모든 필드가 선택(`?`)이라
- * 화면이 쓰는 모양으로 `api.ts` 에서 좁힌다.
- */
-
-export type AdminRoom = {
-  id: number;
-  symbol: string;
-  /** 화면에 보일 이름. 한글명이 있으면 한글명이다. */
-  name: string;
-  /**
-   * 코인 목록에 들어 있는지. 비활성 코인은 방을 열어도 사용자 화면 어디에도 나오지 않는다.
-   * 관리자 API 로는 바꿀 수 없고 DB 에서만 바뀐다.
-   */
-  active: boolean;
-  operationStatus: RoomOperationStatus;
-};
-
-export type AdminRoomPage = {
-  items: AdminRoom[];
-  /** 1부터. */
+export type Page<T> = {
+  items: T[];
   page: number;
   totalPages: number;
   totalElements: number;
 };
+
+export type AdminRoom = {
+  id: number;
+  catalogName?: string;
+  symbol: string;
+  name: string;
+  active: boolean;
+  operationStatus: "OPEN" | "CLOSE";
+  displayOrder: number;
+  categoryId: number | null;
+};
+
+export type Category = { id: number; name: string; displayOrder: number };
+export type BadgeTier = {
+  name: string;
+  minimumQuantity: string | number;
+  icon: string;
+  color: string;
+  effect: string;
+};
+export type BadgeConfig = { symbol: string; version: number; tiers: BadgeTier[] };
+export type BadgePresets = { icons: string[]; colors: string[]; effects: string[] };
+
+export type ModerationRow = {
+  id: number;
+  title?: string;
+  content?: string;
+  nickname?: string;
+  symbol?: string;
+  role?: string;
+  hidden?: boolean;
+  suspended?: boolean;
+  created_at?: string;
+};
+export type ModerationLog = {
+  id: number;
+  actor_id: number;
+  target_type: string;
+  target_id: number;
+  before_state: string;
+  after_state: string;
+  reason: string;
+  created_at: string;
+};
+
+export type AdminRoomPage = Page<AdminRoom>;

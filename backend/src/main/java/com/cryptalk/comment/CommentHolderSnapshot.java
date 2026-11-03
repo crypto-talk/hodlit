@@ -25,7 +25,7 @@ public class CommentHolderSnapshot {
     private boolean verifiedHolder;
     @Column(name = "quantity_exact", precision = 36, scale = 18)
     private BigDecimal quantityExact;
-    @Column(name = "quantity_band", length = 40)
+    @Column(name = "quantity_band", length = 120)
     private String quantityBand;
     @Column(name = "holding_since")
     private Instant holdingSince;
@@ -43,6 +43,12 @@ public class CommentHolderSnapshot {
     @Column(name = "holder_status", nullable = false, length = 20)
     private String holderStatus = "UNKNOWN";
 
+    @Embedded private com.cryptalk.badge.BadgeSnapshot badge;
+    public com.cryptalk.badge.BadgeSnapshot getBadge() { return badge; }
+    public void applyBadge(com.cryptalk.badge.BadgeSnapshot badge) {
+        this.badge = badge;
+        if (badge != null) this.quantityBand = badge.getQuantityBand();
+    }
     protected CommentHolderSnapshot() {}
     public CommentHolderSnapshot(Comment comment, AssetSnapshot asset) {
         this.comment = comment; this.coin = comment.getPost().getCoin(); this.capturedAt = Instant.now();

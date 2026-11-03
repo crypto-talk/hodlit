@@ -8,6 +8,8 @@ import java.time.Instant;
 public class Member {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(nullable = false) private boolean suspended;
+    public boolean isSuspended() { return suspended; }
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
     private MemberRole role = MemberRole.USER;

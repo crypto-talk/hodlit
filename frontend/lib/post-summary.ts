@@ -35,6 +35,8 @@ export type PostSummary = {
   verifiable: boolean;
   symbol: string;
   tier: Tier;
+  badge?: import("@/components/holder/animal-badge").AnimalBadgeData | null;
+  holderStatus?: string | null;
   /** 수량 구간. **서버가 완성해서 주는 문자열**이다. 프론트가 계산하지 않는다. */
   range: string;
   /** ISO 시각. `<time dateTime>` 에 넣는다. */
@@ -73,6 +75,10 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
     verifiable,
     symbol: post.coinSymbol ?? "",
     tier,
+    badge: (
+      snapshot as { badge?: import("@/components/holder/animal-badge").AnimalBadgeData } | undefined
+    )?.badge,
+    holderStatus: snapshot?.holderStatus,
     // 서버가 완성해서 주는 문자열이다. 여기서 수량으로 다시 계산하지 않는다.
     range: snapshot?.quantityBand ?? "",
     createdAt: post.createdAt ?? "",

@@ -15,12 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CommentService {
+    private final com.cryptalk.badge.BadgeService badges;
     private final RoomAccess rooms;
     private final CommentRepository comments; private final PostService posts;
     private final AssetService assets; private final CommentHolderSnapshotRepository holderSnapshots;
     public CommentService(CommentRepository comments, PostService posts, AssetService assets,
-                          CommentHolderSnapshotRepository holderSnapshots, RoomAccess rooms) {
+                          CommentHolderSnapshotRepository holderSnapshots, RoomAccess rooms, com.cryptalk.badge.BadgeService badges) {
         this.rooms = rooms;
+        this.badges = badges;
         this.comments = comments; this.posts = posts; this.assets = assets; this.holderSnapshots = holderSnapshots;
     }
     @Transactional(readOnly = true)
@@ -41,7 +43,9 @@ public class CommentService {
         }
         AssetSnapshot asset = assets.snapshotForPublication(memberId, post.getCoin());
         Comment saved = comments.save(new Comment(post, posts.member(memberId), content, target));
-        holderSnapshots.save(new CommentHolderSnapshot(saved, asset));
+        var holderRecord = new CommentHolderSnapshot(saved, asset);
+        holderRecord.applyBadge(badges.capture(post.getCoin(), asset));
+        holderSnapshots.save(holderRecord);
         return response(saved);
     }
     @Transactional
@@ -55,6 +59,7 @@ public class CommentService {
     }
     private Comment comment(Long id) {
         Comment comment = comments.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."));
+        posts.post(comment.getPost().getId());
         rooms.requireOpen(comment.getPost().getCoin());
         return comment;
     }
@@ -63,15 +68,15 @@ public class CommentService {
         HolderSnapshotResponse snapshot = holderSnapshots.findById(comment.getId()).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getHoldingMonths(), item.getWalletCount(), item.getCapturedAt(),
-                item.getSyncStatus(), item.getHolderStatus())).orElse(null);
+                item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null);
         return new CommentResponse(comment.getId(), member.getId(), member.getNickname(), member.getAvatarColor(),
             comment.getContent(), comment.getCreatedAt(), comment.getUpdatedAt(), snapshot,
             comment.getParentCommentId(), comment.getReplyToCommentId(), comment.getReplyToNickname());
     }
-    @Schema(description = "작성 당시 확인된 잔액 기준의 불변 보유 기록. 일부 조회 실패 시에도 양수 부분합은 HOLDER로 인증하며 PARTIAL을 유지합니다. 댓글은 수량을 공개하지 않습니다.")
+    @Schema(description = "작성 당시 확인된 잔액 기준의 불변 보유 기록. 일부 조회 실패 시에도 양수 부분합은 HOLDER로 인증하며 PARTIAL을 유지합니다. 댓글은 정확 수량을 공개하지 않으며 신규 배지의 설정 구간만 제공합니다.")
     public record HolderSnapshotResponse(String verificationAvailability, String verificationLevel,
                                          boolean verifiedHolder, Integer holdingMonths, int walletCount,
-                                         Instant capturedAt, String syncStatus, String holderStatus) {}
+                                         Instant capturedAt, String syncStatus, String holderStatus, com.cryptalk.badge.BadgeSnapshot badge) {}
     public record CommentResponse(Long id, Long memberId, String nickname, String avatarColor, String content,
                                   Instant createdAt, Instant updatedAt, HolderSnapshotResponse holderSnapshot,
                                   Long parentCommentId, Long replyToCommentId, String replyToNickname) {}

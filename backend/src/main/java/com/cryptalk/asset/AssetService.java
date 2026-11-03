@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AssetService {
+    private final com.cryptalk.badge.BadgeService badgeSettings;
     private final AssetSnapshotRepository snapshots;
     private final CoinRepository coins;
     private final MemberRepository members;
@@ -36,7 +37,7 @@ public class AssetService {
 
     public AssetService(AssetSnapshotRepository snapshots, CoinRepository coins, MemberRepository members,
                         WalletRepository wallets, MarketPriceService marketPrices,
-                        AlchemyPortfolioClient alchemy, ExchangeConnectionService exchanges) {
+                        AlchemyPortfolioClient alchemy, ExchangeConnectionService exchanges, com.cryptalk.badge.BadgeService badgeSettings) {
         this.snapshots = snapshots;
         this.coins = coins;
         this.members = members;
@@ -44,6 +45,7 @@ public class AssetService {
         this.marketPrices = marketPrices;
         this.exchanges = exchanges;
         this.alchemy = alchemy;
+        this.badgeSettings = badgeSettings;
     }
 
     @Transactional
@@ -159,7 +161,7 @@ public class AssetService {
     private AssetResponse response(AssetSnapshot snapshot) {
         return new AssetResponse(snapshot.getCoin().getSymbol(),snapshot.getQuantity(),
             "READY".equals(snapshot.getSyncStatus()) ? snapshot.getValueKrw() : null,
-            snapshot.isVerified() ? HoldingQuantityBand.of(snapshot.getCoin().getSymbol(),snapshot.getQuantity()) : null,
+            snapshot.isVerified() ? publicationBand(snapshot) : null,
             snapshot.isVerified(),snapshot.getVerificationLevel(),snapshot.getVerificationStatus(),snapshot.getWalletCount(),
             snapshot.getHoldingSince(),null,snapshot.getCapturedAt(),snapshot.getBlockNumber(),snapshot.getSyncStatus(),
             snapshot.getHolderStatus(),snapshot.getExchangeCount());
@@ -212,6 +214,10 @@ public class AssetService {
                                          List<AssetIssueResponse> unresolvedAssets, WalletAssetPortfolioResponse walletAssets) {}
     public record AssetIssueResponse(String symbol, String status, String syncStatus, String holderStatus) {}
     @Schema(description = "성공적으로 확인된 수단의 잔액 합계. PARTIAL에서도 양수 부분합은 verified=true/HOLDER이며 전체 잔액을 의미하지 않습니다.")
+    private String publicationBand(AssetSnapshot snapshot) {
+        var badge = badgeSettings.capture(snapshot.getCoin(), snapshot);
+        return badge == null ? HoldingQuantityBand.of(snapshot.getCoin().getSymbol(), snapshot.getQuantity()) : badge.getQuantityBand();
+    }
     public record AssetResponse(String symbol,BigDecimal quantity,BigDecimal valueKrw,String quantityBand,
                                 boolean verified,String verificationLevel,String status,int walletCount,
                                 java.time.Instant holdingSince,Integer holdingMonths,java.time.Instant capturedAt,

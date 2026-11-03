@@ -1,4 +1,4 @@
-import { tierLabel } from "@/lib/holder-snapshot/label";
+import { tierLabel, holderStateLabel } from "@/lib/holder-snapshot/label";
 import type { Tier } from "@/lib/holder-snapshot/types";
 
 type BadgeStyle = {
@@ -44,18 +44,19 @@ const BADGE: Record<Tier, BadgeStyle> = {
 
 type Props = {
   tier: Tier;
+  holderStatus?: string | null;
   /** 미보유일 때 `ETH 미보유` 처럼 붙일 코인. */
   symbol?: string;
 };
 
-export default function TierBadge({ tier, symbol }: Props) {
+export default function TierBadge({ tier, symbol, holderStatus }: Props) {
   const style = BADGE[tier];
   return (
     <span
       className="flex-none rounded-sm border border-transparent px-2 py-0.5 text-xs font-semibold"
       style={{ background: style.bg, color: style.color, borderColor: style.border }}
     >
-      {tierLabel(tier, symbol)}
+      {holderStateLabel(holderStatus) ?? tierLabel(tier, symbol)}
     </span>
   );
 }

@@ -138,3 +138,13 @@ export function holdingPeriodLabel(holdingMonths: number | null | undefined): st
   const rest = months % 12;
   return rest === 0 ? `${years}년 보유` : `${years}년 ${rest}개월 보유`;
 }
+
+export function holderStateLabel(status?: string | null): string | null {
+  if (status === "NOT_CONNECTED" || status === "EMPTY") return "미보유";
+  if (status === "UNKNOWN") return "조회 실패";
+  return null;
+}
+
+export function animalBadgeExplanation(badge: { name?: string; quantityBand?: string }): string {
+  return `${badge.name ?? ""} · ${badge.quantityBand ?? ""} · 작성 시점 기준, 정확 수량 비공개`;
+}

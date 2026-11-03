@@ -1,33 +1,90 @@
 import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
-import { http } from "@/lib/http";
 import type { RoomOperationStatus } from "@/lib/room-status";
 import type { AdminRoomFilter } from "@/lib/routes";
-import type { AdminRoom, AdminRoomPage } from "./types";
+import { http } from "@/lib/http";
+import type {
+  AdminRoom,
+  AdminRoomPage,
+  BadgeConfig,
+  BadgePresets,
+  Category,
+  ModerationLog,
+  ModerationRow,
+  Page,
+} from "./types";
 
-/**
- * 관리자 API (HODL-77 · HODL-78).
- *
- * 관리자인지는 백엔드가 `members.role` 로 요청마다 판단한다. 프론트가 받는 응답에는 아직
- * role 이 없어서(HODL-88), 관리자 화면에 들어올 수 있는지도 이 API 의 응답 코드로 정한다.
- * 로그인 전 401, 관리자가 아니면 403 이다.
- */
+const ROOT = "/api/v1/admin";
 
-const ADMIN_ROOMS = "/api/v1/admin/communities";
+export const loadCategories = () => http<Category[]>(`${ROOT}/room-categories`);
+export const loadBadgeConfig = (symbol: string) =>
+  http<BadgeConfig>(`${ROOT}/communities/${encodeURIComponent(symbol)}/badge-config`);
+export const loadBadgePresets = () => http<BadgePresets>(`${ROOT}/badge-presets`);
+export const saveBadgeConfig = (symbol: string, config: BadgeConfig) =>
+  http<BadgeConfig>(`${ROOT}/communities/${encodeURIComponent(symbol)}/badge-config`, {
+    method: "PUT",
+    body: JSON.stringify({ expectedVersion: config.version, tiers: config.tiers }),
+  });
+export const createRoom = (body: {
+  symbol: string;
+  name: string;
+  displayOrder: number;
+  categoryId: number | null;
+}) => http<AdminRoom>(`${ROOT}/communities`, { method: "POST", body: JSON.stringify(body) });
+export const updateRoom = (room: AdminRoom) =>
+  http<AdminRoom>(`${ROOT}/communities/${encodeURIComponent(room.symbol)}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      name: room.name,
+      displayOrder: room.displayOrder,
+      categoryId: room.categoryId,
+      active: room.active,
+    }),
+  });
+export const deleteRoom = (symbol: string) =>
+  http<void>(`${ROOT}/communities/${encodeURIComponent(symbol)}`, { method: "DELETE" });
+export const saveCategory = (id: number | null, name: string, displayOrder: number) =>
+  http<Category>(`${ROOT}/room-categories${id === null ? "" : `/${id}`}`, {
+    method: id === null ? "POST" : "PATCH",
+    body: JSON.stringify({ name, displayOrder }),
+  });
+export const deleteCategory = (id: number) =>
+  http<void>(`${ROOT}/room-categories/${id}`, { method: "DELETE" });
+export const loadModeration = (
+  type: "posts" | "members",
+  q: string,
+  state: string,
+  page: number,
+) => {
+  const params = new URLSearchParams({ q, page: String(page), size: "20" });
+  if (state) params.set("state", state);
+  return http<Page<ModerationRow>>(`${ROOT}/${type}?${params}`);
+};
+export const loadModerationDetail = (type: "posts" | "members", id: number) =>
+  http<ModerationRow>(`${ROOT}/${type}/${id}`);
+export const changeModeration = (
+  type: "posts" | "members",
+  id: number,
+  enabled: boolean,
+  reason: string,
+) =>
+  http<ModerationRow>(`${ROOT}/${type}/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled, reason }),
+  });
+export const loadModerationLogs = (page: number) =>
+  http<Page<ModerationLog>>(`${ROOT}/moderation-logs?page=${page}&size=20`);
 
-/** 한 쪽에 보이는 방 수. 코인이 20개라 지금은 한 쪽에 다 들어간다. */
+const ADMIN_ROOMS = `${ROOT}/communities`;
 export const ADMIN_ROOM_PAGE_SIZE = 20;
-
 type Schemas = components["schemas"];
 type RoomResponse = Schemas["RoomResponse"];
 type RoomPageResponse = Schemas["PageResponseRoomResponse"];
 type ChangeStatusRequest = Schemas["ChangeStatusRequest"];
-
 const STATUS_PARAM: Record<AdminRoomFilter, RoomOperationStatus> = {
   open: "OPEN",
   closed: "CLOSE",
 };
-
 /** 방 목록. `page` 는 1부터 받는다(백엔드는 0부터). */
 export async function loadAdminRooms(options: {
   q?: string;
@@ -79,6 +136,9 @@ function toRoom(room: RoomResponse): AdminRoom[] {
   return [
     {
       id: room.id,
+      catalogName: room.name ?? room.symbol,
+      displayOrder: room.displayOrder ?? 0,
+      categoryId: room.categoryId ?? null,
       symbol: room.symbol,
       name: coinNameKo(room.symbol, room.name ?? room.symbol),
       active: room.active ?? true,

@@ -30,3 +30,8 @@ CoinGecko 공개 API에서 조회하며 필요하면 `MARKET_PRICE_BASE_URL`로 
 로그인한 계정의 지갑 연결은 EVM 지갑의 `personal_sign` 서명을 검증합니다. 지갑 잔액은
 Alchemy Portfolio API만 사용해 Ethereum·Polygon 기본 자산과 ERC20을 조회합니다.
 연결 지갑이 있는데 API 키가 없으면 자산 조회는 503이며 발행 보유 인증은 UNKNOWN입니다.
+
+## 서비스 관리 및 이벤트 API
+
+관리자 방·카테고리·등급 설정, 게시글·유저 관리, 배너, 1회 뽑기 이벤트, 분류별 검색 및 공개 프로필 계약은 [서비스 기능 API 문서](../docs/ASSIGNED_FEATURES_API.md)를 참고하세요.
+Liquibase 017–022가 새 설정과 이력을 저장하며, 기존 방·게시글·댓글 및 과거 보유 기록은 보존합니다.
