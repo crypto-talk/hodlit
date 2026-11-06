@@ -75,6 +75,15 @@ while (( SECONDS < deadline )); do
     if [[ "$health" == "healthy" ]]; then
       "${COMPOSE[@]}" ps backend
       echo "Backend deployment completed successfully at $current_commit."
+
+      # Only remove unused backend images older than seven days.
+      # Keep recent images for rollback and never prune images from other Umbrel apps.
+      echo "Cleaning old unused hodlit backend images"
+      if ! docker image prune --all --force \
+        --filter "label=org.cryptalk.hodlit.service=backend" \
+        --filter "until=168h"; then
+        echo "Warning: backend image cleanup failed; deployment remains healthy." >&2
+      fi
       exit 0
     fi
     if [[ "$health" == "unhealthy" || "$health" == "stopped" ]]; then

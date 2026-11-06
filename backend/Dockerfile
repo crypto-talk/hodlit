@@ -7,6 +7,7 @@ COPY src ./src
 RUN ./gradlew test bootJar --no-daemon
 
 FROM eclipse-temurin:24-jre
+LABEL org.cryptalk.hodlit.service="backend"
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
