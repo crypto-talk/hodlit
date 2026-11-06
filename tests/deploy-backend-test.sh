@@ -23,6 +23,7 @@ printf '.env\n' >> "$TEST_DIR/app/.git/info/exclude"
 cat > "$TEST_DIR/bin/docker" <<'MOCK'
 #!/usr/bin/env bash
 set -eu
+printf '%s\n' "$*" >> "$DOCKER_MOCK_LOG"
 if [[ "$1" == inspect ]]; then
   echo healthy
 elif [[ "$1" == compose && "$4" == ps && "${5:-}" == -q ]]; then
@@ -32,8 +33,15 @@ MOCK
 chmod +x "$TEST_DIR/bin/docker"
 
 # Simulate Actions executing a fresh script against an old develop-only checkout.
-PATH="$TEST_DIR/bin:$PATH" CRYPTALK_APP_DIRECTORY="$TEST_DIR/app" \
+PATH="$TEST_DIR/bin:$PATH" DOCKER_MOCK_LOG="$TEST_DIR/docker.log" \
+  CRYPTALK_APP_DIRECTORY="$TEST_DIR/app" \
   CRYPTALK_EXPECTED_COMMIT="$target" bash "$ROOT/deploy-backend.sh"
+grep -Fq "image prune --all --force --filter label=org.cryptalk.hodlit.service=backend --filter until=168h" "$TEST_DIR/docker.log"
+if grep -Eq "volume prune|system prune" "$TEST_DIR/docker.log"; then
+  echo "FAIL: cleanup must not prune Docker volumes or all system objects" >&2
+  exit 1
+fi
+echo "PASS: healthy deployment prunes only labeled older backend images"
 [[ "$(git -C "$TEST_DIR/app" branch --show-current)" == main ]]
 [[ "$(git -C "$TEST_DIR/app" rev-parse HEAD)" == "$target" ]]
 [[ "$(git -C "$TEST_DIR/app" rev-parse origin/main)" == "$target" ]]
@@ -45,7 +53,8 @@ git -C "$TEST_DIR/source" commit --allow-empty -m unrelated >/dev/null
 unrelated="$(git -C "$TEST_DIR/source" rev-parse HEAD)"
 git -C "$TEST_DIR/app" fetch origin "$unrelated" >/dev/null 2>&1
 set +e
-PATH="$TEST_DIR/bin:$PATH" CRYPTALK_APP_DIRECTORY="$TEST_DIR/app" \
+PATH="$TEST_DIR/bin:$PATH" DOCKER_MOCK_LOG="$TEST_DIR/docker.log" \
+  CRYPTALK_APP_DIRECTORY="$TEST_DIR/app" \
   CRYPTALK_EXPECTED_COMMIT="$unrelated" bash "$ROOT/deploy-backend.sh"
 result=$?
 set -e
