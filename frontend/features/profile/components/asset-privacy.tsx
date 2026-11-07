@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useSession } from "@/lib/session";
 import { loadAssetVisibility, saveAssetVisibility } from "../api";
 
@@ -15,6 +16,9 @@ export default function AssetPrivacy() {
   const change = useMutation({
     mutationFn: ({ symbol, visible }: { symbol: string; visible: boolean }) =>
       saveAssetVisibility(symbol, visible),
+    onError: (error) => {
+      toast.error(error.message || "공개 설정을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["asset-visibility"] });
       await client.invalidateQueries({ queryKey: ["public-profile"] });
@@ -76,11 +80,6 @@ export default function AssetPrivacy() {
             </li>
           ))}
         </ul>
-      )}
-      {change.isError && (
-        <p role="alert" className="text-sm text-danger">
-          {change.error.message}
-        </p>
       )}
     </section>
   );

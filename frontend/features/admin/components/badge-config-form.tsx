@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import AnimalBadge from "@/components/holder/animal-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,15 @@ export default function BadgeConfigForm({
   const client = useQueryClient();
   const mutation = useMutation({
     mutationFn: () => saveBadgeConfig(initial.symbol, { ...initial, tiers }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["badge-config", initial.symbol] }),
+    onSuccess: () => {
+      toast.success(`${initial.symbol} 등급 설정을 저장했습니다. 새 글·댓글부터 적용됩니다.`);
+      return client.invalidateQueries({ queryKey: ["badge-config", initial.symbol] });
+    },
+    onError: (error) => {
+      toast.error(
+        `${error.message || "등급 설정을 저장하지 못했습니다."} 설정이 충돌했다면 새로고침해 최신 버전을 확인하세요.`,
+      );
+    },
   });
   function update(index: number, patch: Partial<BadgeTier>) {
     setTiers((values) => values.map((t, i) => (i === index ? { ...t, ...patch } : t)));
@@ -206,11 +215,6 @@ export default function BadgeConfigForm({
           {mutation.isPending ? "저장 중…" : "등급 설정 저장"}
         </Button>
       </div>
-      {mutation.isError && (
-        <p role="alert" className="text-sm text-danger">
-          {mutation.error.message} 설정이 충돌했다면 페이지를 새로고침해 최신 버전을 확인하세요.
-        </p>
-      )}
     </form>
   );
 }
