@@ -9,7 +9,8 @@ import { formatDate } from "@/lib/format/time";
 import { holdingPeriodLabel } from "@/lib/holder-snapshot/label";
 import { ApiError } from "@/lib/http";
 import { useSession } from "@/lib/session";
-import { postHref } from "@/lib/routes";
+import PageLinks from "@/components/page-links";
+import { MYPAGE_HREF, commentHref, postHref, profileHref, type ProfileTab } from "@/lib/routes";
 import { loadProfile, loadProfileItems } from "../api";
 
 const CARD = "rounded-lg border border-border-subtle bg-surface";
@@ -17,44 +18,64 @@ const TAB =
   "border-b-2 border-transparent py-2 text-sm font-semibold text-text-muted hover:text-text-primary";
 const TAB_ACTIVE = "border-b-brand text-text-primary";
 
+/**
+ * 공개 프로필 `/user/{회원 id}` (HODL-75 · 104).
+ *
+ * 프로필과 글 · 댓글 목록 모두 회원 id 로 부른다. 닉네임은 보여 주기만 한다 — 규칙(HODL-103)
+ * 전에 만든 닉네임에 공백 · `@` 같은 문자가 있어도 손대지 않고 그대로 쓴다.
+ * 탭과 쪽은 주소(`?tab=comments&page=2`)라 새로고침 · 뒤로 가기에도 남는다.
+ */
 export default function PublicProfileView({
-  nickname,
+  memberId,
   tab,
   page,
 }: {
-  nickname: string;
-  tab: "posts" | "comments";
+  memberId: number;
+  tab: ProfileTab;
+  /** 1부터. */
   page: number;
 }) {
   const { member } = useSession();
   const profile = useQuery({
-    queryKey: ["public-profile", nickname],
-    queryFn: () => loadProfile(nickname),
+    queryKey: ["public-profile", memberId],
+    queryFn: () => loadProfile(memberId),
+    // 404(없는 회원)는 다시 물어도 같다. 그 밖의 실패는 화면의 "다시 시도" 로.
     retry: false,
   });
   const items = useQuery({
-    queryKey: ["public-profile-items", profile.data?.id, tab, page],
-    queryFn: () => loadProfileItems(profile.data!.id, tab, page),
-    enabled: !!profile.data,
+    queryKey: ["public-profile-items", memberId, tab, page],
+    queryFn: () => loadProfileItems(memberId, tab, page),
+    // 프로필이 없으면(404) 목록도 없다. 프로필이 온 뒤에 부른다.
+    enabled: profile.isSuccess,
   });
-  const href = (nextTab: string, nextPage = 0) =>
-    `/@${encodeURIComponent(nickname)}?${new URLSearchParams({ tab: nextTab, page: String(nextPage) })}`;
+  const href = (nextTab: ProfileTab, nextPage = 1) =>
+    profileHref(memberId, { tab: nextTab, page: nextPage });
 
   if (profile.isPending)
     return <p className="py-16 text-center text-sm text-text-muted">프로필 불러오는 중…</p>;
-  if (profile.isError)
+  if (profile.isError) {
+    // 없는 회원(404)은 다시 물어도 같아서 홈으로만 보낸다. 그 밖의 실패는 다시 시도.
+    const missing = profile.error instanceof ApiError && profile.error.status === 404;
     return (
       <section role="alert" className={`${CARD} flex flex-col items-center gap-3 px-6 py-16`}>
         <h1 className="text-h2 font-semibold text-text-primary">
-          {profile.error instanceof ApiError && profile.error.status === 404
-            ? "프로필을 찾을 수 없습니다."
-            : "프로필을 불러오지 못했습니다."}
+          {missing ? "프로필을 찾을 수 없습니다." : "프로필을 불러오지 못했습니다."}
         </h1>
-        <Button type="button" onClick={() => void profile.refetch()}>
-          다시 시도
-        </Button>
+        {missing ? (
+          <>
+            <p className="text-sm text-text-muted">없는 회원이거나 주소가 잘못됐습니다.</p>
+            <Button asChild>
+              <Link href="/">홈으로</Link>
+            </Button>
+          </>
+        ) : (
+          <Button type="button" onClick={() => void profile.refetch()}>
+            다시 시도
+          </Button>
+        )}
       </section>
     );
+  }
   const data = profile.data;
   const joined = formatDate(data.joinedAt ?? data.createdAt);
   return (
@@ -84,7 +105,7 @@ export default function PublicProfileView({
         </div>
         {member?.id === data.id && (
           <Button asChild className="flex-none">
-            <Link href="/mypage">마이페이지</Link>
+            <Link href={MYPAGE_HREF}>마이페이지</Link>
           </Button>
         )}
       </header>
@@ -156,7 +177,16 @@ export default function PublicProfileView({
         <section className="flex flex-col gap-3">
           {items.data.items.length === 0 ? (
             <p className={`${CARD} py-10 text-center text-sm text-text-muted`}>
-              작성한 {tab === "posts" ? "글" : "댓글"}이 없습니다.
+              {page > 1 ? (
+                <>
+                  이 쪽에는 {tab === "posts" ? "글" : "댓글"}이 없습니다.{" "}
+                  <Link href={href(tab)} className="text-brand hover:underline">
+                    첫 쪽으로
+                  </Link>
+                </>
+              ) : (
+                `작성한 ${tab === "posts" ? "글" : "댓글"}이 없습니다.`
+              )}
             </p>
           ) : (
             <ul className="flex flex-col gap-3">
@@ -183,7 +213,11 @@ export default function PublicProfileView({
                       <time dateTime={item.createdAt}>· {formatDate(item.createdAt)}</time>
                     </div>
                     <Link
-                      href={`${postHref(item.coinSymbol, item.postId ?? item.id)}${tab === "comments" ? `#comment-${item.id}` : ""}`}
+                      href={
+                        tab === "comments" && item.postId
+                          ? commentHref(item.coinSymbol, item.postId, item.id)
+                          : postHref(item.coinSymbol, item.id)
+                      }
                       className="mt-2 block font-semibold break-words text-text-primary hover:text-brand"
                     >
                       {tab === "comments" ? (
@@ -204,29 +238,11 @@ export default function PublicProfileView({
               })}
             </ul>
           )}
-          {items.data.totalPages > 1 && (
-            <nav className="flex items-center justify-center gap-3" aria-label="활동 페이지">
-              {page > 0 ? (
-                <Link
-                  href={href(tab, page - 1)}
-                  className="text-sm text-text-muted hover:text-text-primary"
-                >
-                  이전
-                </Link>
-              ) : null}
-              <span className="text-sm text-text-muted tabular-nums">
-                {page + 1} / {items.data.totalPages}
-              </span>
-              {page + 1 < items.data.totalPages ? (
-                <Link
-                  href={href(tab, page + 1)}
-                  className="text-sm text-text-muted hover:text-text-primary"
-                >
-                  다음
-                </Link>
-              ) : null}
-            </nav>
-          )}
+          <PageLinks
+            page={page}
+            totalPages={items.data.totalPages}
+            hrefFor={(next) => href(tab, next)}
+          />
         </section>
       )}
     </div>

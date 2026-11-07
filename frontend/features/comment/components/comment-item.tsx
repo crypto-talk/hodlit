@@ -8,7 +8,7 @@ import TierBadge from "@/components/holder/tier-badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format/time";
 import { isHolderTier } from "@/lib/holder-snapshot/label";
-import { commentAnchor } from "@/lib/routes";
+import { commentAnchor, profileHref } from "@/lib/routes";
 import { deleteComment, updateComment } from "../api";
 import { isSubmitEnter } from "../enter-to-submit";
 import { commentErrorMessage } from "../error-message";
@@ -107,12 +107,13 @@ export default function CommentItem({
       className={`scroll-mt-24 py-4 ${highlighted ? "-mx-3 animate-flash rounded-sm px-3" : ""}`}
     >
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link
-          href={`/@${encodeURIComponent(comment.nickname)}`}
-          className="font-semibold text-text-primary"
-        >
-          {comment.nickname}
-        </Link>
+        {comment.memberId !== null ? (
+          <Link href={profileHref(comment.memberId)} className="font-semibold text-text-primary">
+            {comment.nickname}
+          </Link>
+        ) : (
+          <span className="font-semibold text-text-primary">{comment.nickname}</span>
+        )}
         {byPostAuthor ? <span className="text-xs font-bold text-text-primary">작성자</span> : null}
         {holder && <AnimalBadge badge={holder.badge} position="comment" />}
         {holder?.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}

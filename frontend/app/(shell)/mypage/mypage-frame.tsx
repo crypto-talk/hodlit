@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import NicknameEditor from "@/features/profile/components/nickname-editor";
 import {
+  ADMIN_HREF,
   MYPAGE_ASSETS_HREF,
   MYPAGE_BOOKMARKS_HREF,
   MYPAGE_DRAFTS_HREF,
   MYPAGE_WALLET_HREF,
+  profileHref,
 } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 
@@ -53,13 +56,18 @@ export default function MypageFrame({ children }: { children: React.ReactNode })
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-h1 font-bold">마이페이지</h1>
-        <Link href={`/@${encodeURIComponent(member.nickname)}`} className="text-sm text-brand">
-          내 공개 프로필
-        </Link>
-        <Link href="/admin" className="ml-4 text-sm text-brand">
-          서비스 관리
-        </Link>
-        <p className="mt-1 text-sm text-text-muted">{member.nickname} · 나만 보는 화면입니다</p>
+        <p className="mt-1 text-sm break-words text-text-muted">
+          {member.nickname} · 나만 보는 화면입니다
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link href={profileHref(member.id)} className="text-sm text-brand hover:underline">
+            내 공개 프로필
+          </Link>
+          <NicknameEditor />
+          <Link href={ADMIN_HREF} className="text-sm text-brand hover:underline">
+            서비스 관리
+          </Link>
+        </div>
       </div>
 
       <nav aria-label="마이페이지 탭" className="flex gap-6 border-b border-border-subtle">

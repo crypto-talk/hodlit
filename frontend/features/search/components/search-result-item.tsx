@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatRelativeTime } from "@/lib/format/time";
-import { commentHref, postHref, roomHref } from "@/lib/routes";
+import { commentHref, postHref, profileHref, roomHref } from "@/lib/routes";
 import type { SearchResult } from "../types";
 import Highlighted from "./highlighted";
 
@@ -18,7 +18,7 @@ const CHIP =
  * 검색 결과 한 줄. 종류마다 이동할 곳이 다르다.
  *
  * - 글 → 글 상세, 댓글 → 글 상세의 그 댓글(`#comment-{id}`), 방 → 방 게시판
- * - 사용자 → 공개 프로필 화면(HODL-75)이 아직 없어 링크가 아니다. 생기면 링크로 바꾼다.
+ * - 사용자 → 공개 프로필 `/user/{회원 id}`(HODL-104)
  *
  * 줄 전체가 링크다(누를 곳이 넓게). 안에 다른 링크를 두지 않는다.
  */
@@ -85,13 +85,15 @@ export default function SearchResultItem({ result, q }: { result: SearchResult; 
       );
     case "user":
       return (
-        <div className={`${box} flex items-center gap-2`}>
+        <Link
+          href={profileHref(result.memberId)}
+          className={`${box} flex items-center gap-2 hover:border-text-muted`}
+        >
           <span className={CHIP}>{KIND_LABEL.user}</span>
           <span className="text-body font-semibold text-text-primary">
             <Highlighted text={result.nickname} q={q} />
           </span>
-          <span className="ml-auto text-xs text-text-muted">프로필 준비 중</span>
-        </div>
+        </Link>
       );
   }
 }

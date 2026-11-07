@@ -45,6 +45,8 @@ export type PostSummary = {
   title: string;
   preview: string;
   nick: string;
+  /** 글쓴이 회원 id. 공개 프로필 주소(`profileHref`)에 쓴다. 없으면 링크 없이 이름만. */
+  authorId: number | null;
   /**
    * 보유 기간 문구. 보유가 확인된 글(지갑연결 · 거래소연동)에만 있고 나머지는 null.
    * 미인증 · 미보유에 "보유 기간" 을 붙이면 말이 안 된다. 인덱서 전까지는 항상
@@ -86,6 +88,7 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
     title: post.title ?? "(제목 없음)",
     preview: toPreview(post.content),
     nick: post.author?.nickname ?? "알 수 없음",
+    authorId: post.author?.id ?? null,
     hold: verifiable && isHolderTier(tier) ? holdingPeriodLabel(snapshot?.holdingMonths) : null,
     likes: post.likes ?? 0,
     comments: post.comments ?? 0,
