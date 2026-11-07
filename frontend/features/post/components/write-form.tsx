@@ -8,14 +8,16 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
 import { draftHref, postHref } from "@/lib/routes";
 import { unsupportedNotice } from "@/lib/holder-snapshot/label";
-import { isRoomClosedError } from "@/lib/room-status";
+import { isGeneralRoom, isRoomClosedError } from "@/lib/room-status";
 import { useSession } from "@/lib/session";
 import { deleteDraft, loadDraft, publishPost, saveDraft } from "../api";
+import { attachProblem, attachedForRoom } from "../attach";
 import { useImageUploads } from "../hooks/use-image-uploads";
 import { WRITE_ROOMS_KEY, useWriteRooms } from "../hooks/use-write-rooms";
 import { CONTENT_MAX, TITLE_MAX, draftProblem } from "../limits";
 import BodyEditor from "./body-editor";
 import CharCounter from "./char-counter";
+import CoinAttachments from "./coin-attachments";
 import ImageAttachments from "./image-attachments";
 import type { Draft, DraftInput } from "../types";
 import DraftList from "./draft-list";
@@ -38,8 +40,11 @@ const FIELD =
  *
  * 와이어프레임(`크립톡_글쓰기_와이어프레임_v2`)에서 아직 없는 것
  *   - 차트 블록, 본문 중간에 이미지 끼워 넣기
- *   - "이 글에 붙을 정보" 미리보기 (`/me/assets` + badge 문구)
  *   - 미리보기
+ *
+ * 보유 코인 첨부(HODL-106): 방 코인 말고 3개까지 더 붙인다(`coin-attachments.tsx`). 고른 목록은
+ * 임시저장에도 고른 순서로 남는다. 방을 바꿔 고른 코인이 방 코인이 되면 목록에서 빠진다.
+ * 기타 방(HODL-87)은 방 코인이 없어 고른 코인만 붙는다.
  *
  * 닫힌 방(HODL-77): 고르는 칸에는 열린 방만 있다. `?symbol=` 이나 불러온 임시저장의 방이 닫혀
  * 있으면 방만 비우고 다시 고르게 한다(제목 · 본문은 그대로). 쓰는 사이에 방이 닫혀 발행이
@@ -127,6 +132,7 @@ function WriteFields({
   const [title, setTitle] = useState(draft?.title ?? "");
   const [content, setContent] = useState(draft?.content ?? "");
   const [youtubeUrl, setYoutubeUrl] = useState(draft?.youtubeUrl ?? "");
+  const [pickedCoins, setPickedCoins] = useState<string[]>(draft?.attachedCoins ?? []);
   const images = useImageUploads(draft?.images);
   const [problem, setProblem] = useState("");
   const [draftId, setDraftId] = useState(draft?.id ?? null);
@@ -172,7 +178,16 @@ function WriteFields({
     },
   });
 
-  const input: DraftInput = { coinSymbol, title, content, youtubeUrl, images: images.uploaded };
+  // 방 코인과 겹치는 것은 뺀다(방을 바꾼 경우). 서버가 방 코인을 따로 넣는다.
+  const attachedCoins = attachedForRoom(pickedCoins, coinSymbol);
+  const input: DraftInput = {
+    coinSymbol,
+    title,
+    content,
+    youtubeUrl,
+    attachedCoins,
+    images: images.uploaded,
+  };
   const snapshot = JSON.stringify(input);
   // 마지막으로 서버에 있는 내용. 같으면 자동저장하지 않는다. 불러온 임시저장은
   // 처음부터 서버와 같으므로 지금 값으로 시작한다.
@@ -224,8 +239,15 @@ function WriteFields({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const draft = { coinSymbol, title, content, youtubeUrl, images: images.uploaded };
-    const found = draftProblem(draft);
+    const draft = {
+      coinSymbol,
+      title,
+      content,
+      youtubeUrl,
+      attachedCoins,
+      images: images.uploaded,
+    };
+    const found = draftProblem(draft) ?? attachProblem(attachedCoins, rooms.data);
     setProblem(found ?? "");
     if (found) return;
     save.reset();
@@ -307,7 +329,9 @@ function WriteFields({
         </select>
         <p className="text-sm text-text-muted">
           {/* 방 목록이 오기 전에는 select 가 비어 보이므로 안내도 고른 방을 말하지 않는다. */}
-          {coinSymbol && rooms.data ? (
+          {isGeneralRoom(coinSymbol) ? (
+            "기타 방 — 아래에서 고른 코인의 보유 기록만 글에 붙습니다"
+          ) : coinSymbol && rooms.data ? (
             <>
               <b className="font-semibold text-text-primary">{coinSymbol}</b>
               {selectedName ? ` (${selectedName})` : ""} 보유량이 발행 시점 기준으로 글에 붙습니다
@@ -325,7 +349,7 @@ function WriteFields({
         </p>
       ) : null}
 
-      {selectedRoom && !selectedRoom.verifiable ? (
+      {selectedRoom && !selectedRoom.verifiable && !isGeneralRoom(selectedRoom.symbol) ? (
         <p role="note" className="mt-2 text-sm text-danger">
           {unsupportedNotice(selectedRoom.symbol)}
         </p>
@@ -355,19 +379,19 @@ function WriteFields({
 
       <YoutubeField value={youtubeUrl} onChange={setYoutubeUrl} disabled={pending} />
 
+      <CoinAttachments
+        roomSymbol={coinSymbol}
+        rooms={rooms.data}
+        value={attachedCoins}
+        onChange={setPickedCoins}
+        disabled={pending}
+      />
+
       {errorMessage ? (
         <p role="alert" className="mt-4 text-sm text-danger">
           {errorMessage}
         </p>
       ) : null}
-
-      <div className="mt-6 rounded-sm border border-border-subtle bg-surface p-4 text-sm text-text-muted">
-        <p>
-          보유 정보는 <b className="font-semibold text-text-primary">발행 시점에 확정</b>되며 이후
-          수정해도 바뀌지 않습니다. 수량은 구간으로만 공개되고 지갑 주소는 공개되지 않습니다.
-        </p>
-        <p className="mt-2">지갑을 연결하지 않았다면 미인증으로 발행됩니다.</p>
-      </div>
 
       <p className="mt-4 text-xs text-text-subtle">
         게시물은 투자 권유가 아니며, 투자 판단의 책임은 이용자에게 있습니다.

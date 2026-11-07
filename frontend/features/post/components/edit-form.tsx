@@ -377,10 +377,16 @@ function EditFields({
 
       <div className="mt-6 rounded-sm border border-border-subtle bg-surface p-4 text-sm text-text-muted">
         <p>
-          보유 정보와 작성 시점 가격은{" "}
-          <b className="font-semibold text-text-primary">발행 시점 그대로</b> 남습니다. 수정한
-          글에는 &quot;수정됨&quot; 이 붙습니다.
+          붙인 코인과 보유 기록 · 작성 시점 가격은{" "}
+          <b className="font-semibold text-text-primary">발행 시점 그대로</b> 남고 수정에서 바꿀 수
+          없습니다. 수정한 글에는 &quot;수정됨&quot; 이 붙습니다.
         </p>
+        {post.attachedSymbols.length > 0 ? (
+          <p className="mt-2">
+            이 글에 붙은 코인:{" "}
+            <b className="font-semibold text-text-primary">{post.attachedSymbols.join(" · ")}</b>
+          </p>
+        ) : null}
         <p className="mt-2">
           고친 내용은 자동으로 임시저장되고, 저장 버튼을 누르기 전까지 원래 글은 바뀌지 않습니다.
         </p>
