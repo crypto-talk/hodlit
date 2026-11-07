@@ -95,6 +95,45 @@ class PublicProfileApiTest {
     }
 
     @Test
+    void publicIdLookupSurvivesNicknameChangesAndSupportsLegacyNicknames() throws Exception {
+        owner.update("고래/물고기 #1", owner.getAvatarColor());
+        members.flush();
+        String idPath = "/api/v1/members/" + owner.getId();
+        String expected = mvc.perform(get("/api/v1/members/by-nickname").param("nickname", owner.getNickname()))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        mvc.perform(get(idPath)).andExpect(status().isOk()).andExpect(content().json(expected));
+        mvc.perform(patch("/api/v1/me").with(jwt().jwt(jwt -> jwt.subject(owner.getId().toString())))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"nickname\":\"  새이름_2-  \"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.nickname").value("새이름_2-"));
+        mvc.perform(get(idPath)).andExpect(status().isOk()).andExpect(jsonPath("$.nickname").value("새이름_2-"));
+        mvc.perform(get("/api/v1/members/{id}", Long.MAX_VALUE)).andExpect(status().isNotFound());
+        assertPrivateFieldsAbsent(idPath);
+    }
+
+    @Test
+    void signupAndProfileUpdateValidateTheNormalizedNickname() throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"loginId\":\"nick-test\",\"password\":\"strong-password-123\",\"nickname\":\"  고래-1  \"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.member.nickname").value("고래-1"));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"loginId\":\"nick-conflict\",\"password\":\"strong-password-123\",\"nickname\":\"  공개회원  \"}"))
+            .andExpect(status().isConflict());
+        for (String invalid : List.of("  A  ", "둘 이름", "고래/이름", "고래🐋", " ".repeat(5), "a".repeat(41))) {
+            String signup = json.writeValueAsString(java.util.Map.of(
+                "loginId", "invalid-nick", "password", "strong-password-123", "nickname", invalid));
+            mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(signup))
+                .andExpect(status().isBadRequest());
+            mvc.perform(patch("/api/v1/me").with(jwt().jwt(jwt -> jwt.subject(owner.getId().toString())))
+                    .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(java.util.Map.of("nickname", invalid))))
+                .andExpect(status().isBadRequest());
+        }
+        mvc.perform(patch("/api/v1/me").with(jwt().jwt(jwt -> jwt.subject(owner.getId().toString())))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"nickname\":\"  다른회원  \"}"))
+            .andExpect(status().isConflict());
+    }
+
+    @Test
     void activityFiltersBeforePaginationAndCountsMatchIncludingReplies() throws Exception {
         Post first = post(owner, eth, "first");
         Post second = post(owner, eth, "second");

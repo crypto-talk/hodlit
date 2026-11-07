@@ -203,7 +203,7 @@ class SocialApiTest {
     @CsvSource({"UNKNOWN,false", "PARTIAL,false", "UNKNOWN,true", "PARTIAL,true"})
     void publicationRefreshesAndReportsUnknownOnAnySourceFailure(String rpcStatus, boolean savedAssets) throws Exception {
         String suffix = rpcStatus.toLowerCase() + (savedAssets ? "-saved" : "-new");
-        Account author = signup("rpc-" + suffix, "RPC " + suffix);
+        Account author = signup("rpc-" + suffix, "RPC_" + suffix);
         wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
             "0x" + java.util.UUID.randomUUID().toString().replace("-", "") + "12345678"));
         if (savedAssets) {

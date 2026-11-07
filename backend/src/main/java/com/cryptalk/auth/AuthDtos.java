@@ -1,5 +1,6 @@
 package com.cryptalk.auth;
 
+import com.cryptalk.member.Nickname;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -21,8 +22,14 @@ public final class AuthDtos {
         @Pattern(regexp = "^[A-Za-z0-9._-]+$", message = "영문, 숫자, 마침표, 밑줄, 하이픈만 사용할 수 있습니다.")
         String loginId,
         @NotBlank @Size(min = 8, max = 72) String password,
-        @NotBlank @Size(min = 2, max = 40) String nickname
-    ) {}
+        @NotBlank @Size(min = 2, max = 40)
+        @Pattern(regexp = Nickname.PATTERN, message = Nickname.INVALID_CHARACTERS)
+        String nickname
+    ) {
+        public SignupRequest {
+            nickname = Nickname.normalize(nickname);
+        }
+    }
     public record LoginRequest(
         @NotBlank @Size(max = 254) String loginId,
         @NotBlank @Size(max = 72) String password

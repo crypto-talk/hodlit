@@ -17,6 +17,12 @@ public class PublicProfileController {
 
     public PublicProfileController(PublicProfileService profiles) { this.profiles = profiles; }
 
+    @Operation(summary = "회원 ID로 공개 프로필 조회", description = "닉네임 변경 후에도 같은 ID로 공개 프로필을 조회합니다.")
+    @GetMapping("/{memberId:[0-9]+}")
+    PublicProfileDtos.ProfileResponse profileById(@PathVariable Long memberId) {
+        return profiles.byId(memberId);
+    }
+
     @Operation(summary = "닉네임으로 공개 프로필 조회", description = "현재 닉네임으로 조회합니다. 공개 글·댓글 수와 마지막 저장 시점의 공개 자산 구간을 반환합니다.")
     @GetMapping("/by-nickname/{nickname}")
     PublicProfileDtos.ProfileResponse profile(@PathVariable String nickname) {

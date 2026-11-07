@@ -43,7 +43,14 @@ public class PublicProfileService {
     }
 
     public ProfileResponse byNickname(String nickname) {
-        Member member = members.findByNickname(nickname).orElseThrow(this::notFound);
+        return profile(members.findByNickname(nickname).orElseThrow(this::notFound));
+    }
+
+    public ProfileResponse byId(Long memberId) {
+        return profile(member(memberId));
+    }
+
+    private ProfileResponse profile(Member member) {
         List<AssetResponse> publicAssets = visible(member)
             ? assets.findByMemberIdOrderByCoinDisplayOrder(member.getId()).stream()
                 .filter(asset -> asset.getCoin().isActive() && "HOLDER".equals(asset.getHolderStatus()) && publication.visible(member.getId(), asset.getCoin().getId()))

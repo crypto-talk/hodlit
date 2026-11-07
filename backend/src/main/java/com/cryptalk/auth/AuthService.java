@@ -45,7 +45,7 @@ public class AuthService {
     @Transactional
     public LoginResult signup(SignupRequest request) {
         String loginId = request.loginId().toLowerCase();
-        String nickname = request.nickname().trim();
+        String nickname = request.nickname();
         if (members.findByLoginIdIgnoreCase(loginId).isPresent())
             throw new ApiException(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다.");
         if (members.findByNickname(nickname).isPresent())
