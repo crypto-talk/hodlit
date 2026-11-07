@@ -55,7 +55,8 @@ public class PublicProfileService {
     private ProfileResponse profile(Member member) {
         List<AssetResponse> publicAssets = visible(member)
             ? assets.findByMemberIdOrderByCoinDisplayOrder(member.getId()).stream()
-                .filter(asset -> asset.getCoin().isActive() && "HOLDER".equals(asset.getHolderStatus()) && publication.visible(member.getId(), asset.getCoin().getId()))
+                .filter(asset -> asset.getCoin().isActive() && !asset.getCoin().isGeneralRoom()
+                    && "HOLDER".equals(asset.getHolderStatus()) && publication.visible(member.getId(), asset.getCoin().getId()))
                 .map(this::assetResponse).toList()
             : List.of();
         return new ProfileResponse(member.getId(), member.getNickname(), member.getAvatarColor(),
@@ -67,11 +68,13 @@ public class PublicProfileService {
         var request = PageResponse.request(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
         Member member = member(memberId);
         return PageResponse.of(posts.publicMemberPage(memberId, request).map(post -> {
-            var roomSnapshot = postSnapshots.findById(post.getId()).orElse(null);
-            PostSnapshotResponse snapshot = visible(member) && publication.visible(memberId, post.getCoin().getId()) ? java.util.Optional.ofNullable(roomSnapshot).map(item ->
-                new PostSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
-                    item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getCapturedAt(),
-                    item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null) : null;
+            var roomSnapshot = post.getCoin().isGeneralRoom() ? null : postSnapshots.findById(post.getId()).orElse(null);
+            PostSnapshotResponse snapshot = roomSnapshot != null && visible(member)
+                    && publication.visible(memberId, post.getCoin().getId())
+                ? new PostSnapshotResponse(roomSnapshot.getVerificationAvailability(), roomSnapshot.getVerificationLevel(),
+                    roomSnapshot.isVerifiedHolder(), roomSnapshot.getQuantityBand(), roomSnapshot.getHoldingMonths(),
+                    roomSnapshot.getCapturedAt(), roomSnapshot.getSyncStatus(), roomSnapshot.getHolderStatus(), roomSnapshot.getBadge())
+                : null;
             return new PostResponse(post.getId(), post.getCoin().getSymbol(), post.getTitle(), post.getContent(),
                 post.getCreatedAt(), post.getUpdatedAt(), snapshot, attachments.visibleSnapshots(post, roomSnapshot));
         }));
@@ -81,7 +84,9 @@ public class PublicProfileService {
         var request = PageResponse.request(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
         Member member = member(memberId);
         return PageResponse.of(comments.publicMemberPage(memberId, request).map(comment -> {
-            CommentSnapshotResponse snapshot = visible(member) && publication.visible(memberId, comment.getPost().getCoin().getId()) ? commentSnapshots.findById(comment.getId()).map(item ->
+            var coin = comment.getPost().getCoin();
+            CommentSnapshotResponse snapshot = visible(member) && !coin.isGeneralRoom()
+                && publication.visible(memberId, coin.getId()) ? commentSnapshots.findById(comment.getId()).map(item ->
                 new CommentSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                     item.isVerifiedHolder(), item.getHoldingMonths(), item.getCapturedAt(),
                     item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null) : null;
@@ -107,7 +112,7 @@ public class PublicProfileService {
             Sort.by(Sort.Direction.DESC, "createdAt", "id")));
         if (recent.isEmpty()) return null;
         var post = recent.getContent().getFirst();
-        if (!publication.visible(member.getId(), post.getCoin().getId())) return null;
+        if (post.getCoin().isGeneralRoom() || !publication.visible(member.getId(), post.getCoin().getId())) return null;
         return postSnapshots.findById(post.getId()).map(com.cryptalk.post.PostHolderSnapshot::getBadge).orElse(null);
     }
     private String publicBand(AssetSnapshot asset) {

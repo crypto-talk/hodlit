@@ -194,7 +194,8 @@ class SocialApiTest {
         mvc.perform(get("/api/v1/market/prices/ETH").param("currency", "KRW"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.source").value("COINGECKO"));
         mvc.perform(get("/api/v1/market/prices").param("currency", "KRW"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$[0].symbol").value("BTC"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(20))
+            .andExpect(jsonPath("$[0].symbol").value("BTC"))
             .andExpect(jsonPath("$[0].change24h").value(2.75))
             .andExpect(jsonPath("$[4].symbol").value("DOGE"));
     }

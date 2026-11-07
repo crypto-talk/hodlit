@@ -86,18 +86,20 @@ class CrypTalkApplicationTest {
     void exposesSeededCoins() throws Exception {
         mvc.perform(get("/api/v1/coins"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(20))
+            .andExpect(jsonPath("$.length()").value(21))
             .andExpect(jsonPath("$[0].symbol").value("BTC"))
             .andExpect(jsonPath("$[0].verificationAvailability").value("SUPPORTED"))
             .andExpect(jsonPath("$[1].symbol").value("ETH"))
             .andExpect(jsonPath("$[1].verificationAvailability").value("SUPPORTED"))
-            .andExpect(jsonPath("$[19].symbol").value("SUI"));
+            .andExpect(jsonPath("$[19].symbol").value("SUI"))
+            .andExpect(jsonPath("$[20].symbol").value("OTHER"));
 
         var activeCoins = coins.findByActiveTrueOrderByDisplayOrder();
         assertEquals(List.of("BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "AVAX", "DOT", "LINK",
-            "POL", "TON", "TRX", "LTC", "BCH", "UNI", "AAVE", "ATOM", "NEAR", "SUI"),
+            "POL", "TON", "TRX", "LTC", "BCH", "UNI", "AAVE", "ATOM", "NEAR", "SUI", "OTHER"),
             activeCoins.stream().map(Coin::getSymbol).toList());
-        assertTrue(activeCoins.stream().allMatch(coin -> coin.getMarketPriceId() != null && !coin.getMarketPriceId().isBlank()));
+        assertTrue(activeCoins.subList(0, 20).stream().allMatch(Coin::hasMarketPrice));
+        assertFalse(activeCoins.getLast().hasMarketPrice());
     }
 
     @Test

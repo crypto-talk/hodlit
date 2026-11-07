@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 public class PostCoinAttachments {
     public static final int MAX_SELECTIONS = 3;
     public static final String COIN_SYMBOL_PATTERN = "[A-Za-z0-9]{2,20}";
-    private static final String GENERAL_ROOM = "OTHER";
 
     private final CoinRepository coins;
     private final PostCoinSnapshotRepository snapshots;
@@ -31,10 +30,6 @@ public class PostCoinAttachments {
         this.publication = publication;
     }
 
-    static boolean isGeneralRoom(Coin coin) {
-        return GENERAL_ROOM.equalsIgnoreCase(coin.getSymbol());
-    }
-
     List<Coin> selectExtraCoins(Coin room, List<String> symbols) {
         if (symbols == null) return List.of();
         var selected = new ArrayList<Coin>();
@@ -43,9 +38,9 @@ public class PostCoinAttachments {
             if (!seen.add(symbol.toUpperCase(Locale.ROOT))) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "첨부 코인은 중복할 수 없습니다.");
             }
-            if (symbol.equalsIgnoreCase(room.getSymbol()) && !isGeneralRoom(room)) continue;
+            if (symbol.equalsIgnoreCase(room.getSymbol()) && !room.isGeneralRoom()) continue;
             Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
-                .filter(candidate -> !isGeneralRoom(candidate)
+                .filter(candidate -> !candidate.isGeneralRoom()
                     && candidate.getVerificationAvailability() == VerificationAvailability.SUPPORTED)
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "보유 인증을 지원하는 활성 코인만 첨부할 수 있습니다."));
             selected.add(coin);
@@ -57,7 +52,7 @@ public class PostCoinAttachments {
         if (post.getMember().getAssetVisibility() == AssetVisibility.HIDDEN) return List.of();
         Long memberId = post.getMember().getId();
         var results = new ArrayList<AttachedCoinSnapshotResponse>();
-        if (roomSnapshot != null && !isGeneralRoom(post.getCoin())
+        if (roomSnapshot != null && !post.getCoin().isGeneralRoom()
                 && publication.visible(memberId, post.getCoin().getId())) {
             results.add(response(roomSnapshot));
         }

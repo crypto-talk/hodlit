@@ -109,7 +109,7 @@ public class CommunityStatisticsService {
                       AND (ec.exchange = 'COINONE' OR ec.account_fingerprint IS NOT NULL))))
                 THEN a.member_id ELSE NULL END) AS verified_participants
         FROM coins c LEFT JOIN activity a ON a.coin_id = c.id
-        LEFT JOIN asset_snapshots s ON s.coin_id = c.id AND s.member_id = a.member_id
+        LEFT JOIN asset_snapshots s ON s.coin_id = c.id AND s.member_id = a.member_id AND UPPER(c.symbol) <> 'OTHER'
         WHERE c.active = TRUE AND c.operation_status = 'OPEN' AND (:symbol IS NULL OR c.symbol = :symbol)
         GROUP BY c.id, c.symbol, c.display_order
         )

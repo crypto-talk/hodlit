@@ -59,7 +59,13 @@ public class Coin {
         if (!active) operationStatus = RoomOperationStatus.CLOSE;
     }
     protected Coin() {}
-    public void enableVerification() { this.verificationAvailability = VerificationAvailability.SUPPORTED; }
+    public boolean isGeneralRoom() { return "OTHER".equalsIgnoreCase(symbol); }
+    public boolean hasMarketPrice() {
+        return !isGeneralRoom() && marketPriceId != null && !marketPriceId.isBlank();
+    }
+    public void enableVerification() {
+        if (!isGeneralRoom()) this.verificationAvailability = VerificationAvailability.SUPPORTED;
+    }
     public boolean isActive() { return active; }
     public Long getId() { return id; }
     public String getSymbol() { return symbol; }

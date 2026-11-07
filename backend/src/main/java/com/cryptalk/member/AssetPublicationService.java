@@ -21,12 +21,16 @@ public class AssetPublicationService {
     public List<Preference> list(Long actor) {
         if (!members.existsById(actor)) throw missing();
         var settings = preferences.findByMemberId(actor).stream().collect(java.util.stream.Collectors.toMap(AssetPublicationPreference::getCoinId, AssetPublicationPreference::isVisible));
-        return coins.findByActiveTrueOrderByDisplayOrder().stream().map(c -> new Preference(c.getSymbol(), c.getName(), settings.getOrDefault(c.getId(), true))).toList();
+        return coins.findByActiveTrueOrderByDisplayOrder().stream()
+            .filter(coin -> !coin.isGeneralRoom())
+            .map(coin -> new Preference(coin.getSymbol(), coin.getName(), settings.getOrDefault(coin.getId(), true)))
+            .toList();
     }
     @Transactional
     public Preference save(Long actor, String symbol, boolean visible) {
         members.lockById(actor).orElseThrow(this::missing);
-        var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).orElseThrow(this::missing);
+        var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
+            .filter(candidate -> !candidate.isGeneralRoom()).orElseThrow(this::missing);
         var setting = preferences.findByMemberIdAndCoinId(actor, coin.getId()).orElseGet(() -> new AssetPublicationPreference(actor, coin.getId(), visible));
         setting.setVisible(visible);
         preferences.save(setting);

@@ -24,13 +24,15 @@ public class MarketPriceController {
         this.coins = coins; this.prices = prices;
     }
 
-    @Operation(summary = "전체 코인 실시간 시세 조회", description = "모든 활성 코인의 현재 가격과 24시간 등락률을 지정 통화로 반환합니다.")
+    @Operation(summary = "전체 코인 실시간 시세 조회", description = "시세를 지원하는 활성 코인의 가격과 24시간 등락률을 반환합니다. 기타 방과 시세 미지원 방은 제외합니다.")
     @GetMapping
     List<MarketPriceService.PriceQuote> current(@RequestParam(defaultValue = "KRW") String currency) {
-        return prices.currentPrices(coins.findByActiveTrueOrderByDisplayOrder(), currency);
+        var pricedCoins = coins.findByActiveTrueOrderByDisplayOrder().stream()
+            .filter(Coin::hasMarketPrice).toList();
+        return prices.currentPrices(pricedCoins, currency);
     }
 
-    @Operation(summary = "코인 실시간 시세 조회", description = "코인 심볼에 해당하는 현재 가격과 24시간 등락률을 지정 통화로 반환합니다.")
+    @Operation(summary = "코인 실시간 시세 조회", description = "코인의 현재 가격과 24시간 등락률을 반환합니다. 기타 방 등 시세 미지원 대상은 422를 반환합니다.")
     @GetMapping("/{symbol}")
     MarketPriceService.PriceQuote current(@PathVariable String symbol,
                                            @RequestParam(defaultValue = "USD") String currency) {
