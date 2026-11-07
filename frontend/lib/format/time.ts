@@ -37,6 +37,25 @@ export function formatDate(value: string | null | undefined): string {
   return DATE.format(at);
 }
 
+const DATE_TIME = new Intl.DateTimeFormat("ko-KR", {
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+/** 날짜와 시각. `2026. 11. 7. 13:05` 관리 이력처럼 언제 했는지가 중요한 기록에 쓴다. */
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "";
+
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return "";
+
+  return DATE_TIME.format(at);
+}
+
 /**
  * 상대 시각. 일주일이 넘으면 날짜로 떨어진다.
  *

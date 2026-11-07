@@ -3,8 +3,10 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/confirm-dialog";
 import PageLinks from "@/components/page-links";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
@@ -13,6 +15,7 @@ import { loadAdminRooms, setRoomStatus } from "../api";
 import type { RoomOperationStatus } from "@/lib/room-status";
 import type { AdminRoom } from "../types";
 import RoomCatalogTools from "./room-catalog-tools";
+import RoomSettings from "./room-settings";
 
 type Props = {
   q: string;
@@ -44,7 +47,8 @@ export default function RoomManager({ q, status, page }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(q);
-  const [selected, setSelected] = useState<AdminRoom | null>(null);
+  /** 설정이 펼쳐진 방. 한 번에 하나만 펼친다. */
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [closing, setClosing] = useState<AdminRoom | null>(null);
   const cancelClose = useCallback(() => setClosing(null), []);
 
@@ -151,18 +155,24 @@ export default function RoomManager({ q, status, page }: Props) {
       ) : (
         <>
           <p className="text-sm text-text-muted">방 {data.totalElements}개</p>
-          <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface">
-            {data.items.map((room) => (
-              <RoomRow
-                key={room.id}
-                room={room}
-                pending={pendingSymbol === room.symbol}
-                disabled={change.isPending}
-                onSettings={() => setSelected(room)}
-                onOpen={() => change.mutate({ room, next: "OPEN" })}
-                onClose={() => setClosing(room)}
-              />
-            ))}
+          <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-surface">
+            {data.items.map((room) => {
+              const open = expanded === room.symbol;
+              return (
+                <li key={room.id}>
+                  <RoomRow
+                    room={room}
+                    expanded={open}
+                    pending={pendingSymbol === room.symbol}
+                    disabled={change.isPending}
+                    onSettings={() => setExpanded(open ? null : room.symbol)}
+                    onOpen={() => change.mutate({ room, next: "OPEN" })}
+                    onClose={() => setClosing(room)}
+                  />
+                  {open ? <RoomSettings room={room} close={() => setExpanded(null)} /> : null}
+                </li>
+              );
+            })}
           </ul>
           <PageLinks
             page={data.page}
@@ -172,14 +182,19 @@ export default function RoomManager({ q, status, page }: Props) {
         </>
       )}
 
-      <RoomCatalogTools selected={selected} close={() => setSelected(null)} />
+      <RoomCatalogTools />
       {closing ? (
-        <CloseConfirm
-          room={closing}
+        <ConfirmDialog
+          title={`${closing.name}(${closing.symbol}) 방을 닫을까요?`}
+          confirmLabel="닫기"
+          busyLabel="닫는 중…"
           busy={change.isPending}
           onCancel={cancelClose}
           onConfirm={() => change.mutate({ room: closing, next: "CLOSE" })}
-        />
+        >
+          <p>닫는 즉시 모든 사용자에게서 이 방과 방의 글이 사라집니다.</p>
+          <p>글은 지워지지 않고 보존되며, 다시 열면 그대로 돌아옵니다.</p>
+        </ConfirmDialog>
       ) : null}
     </section>
   );
@@ -187,6 +202,7 @@ export default function RoomManager({ q, status, page }: Props) {
 
 function RoomRow({
   room,
+  expanded,
   pending,
   disabled,
   onOpen,
@@ -194,6 +210,7 @@ function RoomRow({
   onSettings,
 }: {
   room: AdminRoom;
+  expanded: boolean;
   pending: boolean;
   disabled: boolean;
   onOpen: () => void;
@@ -203,7 +220,7 @@ function RoomRow({
   const open = room.operationStatus === "OPEN";
 
   return (
-    <li className="flex items-center gap-3 px-4 py-3">
+    <div className={`flex items-center gap-3 px-4 py-3 ${expanded ? "bg-surface-muted/50" : ""}`}>
       <span className="w-14 flex-none font-semibold tabular-nums">{room.symbol}</span>
       <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{room.name}</span>
 
@@ -224,8 +241,19 @@ function RoomRow({
         {open ? "열림" : "닫힘"}
       </span>
 
-      <Button type="button" onClick={onSettings} disabled={disabled}>
+      <Button
+        type="button"
+        onClick={onSettings}
+        disabled={disabled}
+        aria-expanded={expanded}
+        aria-controls={`room-settings-${room.symbol}`}
+        className={expanded ? "border-text-muted" : ""}
+      >
         설정
+        <ChevronDown
+          aria-hidden
+          className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+        />
       </Button>
       {open ? (
         <Button type="button" className="w-20 flex-none" onClick={onClose} disabled={disabled}>
@@ -242,74 +270,6 @@ function RoomRow({
           {pending ? "여는 중…" : "열기"}
         </Button>
       )}
-    </li>
-  );
-}
-
-/**
- * 닫기 확인 창. 글 삭제 확인과 같은 모양으로 화면 전체를 흐리게 덮는다.
- * 실수로 Enter 를 눌러도 닫히지 않게 "취소" 에 포커스를 둔다. Esc · 바깥을 누르면 취소다.
- */
-function CloseConfirm({
-  room,
-  busy,
-  onCancel,
-  onConfirm,
-}: {
-  room: AdminRoom;
-  busy: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const cancelButton = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    cancelButton.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) onCancel();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [busy, onCancel]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-surface/60 px-4 pt-32 backdrop-blur-sm"
-      onClick={() => (busy ? undefined : onCancel())}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="room-close-title"
-        aria-describedby="room-close-desc"
-        className="w-full max-w-sm rounded-lg border border-border-subtle bg-surface p-6 shadow-lg"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 id="room-close-title" className="text-h2 font-semibold text-text-primary">
-          {room.name}({room.symbol}) 방을 닫을까요?
-        </h2>
-        <div id="room-close-desc" className="mt-2 flex flex-col gap-1 text-sm text-text-muted">
-          <p>닫는 즉시 모든 사용자에게서 이 방과 방의 글이 사라집니다.</p>
-          <p>글은 지워지지 않고 보존되며, 다시 열면 그대로 돌아옵니다.</p>
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button ref={cancelButton} type="button" onClick={onCancel} disabled={busy}>
-            취소
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            className="bg-danger hover:bg-danger/90"
-            onClick={onConfirm}
-            disabled={busy}
-          >
-            {busy ? "닫는 중…" : "닫기"}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

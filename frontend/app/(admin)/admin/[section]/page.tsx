@@ -1,5 +1,21 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ModerationScreen from "@/features/admin/components/moderation-screen";
+
+const TITLE: Record<string, string> = {
+  posts: "글 관리",
+  members: "회원 관리",
+  logs: "관리 이력",
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ section: string }>;
+}): Promise<Metadata> {
+  const { section } = await params;
+  return { title: `${TITLE[section] ?? "관리자"} — Hodlit 관리자` };
+}
 
 export default async function AdminSectionPage({
   params,

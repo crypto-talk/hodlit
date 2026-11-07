@@ -43,7 +43,7 @@ export default function PriceTicker() {
   return (
     <section
       aria-label="코인 시세"
-      className="flex h-11 items-stretch overflow-hidden border-2 border-brand bg-brand/5"
+      className="flex h-11 items-stretch overflow-hidden border-y-2 border-brand bg-brand/5"
     >
       <div className="flex flex-none items-center gap-1.5 bg-brand px-3 text-xs font-semibold text-text-inverse">
         <span aria-hidden="true" className="size-1.5 bg-text-inverse" />
