@@ -17,7 +17,8 @@ public class MemberService {
     public MemberResponse get(Long id) {
         Member member = find(id);
         String address = wallets.findFirstByMemberId(id).map(wallet -> wallet.getAddress()).orElse(null);
-        return new MemberResponse(id, member.getNickname(), member.getAvatarColor(), address, member.getAssetVisibility().name());
+        return new MemberResponse(id, member.getNickname(), member.getAvatarColor(), address,
+            member.getAssetVisibility().name(), member.getRole());
     }
 
     @Transactional

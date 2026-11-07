@@ -46,6 +46,7 @@ public class Member {
     }
 
     public Long getId() { return id; }
+    public MemberRole getRole() { return role; }
     public Instant getCreatedAt() { return createdAt; }
     public String getNickname() { return nickname; }
     public String getLoginId() { return loginId; }

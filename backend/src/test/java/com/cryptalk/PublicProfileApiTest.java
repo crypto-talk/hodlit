@@ -263,7 +263,7 @@ class PublicProfileApiTest {
     private void assertPrivateFieldsAbsent(String path) throws Exception {
         String body = mvc.perform(get(path)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(body).doesNotContain(ADDRESS, "3.141592", "12345678", "99999999", "private-login", "private-password");
-        for (String key : List.of("walletAddress", "address", "loginId", "passwordHash", "quantity", "quantityExact",
+        for (String key : List.of("role", "walletAddress", "address", "loginId", "passwordHash", "quantity", "quantityExact",
                 "valueKrw", "assetValueKrw", "holdingSince")) {
             assertThat(json.readTree(body).findValues(key)).as(key).isEmpty();
         }
