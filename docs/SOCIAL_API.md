@@ -157,6 +157,28 @@ Content-Type: application/json
 }
 ```
 
+- `attachedCoins`: 선택적 코인 심볼 배열. 최대 3개이며 생략하면 방 코인만 저장합니다.
+  방 코인은 서버가 자동 포함하며 같은 심볼을 명시해도 중복 저장하지 않습니다.
+  선택 코인은 대소문자를 구분하지 않으며 중복 심볼, 미등록·비활성·인증 미지원 코인은 `400`입니다.
+  코인의 방이 닫혀 있어도 보유 인증을 지원하는 활성 코인이면 선택할 수 있습니다.
+  `OTHER` 방은 선택한 코인만 저장하고 빈 배열도 허용합니다. 기타 방 카탈로그 생성·개방은 HODL-87과 연동합니다.
+- `attachedCoinSnapshots`: 상세·목록·피드·북마크 및 공개 프로필 글 목록에 반환하는 발행 시점 기록 배열.
+  방 코인 다음에 선택 순서로 반환합니다. 각 항목은 `coinSymbol`, `verificationAvailability`,
+  `holderStatus`, `verifiedHolder`, `quantityBand`, `holdingMonths`, `badge`,
+  `verificationLevel`, `syncStatus`, `capturedAt`을 제공합니다.
+  정확 수량·지갑 주소·정확 보유 시작일은 포함하지 않습니다.
+- 미보유와 미연결도 선택할 수 있으며 각각 기존 `EMPTY`, `NOT_CONNECTED` 상태를 저장합니다.
+  조회 불완전 시 기존 `UNKNOWN` 또는 확인된 부분합의 `HOLDER` 상태와 `PARTIAL`을 유지합니다.
+  모든 첨부 코인은 지갑·거래소를 한 번 갱신한 결과에서 캡처합니다.
+- `PUT /posts/{postId}`는 첨부 목록과 보유 기록을 변경하지 않습니다. 임시저장에는
+  선택 목록만 보관하고 잔액과 배지는 발행 시 서버가 확정합니다.
+- 회원 전체 자산 비공개이면 `attachedCoinSnapshots`는 빈 배열이며, 코인별 비공개 항목도 제외합니다.
+  공개 설정 변경은 저장된 기록을 수정하지 않습니다.
+- 기존 `holderSnapshot`은 방 코인의 단일 기록을 계속 제공합니다. 이전 글은 실제 저장된
+  방 코인 기록만 새 배열에 포함되며 기록이 없는 글은 빈 배열입니다.
+- Liquibase `024-post-coin-snapshots.sql`은 추가 코인 기록용 테이블을 생성합니다.
+  기존 방 코인 기록은 `post_holder_snapshots`에 유지됩니다. 글 삭제 시 추가 기록도 함께 삭제됩니다.
+
 - `media.type`: `IMAGE` 또는 `VIDEO`
 - `media.url`, `thumbnailUrl`: 업로드 API가 반환한 경로 또는 사용자 정보가 없는 HTTPS URL
 - `tradingViewInterval`: `1`, `3`, `5`, `15`, `30`, `45`, `60`, `120`, `180`, `240`, `D`, `W`, `M`

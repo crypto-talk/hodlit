@@ -135,7 +135,8 @@ public class DraftService {
             SaveDraftRequest data = json.readValue(draft.getPayload(), SaveDraftRequest.class);
             return new DraftResponse(draft.getId(), draft.getUpdatedAt(), data.coinSymbol(), data.title(), data.content(),
                 data.media(), data.tradingViewSymbol(), data.tradingViewInterval(), data.tradingViewAnalysis(),
-                data.assetPrice(), data.assetPriceCurrency(), data.youtubeUrl(), draft.getSourcePostId());
+                data.assetPrice(), data.assetPriceCurrency(), data.youtubeUrl(), draft.getSourcePostId(),
+                data.attachedCoins() == null ? List.of() : data.attachedCoins());
         } catch (JsonProcessingException exception) { throw new IllegalStateException("Cannot decode draft", exception); }
     }
 }

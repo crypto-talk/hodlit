@@ -29,11 +29,13 @@ public class PublicProfileService {
     private final CommentRepository comments;
     private final AssetSnapshotRepository assets;
     private final PostHolderSnapshotRepository postSnapshots;
+    private final com.cryptalk.post.PostCoinAttachments attachments;
     private final CommentHolderSnapshotRepository commentSnapshots;
 
     public PublicProfileService(MemberRepository members, PostRepository posts, CommentRepository comments,
                                 AssetSnapshotRepository assets, PostHolderSnapshotRepository postSnapshots,
-                                CommentHolderSnapshotRepository commentSnapshots) {
+                                CommentHolderSnapshotRepository commentSnapshots, com.cryptalk.post.PostCoinAttachments attachments) {
+        this.attachments = attachments;
         this.members = members;
         this.posts = posts;
         this.comments = comments;
@@ -58,12 +60,13 @@ public class PublicProfileService {
         var request = PageResponse.request(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
         Member member = member(memberId);
         return PageResponse.of(posts.publicMemberPage(memberId, request).map(post -> {
-            PostSnapshotResponse snapshot = visible(member) && publication.visible(memberId, post.getCoin().getId()) ? postSnapshots.findById(post.getId()).map(item ->
+            var roomSnapshot = postSnapshots.findById(post.getId()).orElse(null);
+            PostSnapshotResponse snapshot = visible(member) && publication.visible(memberId, post.getCoin().getId()) ? java.util.Optional.ofNullable(roomSnapshot).map(item ->
                 new PostSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                     item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getCapturedAt(),
                     item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null) : null;
             return new PostResponse(post.getId(), post.getCoin().getSymbol(), post.getTitle(), post.getContent(),
-                post.getCreatedAt(), post.getUpdatedAt(), snapshot);
+                post.getCreatedAt(), post.getUpdatedAt(), snapshot, attachments.visibleSnapshots(post, roomSnapshot));
         }));
     }
 

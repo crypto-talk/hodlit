@@ -74,6 +74,8 @@ public class PostService {
     private final MarketPriceService marketPrices;
     private final FollowRepository follows;
     private final PostHolderSnapshotRepository holderSnapshots;
+    private final PostCoinSnapshotRepository coinSnapshots;
+    private final PostCoinAttachments attachments;
     private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public PostService(PostRepository posts, PostLikeRepository likes, CommentRepository comments,
@@ -81,7 +83,11 @@ public class PostService {
                        AssetService assets, PostMediaRepository postMedia,
                        PostBookmarkRepository bookmarks, PostRepostRepository reposts,
                        MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows,
-                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc, RoomAccess rooms, com.cryptalk.badge.BadgeService badges) {
+                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc,
+                       RoomAccess rooms, com.cryptalk.badge.BadgeService badges,
+                       PostCoinSnapshotRepository coinSnapshots, PostCoinAttachments attachments) {
+        this.coinSnapshots = coinSnapshots;
+        this.attachments = attachments;
         this.rooms = rooms;
         this.badges = badges;
         this.posts = posts; this.likes = likes; this.comments = comments; this.members = members;
@@ -147,7 +153,17 @@ public class PostService {
         Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(request.coinSymbol())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
         rooms.requireOpen(coin);
-        AssetSnapshot snapshot = assets.snapshotForPublication(memberId, coin);
+        List<Coin> selected = attachments.selectExtraCoins(coin, request.attachedCoins());
+        java.util.Map<Long, AssetSnapshot> captured = java.util.Map.of();
+        AssetSnapshot snapshot = null;
+        if (!selected.isEmpty()) {
+            var captureCoins = new ArrayList<>(selected);
+            if (!PostCoinAttachments.isGeneralRoom(coin)) captureCoins.addFirst(coin);
+            captured = assets.snapshotsForPublication(memberId, captureCoins);
+            snapshot = captured.get(coin.getId());
+        } else if (!PostCoinAttachments.isGeneralRoom(coin)) {
+            snapshot = assets.snapshotForPublication(memberId, coin);
+        }
         boolean verified = snapshot != null && snapshot.isVerified();
         // Exchange-backed aggregate quantities are public only as bands, never inferable exact valuations.
         BigDecimal value = verified && snapshot.getExchangeCount() == 0 && "READY".equals(snapshot.getSyncStatus())
@@ -164,6 +180,13 @@ public class PostService {
         var holderRecord = new PostHolderSnapshot(saved, snapshot);
         holderRecord.applyBadge(badges.capture(coin, snapshot));
         holderSnapshots.save(holderRecord);
+        for (int index = 0; index < selected.size(); index++) {
+            Coin attached = selected.get(index);
+            AssetSnapshot holding = captured.get(attached.getId());
+            var record = new PostCoinSnapshot(saved, attached, holding, index);
+            record.applyBadge(badges.capture(attached, holding));
+            coinSnapshots.save(record);
+        }
         saveMedia(memberId, saved, request.media(), Set.of());
         return response(saved, memberId);
     }
@@ -187,6 +210,9 @@ public class PostService {
         List<String> mediaUrls = new ArrayList<>(postMedia.findUrlsByPostId(postId));
         mediaUrls.addAll(postMedia.findThumbnailUrlsByPostId(postId));
         mediaFiles.deleteManagedAfterCommit(mediaUrls);
+        // Delete managed snapshot children before their parent as well as relying on DB cascades.
+        coinSnapshots.deleteByPostId(postId);
+        holderSnapshots.deleteById(postId);
         posts.delete(post);
     }
 
@@ -368,7 +394,8 @@ public class PostService {
             : new PriceSnapshotResponse(post.getAssetPrice(), post.getAssetPriceCurrency(), post.getAssetPriceAt(), post.getAssetPriceSource());
         YoutubeResponse youtube = post.getYoutubeVideoId() == null ? null
             : new YoutubeResponse(post.getYoutubeUrl(), post.getYoutubeVideoId(), post.getYoutubeThumbnailUrl());
-        HolderSnapshotResponse holderSnapshot = holderSnapshots.findById(post.getId()).map(item ->
+        PostHolderSnapshot roomSnapshot = holderSnapshots.findById(post.getId()).orElse(null);
+        HolderSnapshotResponse holderSnapshot = java.util.Optional.ofNullable(roomSnapshot).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getWalletCount(),
                 item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null);
@@ -376,7 +403,8 @@ public class PostService {
             visible && post.isAuthorVerified(), value, assetDisplay(member.getAssetVisibility(), value),
             likes.countByPostId(post.getId()), comments.countByPostId(post.getId()), liked,
             post.getCreatedAt(), post.getUpdatedAt(), mediaResponses, tradingView, priceSnapshot, youtube,
-            reposts.countByPostId(post.getId()), reposted, bookmarked, holderSnapshot);
+            reposts.countByPostId(post.getId()), reposted, bookmarked, holderSnapshot,
+            attachments.visibleSnapshots(post, roomSnapshot));
     }
 
     private AuthorResponse author(Member member) {

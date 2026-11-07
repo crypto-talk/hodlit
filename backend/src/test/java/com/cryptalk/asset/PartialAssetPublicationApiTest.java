@@ -121,6 +121,21 @@ class PartialAssetPublicationApiTest {
     }
 
     @Test
+    void multipleCoinPublicationRefreshesAllSourcesOnce() throws Exception {
+        sources(true, true, "2");
+        mvc.perform(post("/api/v1/posts").with(jwt().jwt(t -> t.subject(Long.toString(owner))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"coinSymbol\":\"ETH\",\"title\":\"multi\",\"content\":\"body\",\"attachedCoins\":[\"POL\"]}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.attachedCoinSnapshots.length()").value(2))
+            .andExpect(jsonPath("$.attachedCoinSnapshots[0].coinSymbol").value("ETH"))
+            .andExpect(jsonPath("$.attachedCoinSnapshots[0].holderStatus").value("HOLDER"))
+            .andExpect(jsonPath("$.attachedCoinSnapshots[1].coinSymbol").value("POL"));
+        org.mockito.Mockito.verify(alchemy).fetch(anyList(), any());
+        org.mockito.Mockito.verify(balances).balances(eq(Exchange.UPBIT), anyString(), anyString());
+    }
+
+    @Test
     void missingAlchemyConfigurationDoesNotDiscardSuccessfulExchangeBalance() throws Exception {
         sources(false, true, "5");
         when(alchemy.isConfigured()).thenReturn(false);

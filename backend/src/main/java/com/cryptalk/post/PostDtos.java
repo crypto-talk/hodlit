@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -22,7 +23,10 @@ public final class PostDtos {
         @Size(max=5000) String tradingViewAnalysis,
         @DecimalMin(value="0.0", inclusive=false) BigDecimal assetPrice,
         @Pattern(regexp="^[A-Z0-9]{2,10}$") String assetPriceCurrency,
-        @Size(max=500) String youtubeUrl
+        @Size(max=500) String youtubeUrl,
+        @Schema(description = "방 코인 외에 발행 시 보유 기록을 첨부할 코인 심볼. 최대 3개.")
+        @Size(max = PostCoinAttachments.MAX_SELECTIONS)
+        List<@NotNull @Pattern(regexp = PostCoinAttachments.COIN_SYMBOL_PATTERN) String> attachedCoins
     ) {}
     public record UpdatePostRequest(
         @NotBlank @Size(max=120) String title,
@@ -44,13 +48,19 @@ public final class PostDtos {
     public record HolderSnapshotResponse(String verificationAvailability, String verificationLevel,
                                          boolean verifiedHolder, String quantityBand, Integer holdingMonths,
                                          int walletCount, Instant capturedAt, Long blockNumber, String syncStatus, String holderStatus, com.cryptalk.badge.BadgeSnapshot badge) {}
+    @Schema(description = "발행 시점의 코인별 보유 상태, 수량 구간 및 배지")
+    public record AttachedCoinSnapshotResponse(String coinSymbol, String verificationAvailability,
+                                               String holderStatus, boolean verifiedHolder, String quantityBand,
+                                               Integer holdingMonths, com.cryptalk.badge.BadgeSnapshot badge,
+                                               String verificationLevel, String syncStatus, Instant capturedAt) {}
     public record YoutubeResponse(String url, String videoId, String thumbnailUrl) {}
     public record PostResponse(Long id, String coinSymbol, String title, String content, AuthorResponse author,
                                boolean verifiedHolder, BigDecimal assetValueKrw, String assetDisplay,
                                long likes, long comments, boolean liked, Instant createdAt, Instant updatedAt,
                                List<MediaResponse> media, TradingViewResponse tradingView, PriceSnapshotResponse priceSnapshot,
                                YoutubeResponse youtube, long reposts, boolean reposted, boolean bookmarked,
-                               HolderSnapshotResponse holderSnapshot) {}
+                               HolderSnapshotResponse holderSnapshot,
+                               List<AttachedCoinSnapshotResponse> attachedCoinSnapshots) {}
     public record FeedItemResponse(String eventType, Instant occurredAt, AuthorResponse actor, PostResponse post) {}
     public record FeedPageResponse(List<FeedItemResponse> items, String nextCursor, boolean hasMore) {}
 }

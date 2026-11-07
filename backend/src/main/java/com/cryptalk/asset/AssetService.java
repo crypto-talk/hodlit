@@ -142,17 +142,36 @@ public class AssetService {
     public AssetSnapshot snapshotForPublication(Long memberId,Coin coin) {
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED
                 && !(alchemy.isConfigured() && walletSupported(coin)) && exchanges.list(memberId).isEmpty()) return null;
-        boolean refreshFailed = false;
+        boolean refreshFailed = refreshForPublicationFailed(memberId);
+        return publicationSnapshot(memberId, coin, Instant.now(), refreshFailed);
+    }
+
+    @Transactional
+    public Map<Long, AssetSnapshot> snapshotsForPublication(Long memberId, List<Coin> selectedCoins) {
+        boolean refreshFailed = refreshForPublicationFailed(memberId);
+        Instant now = Instant.now();
+        Map<Long, AssetSnapshot> results = new HashMap<>();
+        for (Coin coin : selectedCoins) {
+            AssetSnapshot snapshot = publicationSnapshot(memberId, coin, now, refreshFailed);
+            if (snapshot != null) results.put(coin.getId(), snapshot);
+        }
+        return results;
+    }
+
+    private boolean refreshForPublicationFailed(Long memberId) {
         try {
             refreshAndList(memberId, true);
+            return false;
         } catch (ApiException exception) {
             if (exception.status() != HttpStatus.SERVICE_UNAVAILABLE) throw exception;
-            refreshFailed = true;
+            return true;
         }
+    }
+
+    private AssetSnapshot publicationSnapshot(Long memberId, Coin coin, Instant now, boolean refreshFailed) {
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
         var snapshot = snapshots.findByMemberIdAndCoinId(memberId,coin.getId()).orElse(null);
         if (snapshot == null) return null;
-        Instant now = Instant.now();
         boolean fresh = snapshot.getCapturedAt() != null && !snapshot.getCapturedAt().isAfter(now)
             && !snapshot.getCapturedAt().isBefore(now.minus(publicationMaxAge));
         return snapshot.publicationCopy(fresh, refreshFailed);
