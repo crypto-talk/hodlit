@@ -27,7 +27,8 @@ public final class PublicProfileDtos {
 
     @Schema(name = "PublicProfilePost")
     public record PostResponse(Long id, String coinSymbol, String title, String content,
-                               Instant createdAt, Instant updatedAt, PostSnapshotResponse holderSnapshot) {}
+                               Instant createdAt, Instant updatedAt, PostSnapshotResponse holderSnapshot,
+                               List<com.cryptalk.post.PostDtos.AttachedCoinSnapshotResponse> attachedCoinSnapshots) {}
 
     @Schema(name = "PublicProfileComment")
     public record CommentResponse(Long id, Long postId, String postTitle, String coinSymbol, String content,
