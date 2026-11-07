@@ -10,7 +10,7 @@ import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
 import { isRoomClosedError } from "@/lib/room-status";
-import { roomHref } from "@/lib/routes";
+import { profileHref, roomHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { usePost } from "../hooks/use-post";
 import { useWriteRooms } from "../hooks/use-write-rooms";
@@ -92,12 +92,16 @@ export default function PostDetailView({ postId, symbol }: Props) {
       </div>
 
       <h1 className="mt-4 text-h1 font-semibold break-words text-text-primary">{data.title}</h1>
-      <Link
-        href={`/@${encodeURIComponent(data.authorNickname)}`}
-        className="mt-2 block text-sm font-semibold text-text-primary"
-      >
-        {data.authorNickname}
-      </Link>
+      {data.authorId !== null ? (
+        <Link
+          href={profileHref(data.authorId)}
+          className="mt-2 block text-sm font-semibold text-text-primary"
+        >
+          {data.authorNickname}
+        </Link>
+      ) : (
+        <p className="mt-2 text-sm font-semibold text-text-primary">{data.authorNickname}</p>
+      )}
 
       {data.holder && !data.holder.verifiable ? (
         <p className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4 text-sm text-text-muted">

@@ -48,7 +48,8 @@ app/
     page.tsx            landing (server component, Promise.all over sections)
     subhodl/[symbol]/page.tsx             room board
     subhodl/[symbol]/[postId]/page.tsx    post detail
-    [handle]/page.tsx   public profile; notFound() unless handle starts with "@"
+    user/[memberId]/page.tsx  public profile by member id (HODL-104); notFound() unless the id
+                        is a positive integer. The old `/@nickname` route is gone (404, no redirect)
   (focus)/              header only
     login/  signup/  write/  settings/  settings/wallet/
     subhodl/[symbol]/[postId]/edit/
@@ -68,7 +69,11 @@ lib/query.ts  lib/format/  lib/utils.ts (cn)  lib/config.ts (env, single read po
 lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3). Was
                         `features/badge` — pure functions every feature needs, so it moved
                         down to lib/ when the post detail screen became its second user
-lib/routes.ts           screen URLs (room, post, write) + `safeSymbol()` + `roomSymbolOf()`
+lib/routes.ts           screen URLs (room, post, write, `profileHref(memberId)`) + `safeSymbol()` +
+                        `roomSymbolOf()` + `parseMemberId()`. Profile links always use the member
+                        id, never the nickname — nicknames change
+lib/nickname.ts         nickname rule copied from the backend (2–40 chars after trim, Hangul /
+                        A–Z / a–z / 0–9 / `_` / `-`), shared by signup and the mypage nickname editor
 lib/post-summary.ts     PostResponse -> list card view model, shared by landing and room board
 lib/market-price/       coin prices fetched by the browser straight from Upbit, or CoinGecko for
                         coins Upbit does not list (HODL-61): the symbol -> Upbit market /

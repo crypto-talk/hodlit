@@ -2,7 +2,7 @@ import Link from "next/link";
 import AnimalBadge from "@/components/holder/animal-badge";
 import TierBadge from "@/components/holder/tier-badge";
 import type { PostSummary } from "@/lib/post-summary";
-import { roomHref } from "@/lib/routes";
+import { profileHref, roomHref } from "@/lib/routes";
 
 type Props = {
   post: PostSummary;
@@ -47,9 +47,13 @@ export default function PostCard({ post, showRoom = true }: Props) {
             {post.symbol}
           </Link>
         ) : null}
-        <Link href={`/@${encodeURIComponent(post.nick)}`} className="text-xs text-text-muted">
-          {post.nick}
-        </Link>
+        {post.authorId !== null ? (
+          <Link href={profileHref(post.authorId)} className="text-xs text-text-muted">
+            {post.nick}
+          </Link>
+        ) : (
+          <span className="text-xs text-text-muted">{post.nick}</span>
+        )}
         <AnimalBadge badge={post.badge} position="list" />
         {post.verifiable ? (
           <TierBadge tier={post.tier} symbol={post.symbol} holderStatus={post.holderStatus} />

@@ -135,18 +135,25 @@ test("server-renders the Hodlit application", async (t) => {
     assert.match(html, /href="\/signup\?next=%2F"/);
   });
   await t.test("공개 프로필 주소", async () => {
-    const response = await fetch(`${origin}/@profile-smoke`, { headers: { accept: "text/html" } });
-    const profileHtml = await response.text();
+    // 회원 id 주소(HODL-104). 본문은 클라이언트가 받는다.
+    const response = await fetch(`${origin}/user/7?tab=comments&page=2`, {
+      headers: { accept: "text/html" },
+    });
     assert.equal(response.status, 200);
-    assert.match(profileHtml, /프로필 불러오는 중/);
-    const encoded = await fetch(`${origin}/%40${encodeURIComponent("고래")}`, {
-      headers: { accept: "text/html" },
-    });
-    assert.equal(encoded.status, 200);
-    const reserved = await fetch(`${origin}/@${encodeURIComponent("고래/물고기 #1")}`, {
-      headers: { accept: "text/html" },
-    });
-    assert.equal(reserved.status, 200);
+    assert.match(await response.text(), /프로필 불러오는 중/);
+    // id 모양이 아니면 요청 없이 404.
+    for (const path of ["/user/abc", "/user/0", "/user/007", "/user/-1"]) {
+      const invalid = await fetch(`${origin}${path}`, { headers: { accept: "text/html" } });
+      assert.equal(invalid.status, 404, path);
+    }
+    // 예전 `/@닉네임` 주소는 넘겨 주지 않고 404.
+    for (const path of ["/@profile-smoke", `/%40${encodeURIComponent("고래")}`]) {
+      const old = await fetch(`${origin}${path}`, {
+        headers: { accept: "text/html" },
+        redirect: "manual",
+      });
+      assert.equal(old.status, 404, path);
+    }
     const missing = await fetch(`${origin}/not-a-profile`, { headers: { accept: "text/html" } });
     assert.equal(missing.status, 404);
   });

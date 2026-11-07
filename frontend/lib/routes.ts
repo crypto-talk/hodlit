@@ -110,9 +110,41 @@ export function roomSymbolOf(pathname: string | null): string | null {
   return match ? safeSymbol(match[1]) : null;
 }
 
+/** 공개 프로필의 탭. 작성한 글이 기본이라 주소에는 `comments` 만 싣는다. */
+export type ProfileTab = "posts" | "comments";
+
 /**
- * 마이페이지. 본인만 보는 화면이라 닉네임이 주소에 들어가지 않는다. 남에게 보여 주는
- * 공개 프로필(`/@닉네임`, HODL-75)과는 다른 화면이다.
+ * 공개 프로필(HODL-104). 주소의 식별자는 **회원 id** 다 — 닉네임은 바뀔 수 있어
+ * 화면에 보여 주는 값으로만 쓴다. 그래서 닉네임을 바꿔도 같은 주소가 같은 회원을 가리킨다.
+ * 예전 `/@닉네임` 주소는 없앴고 새 주소로 넘겨 주지 않는다(404).
+ *
+ * `page` 는 1부터 세고 1쪽은 주소에 적지 않는다(방 게시판 · 검색과 같다).
+ */
+export function profileHref(
+  memberId: number,
+  options: { tab?: ProfileTab; page?: number } = {},
+): string {
+  const base = `/user/${memberId}`;
+  const query = new URLSearchParams();
+  if (options.tab === "comments") query.set("tab", "comments");
+  if (options.page && options.page > 1) query.set("page", String(options.page));
+  const search = query.toString();
+  return search ? `${base}?${search}` : base;
+}
+
+/**
+ * 주소의 회원 id 검사. 1 이상의 정수 숫자만 받는다(`007` · `1e3` · `-1` · `1.0` 은 아님).
+ * 아니면 null — 요청을 보내지 않고 404 로 끝낸다.
+ */
+export function parseMemberId(value: string | undefined): number | null {
+  if (!value || !/^[1-9]\d*$/.test(value)) return null;
+  const id = Number(value);
+  return Number.isSafeInteger(id) ? id : null;
+}
+
+/**
+ * 마이페이지. 본인만 보는 화면이다. 남에게 보여 주는 공개 프로필(`profileHref`)과는
+ * 다른 화면이다.
  */
 export const MYPAGE_HREF = "/mypage";
 
