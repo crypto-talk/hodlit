@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import RoomNews from "@/features/news/components/room-news";
 import RoomBoard from "@/features/room/components/room-board";
 import RoomPoll from "@/features/vote/components/room-poll";
+import { isGeneralRoom } from "@/lib/room-status";
 import { safeSymbol } from "@/lib/routes";
 
 type Params = Promise<{ symbol: string }>;
@@ -10,6 +11,7 @@ type Params = Promise<{ symbol: string }>;
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { symbol } = await params;
   const room = safeSymbol(symbol);
+  if (isGeneralRoom(room)) return { title: "기타 방 — Hodlit" };
   return { title: room ? `${room} 방 — Hodlit` : "Hodlit" };
 }
 
@@ -38,8 +40,9 @@ export default async function RoomPage({
       symbol={room}
       tab={tab === "verified" ? "verified" : "all"}
       page={Number.isFinite(pageNumber) && pageNumber >= 1 ? pageNumber : 1}
-      news={<RoomNews symbol={room} />}
-      poll={<RoomPoll symbol={room} />}
+      // 기타 방(HODL-87)은 뉴스 · 투표가 없다. 칸을 넣지 않아 요청도 안 간다.
+      news={isGeneralRoom(room) ? null : <RoomNews symbol={room} />}
+      poll={isGeneralRoom(room) ? null : <RoomPoll symbol={room} />}
     />
   );
 }
