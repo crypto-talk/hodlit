@@ -15,7 +15,7 @@ export interface paths {
         get: operations["get"];
         /**
          * 게시글 수정
-         * @description 작성자 본인의 게시글을 수정합니다.
+         * @description 작성자 본인의 게시글을 수정합니다. 첨부 코인과 발행 시점 보유 기록은 고정됩니다.
          */
         put: operations["update"];
         post?: never;
@@ -159,7 +159,7 @@ export interface paths {
         put?: never;
         /**
          * 게시글 작성
-         * @description 로그인 회원이 커뮤니티에 게시글을 작성하고 현재 가격 스냅샷을 저장합니다. 보유 인증 지원 코인은 서버에서 잔액을 갱신하며, 조회 실패 시 최신성 제한 내의 캐시만 인증에 사용합니다. 잔액 조회·인증 여부는 작성 권한과 무관합니다.
+         * @description 로그인 회원이 게시글을 작성하고 지원하는 방 코인의 시세·보유 기록을 저장합니다. 기타(OTHER) 방은 추가로 선택한 코인의 보유 기록만 저장합니다. 보유 인증 지원 코인의 잔액 조회가 실패하면 최신성 제한 내의 캐시만 인증에 사용합니다. 잔액 조회·인증 여부는 작성 권한과 무관합니다.
          */
         post: operations["create"];
         delete?: never;
@@ -949,9 +949,29 @@ export interface paths {
         };
         /**
          * 투표 조회
-         * @description 결과는 해당 KST 날짜에 참여한 사용자만 볼 수 있습니다.
+         * @description 진행 중인 오늘 결과는 참여자만, 종료된 투표의 오늘 결과는 공개합니다.
          */
         get: operations["get_4"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/polls/{pollId}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 투표 날짜별 결과
+         * @description from/to는 KST 날짜(양 끝 포함). 진행 중인 오늘은 참여자만 조회 가능합니다.
+         */
+        get: operations["results"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1088,6 +1108,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 회원 ID로 공개 프로필 조회
+         * @description 닉네임 변경 후에도 같은 ID로 공개 프로필을 조회합니다.
+         */
+        get: operations["profileById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/members/by-nickname": {
         parameters: {
             query?: never;
@@ -1195,6 +1235,26 @@ export interface paths {
          * @description 잔액이 양수인 지갑 기본 자산 및 ERC20만 반환합니다. 확인 불가 토큰은 unresolvedAssets에 반환하며 거래소를 조회하지 않습니다. Alchemy API 키가 필요합니다.
          */
         get: operations["walletAssets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/votes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 투표 기록
+         * @description 인증된 본인의 선택·투표 시각·그날의 집계를 조회합니다. 가격·수량 구간은 비공개입니다.
+         */
+        get: operations["myVotes"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1323,7 +1383,7 @@ export interface paths {
         };
         /**
          * 전체 코인 실시간 시세 조회
-         * @description 모든 활성 코인의 현재 가격과 24시간 등락률을 지정 통화로 반환합니다.
+         * @description 시세를 지원하는 활성 코인의 가격과 24시간 등락률을 반환합니다. 기타 방과 시세 미지원 방은 제외합니다.
          */
         get: operations["current"];
         put?: never;
@@ -1343,7 +1403,7 @@ export interface paths {
         };
         /**
          * 코인 실시간 시세 조회
-         * @description 코인 심볼에 해당하는 현재 가격과 24시간 등락률을 지정 통화로 반환합니다.
+         * @description 코인의 현재 가격과 24시간 등락률을 반환합니다. 기타 방 등 시세 미지원 대상은 422를 반환합니다.
          */
         get: operations["current_1"];
         put?: never;
@@ -1588,6 +1648,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/communities/{symbol}/polls/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 방 지난 투표 결과
+         * @description KST 어제까지와 종료된 투표의 오늘 집계를 날짜·투표별로 조회합니다.
+         */
+        get: operations["roomResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/communities/{symbol}/poll": {
         parameters: {
             query?: never;
@@ -1637,7 +1717,7 @@ export interface paths {
         };
         /**
          * 지원 코인 목록 조회
-         * @description 현재 활성화된 코인을 화면 표시 순서대로 반환합니다.
+         * @description 활성 방을 표시 순서대로 반환합니다. 게시판 전용 기타(OTHER) 방은 마지막에 표시합니다.
          */
         get: operations["coins"];
         put?: never;
@@ -1657,7 +1737,7 @@ export interface paths {
         };
         /**
          * 방 목록 페이지 조회
-         * @description 활성 코인 방만 표시 순서·ID 순으로 조회합니다. page 0부터, size 기본 20.
+         * @description 활성 방을 표시 순서·ID 순으로 조회하고 기타(OTHER) 방은 마지막에 표시합니다. page 0부터, size 기본 20.
          */
         get: operations["coinPage"];
         put?: never;
@@ -1845,6 +1925,21 @@ export interface components {
             assetPriceCurrency?: string;
             youtubeUrl?: string;
         };
+        /** @description 발행 시점의 코인별 보유 상태, 수량 구간 및 배지 */
+        AttachedCoinSnapshotResponse: {
+            coinSymbol?: string;
+            verificationAvailability?: string;
+            holderStatus?: string;
+            verifiedHolder?: boolean;
+            quantityBand?: string;
+            /** Format: int32 */
+            holdingMonths?: number;
+            badge?: components["schemas"]["BadgeSnapshot"];
+            verificationLevel?: string;
+            syncStatus?: string;
+            /** Format: date-time */
+            capturedAt?: string;
+        };
         AuthorResponse: {
             /** Format: int64 */
             id?: number;
@@ -1915,6 +2010,7 @@ export interface components {
             reposted?: boolean;
             bookmarked?: boolean;
             holderSnapshot?: components["schemas"]["HolderSnapshotResponse"];
+            attachedCoinSnapshots?: components["schemas"]["AttachedCoinSnapshotResponse"][];
         };
         PriceSnapshotResponse: {
             price?: number;
@@ -1945,6 +2041,7 @@ export interface components {
             assetPrice?: number;
             assetPriceCurrency?: string;
             youtubeUrl?: string;
+            attachedCoins?: string[];
         };
         DraftResponse: {
             /** Format: int64 */
@@ -1963,6 +2060,7 @@ export interface components {
             youtubeUrl?: string;
             /** Format: int64 */
             sourcePostId?: number;
+            attachedCoins?: string[];
         };
         SaveNewsRequest: {
             title: string;
@@ -2054,6 +2152,8 @@ export interface components {
             assetPrice?: number;
             assetPriceCurrency?: string;
             youtubeUrl?: string;
+            /** @description 방 코인 외에 발행 시 보유 기록을 첨부할 코인 심볼. 최대 3개. */
+            attachedCoins?: string[];
         };
         CreateCommentRequest: {
             content: string;
@@ -2134,6 +2234,11 @@ export interface components {
             avatarColor?: string;
             walletAddress?: string;
             assetVisibility?: string;
+            /**
+             * @description 본인 계정의 현재 역할. 화면 표시용이며 관리자 API 권한은 서버가 확인합니다.
+             * @enum {string}
+             */
+            readonly role?: "USER" | "ADMIN";
         };
         NonceRequest: {
             walletAddress: string;
@@ -2362,6 +2467,38 @@ export interface components {
             hasNext?: boolean;
             hasPrevious?: boolean;
         };
+        DailyResult: {
+            /** Format: int64 */
+            pollId?: number;
+            coinSymbol?: string;
+            question?: string;
+            active?: boolean;
+            /** Format: date */
+            day?: string;
+            /** Format: int64 */
+            totalVotes?: number;
+            choices?: components["schemas"]["ChoiceResponse"][];
+            holderResults?: components["schemas"]["HolderResult"][];
+        };
+        HolderResult: {
+            holderStatus?: string;
+            /** Format: int64 */
+            totalVotes?: number;
+            choices?: components["schemas"]["ChoiceResponse"][];
+        };
+        PageResponseDailyResult: {
+            items?: components["schemas"]["DailyResult"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
         PageResponsePublicProfilePost: {
             items?: components["schemas"]["PublicProfilePost"][];
             /** Format: int32 */
@@ -2400,6 +2537,7 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
             holderSnapshot?: components["schemas"]["PostSnapshotResponse"];
+            attachedCoinSnapshots?: components["schemas"]["AttachedCoinSnapshotResponse"][];
         };
         MemberSummary: {
             /** Format: int64 */
@@ -2535,6 +2673,31 @@ export interface components {
             syncStatus?: string;
             /** Format: date-time */
             capturedAt?: string;
+        };
+        PageResponseVoteHistory: {
+            items?: components["schemas"]["VoteHistory"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            hasNext?: boolean;
+            hasPrevious?: boolean;
+        };
+        VoteHistory: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: date */
+            day?: string;
+            /** Format: date-time */
+            votedAt?: string;
+            /** Format: int64 */
+            choiceId?: number;
+            choiceLabel?: string;
+            result?: components["schemas"]["DailyResult"];
         };
         AssetResponse: {
             /** @enum {string} */
@@ -5389,6 +5552,44 @@ export interface operations {
             };
         };
     };
+    results: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                pollId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseDailyResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     stats: {
         parameters: {
             query?: never;
@@ -5632,6 +5833,39 @@ export interface operations {
             };
         };
     };
+    profileById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicProfile"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     profileQuery: {
         parameters: {
             query: {
@@ -5843,6 +6077,40 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["WalletAssetPortfolioResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    myVotes: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseVoteHistory"];
                 };
             };
             /** @description Bad Request */
@@ -6521,6 +6789,42 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PageResponsePostResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    roomResults: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseDailyResult"];
                 };
             };
             /** @description Bad Request */
