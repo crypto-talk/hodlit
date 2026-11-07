@@ -40,6 +40,11 @@ type SessionValue = {
    * 성공하면 member 가 새 객체로 바뀐다.
    */
   connectWallet: () => Promise<Member>;
+  /**
+   * 서버가 돌려준 내 정보로 바꾼다. 닉네임 변경(`PATCH /me`) 뒤 헤더 · 마이페이지에
+   * 새 닉네임이 바로 보이게 한다. 다른 회원으로 바꾸는 용도가 아니다.
+   */
+  replaceMember: (next: Member) => void;
 };
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -86,6 +91,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setMember(next);
         return next;
       },
+      replaceMember: (next) => setMember(next),
     }),
     [member, restored],
   );
