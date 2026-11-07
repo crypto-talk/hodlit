@@ -66,12 +66,16 @@ lib/auth-token.ts       the only place the access token is read or written; dele
 lib/api-schema.ts       generated from the backend OpenAPI spec by `pnpm gen:api`. Never
                         hand-edited, excluded from ESLint and Prettier
 lib/query.ts  lib/format/  lib/utils.ts (cn)  lib/config.ts (env, single read point)
-lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3). Was
+lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3). `attachments.ts` maps the
+                        per-coin `attachedCoinSnapshots` (HODL-106); an empty array means "nothing public",
+                        never fall back to `holderSnapshot` unless the field itself is missing. Was
                         `features/badge` — pure functions every feature needs, so it moved
                         down to lib/ when the post detail screen became its second user
 lib/routes.ts           screen URLs (room, post, write, `profileHref(memberId)`) + `safeSymbol()` +
                         `roomSymbolOf()` + `parseMemberId()`. Profile links always use the member
                         id, never the nickname — nicknames change
+lib/room-status.ts      open/closed room checks (HODL-77) + `isGeneralRoom()` for the OTHER room (HODL-87):
+                        no price, chart, news, poll or room-coin badge there
 lib/nickname.ts         nickname rule copied from the backend (2–40 chars after trim, Hangul /
                         A–Z / a–z / 0–9 / `_` / `-`), shared by signup and the mypage nickname editor
 lib/post-summary.ts     PostResponse -> list card view model, shared by landing and room board

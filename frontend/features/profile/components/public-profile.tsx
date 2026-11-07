@@ -6,6 +6,7 @@ import AnimalBadge from "@/components/holder/animal-badge";
 import { Button } from "@/components/ui/button";
 import { markdownToPlainText } from "@/lib/format/plain-text";
 import { formatDate } from "@/lib/format/time";
+import { extraAttachedSymbols, toAttachedHolders } from "@/lib/holder-snapshot/attachments";
 import { holdingPeriodLabel } from "@/lib/holder-snapshot/label";
 import { ApiError } from "@/lib/http";
 import { useSession } from "@/lib/session";
@@ -192,6 +193,10 @@ export default function PublicProfileView({
             <ul className="flex flex-col gap-3">
               {items.data.items.map((item) => {
                 const preview = markdownToPlainText(item.content);
+                const attached = extraAttachedSymbols(
+                  toAttachedHolders(item.attachedCoinSnapshots),
+                  item.coinSymbol,
+                );
                 return (
                   <li key={item.id} className={`${CARD} p-4`}>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
@@ -210,6 +215,7 @@ export default function PublicProfileView({
                           </span>
                         </>
                       )}
+                      {attached.length > 0 ? <span>+ {attached.join(" · ")}</span> : null}
                       <time dateTime={item.createdAt}>· {formatDate(item.createdAt)}</time>
                     </div>
                     <Link

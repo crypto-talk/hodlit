@@ -1,6 +1,6 @@
 import type { components } from "@/lib/api-schema";
 import { ApiError, http } from "@/lib/http";
-import { isOpenRoom } from "@/lib/room-status";
+import { isGeneralRoom, isOpenRoom } from "@/lib/room-status";
 import type { PollChoice, RoomPoll } from "./types";
 
 /**
@@ -57,7 +57,9 @@ export async function loadOpenPolls(): Promise<RoomPoll[]> {
   const symbols = coins
     .filter(isOpenRoom)
     .map((coin) => coin.symbol)
-    .filter((symbol): symbol is string => typeof symbol === "string" && symbol !== "");
+    .filter((symbol): symbol is string => typeof symbol === "string" && symbol !== "")
+    // 기타 방(HODL-87)은 투표가 없다(항상 404). 부르지 않는다.
+    .filter((symbol) => !isGeneralRoom(symbol));
   if (symbols.length === 0) return [];
 
   const results = await Promise.allSettled(symbols.map(loadRoomPoll));

@@ -6,6 +6,7 @@ import RoomClosedNotice from "@/components/room-closed-notice";
 import { Button } from "@/components/ui/button";
 import { UNSUPPORTED_LABEL } from "@/lib/holder-snapshot/label";
 import { ApiError } from "@/lib/http";
+import { isGeneralRoom } from "@/lib/room-status";
 import { writeHref } from "@/lib/routes";
 import { loadRoom, loadRooms } from "../api";
 import type { RoomInfo } from "../types";
@@ -41,6 +42,8 @@ type Props = {
  * 아직 없는 것
  *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
  *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
+ *
+ * 기타 방(HODL-87, `OTHER`)은 방 코인이 없어 시세 · 차트 · 뉴스 · 투표 칸이 없다. 머리와 글 목록만.
  *
  * 닫힌 방(HODL-77)이면 시세 · 투표 · 뉴스 · 글을 부르지 않고 안내와 열린 방 링크만 둔다.
  * 어차피 글 · 투표 · 뉴스는 403 으로 막힌다.
@@ -92,15 +95,19 @@ export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
     >
       <RoomHeader info={info} />
 
-      <div className="flex flex-col gap-4">
-        <RoomPrice symbol={info.symbol} name={info.name} />
-        <RoomChart symbol={info.symbol} name={info.name} />
-      </div>
+      {isGeneralRoom(info.symbol) ? null : (
+        <>
+          <div className="flex flex-col gap-4">
+            <RoomPrice symbol={info.symbol} name={info.name} />
+            <RoomChart symbol={info.symbol} name={info.name} />
+          </div>
 
-      <div className="grid grid-cols-2 gap-4 max-shell:grid-cols-1">
-        {news}
-        {poll}
-      </div>
+          <div className="grid grid-cols-2 gap-4 max-shell:grid-cols-1">
+            {news}
+            {poll}
+          </div>
+        </>
+      )}
 
       <RoomPosts symbol={info.symbol} tab={tab} page={page} verifiable={info.verifiable} />
     </div>
@@ -115,17 +122,26 @@ function ClosedRoom({ symbol }: { symbol: string }) {
 
 function RoomHeader({ info }: { info: RoomInfo }) {
   const count = `글 ${info.postCount.toLocaleString("ko-KR")}개`;
+  const general = isGeneralRoom(info.symbol);
 
   return (
     <header className="flex flex-wrap items-end gap-x-4 gap-y-2 border-l-4 border-l-room-accent pl-4">
       <div className="min-w-0">
-        <h1 className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-h1 font-semibold text-text-primary">{info.symbol}</span>
-          <span className="text-body text-text-muted">{info.name} 방</span>
-        </h1>
+        {general ? (
+          <h1 className="text-h1 font-semibold text-text-primary">기타 방</h1>
+        ) : (
+          <h1 className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-h1 font-semibold text-text-primary">{info.symbol}</span>
+            <span className="text-body text-text-muted">{info.name} 방</span>
+          </h1>
+        )}
         <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-text-muted">
           <span>{count}</span>
-          {info.verifiable ? null : <span>· {UNSUPPORTED_LABEL}</span>}
+          {general ? (
+            <span>· 전용 방이 없는 코인 이야기. 글마다 보유 코인을 붙일 수 있습니다</span>
+          ) : info.verifiable ? null : (
+            <span>· {UNSUPPORTED_LABEL}</span>
+          )}
         </p>
       </div>
       <span className="flex-1" />

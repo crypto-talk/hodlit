@@ -9,14 +9,16 @@ import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
-import { isRoomClosedError } from "@/lib/room-status";
+import { isGeneralRoom, isRoomClosedError } from "@/lib/room-status";
 import { profileHref, roomHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { usePost } from "../hooks/use-post";
 import { useWriteRooms } from "../hooks/use-write-rooms";
 import PostActions from "./post-actions";
 import PostBody from "./post-body";
+import HolderRecords from "./holder-records";
 import PostOwnerActions from "./post-owner-actions";
+import type { PostDetail } from "../types";
 
 type Props = {
   postId: number;
@@ -103,45 +105,12 @@ export default function PostDetailView({ postId, symbol }: Props) {
         <p className="mt-2 text-sm font-semibold text-text-primary">{data.authorNickname}</p>
       )}
 
-      {data.holder && !data.holder.verifiable ? (
-        <p className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4 text-sm text-text-muted">
-          <b className="font-semibold text-text-primary">{UNSUPPORTED_LABEL}</b> · {room} 방은 아직
-          보유 인증을 지원하지 않아 이 글에는 보유 정보가 붙지 않습니다.
-        </p>
-      ) : null}
-
-      {data.holder?.verifiable ? (
-        <section
-          aria-label="작성 시점 보유 정보"
-          className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <AnimalBadge badge={data.holder.badge} position="detail" />
-            <TierBadge
-              tier={data.holder.tier}
-              symbol={room}
-              holderStatus={data.holder.holderStatus}
-            />
-            {data.holder.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}
-            {isHolderTier(data.holder.tier) ? (
-              <span className="text-sm font-semibold text-text-primary">{data.holder.holding}</span>
-            ) : null}
-            {data.holder.tier === "empty" ? (
-              <span className="text-sm text-text-muted">
-                작성 시점에 연결한 지갑 · 거래소를 모두 확인했고 {room} 잔액이 0이었습니다.
-              </span>
-            ) : null}
-            {data.holder.amount ? (
-              <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
-                {data.holder.amount}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-2 text-xs text-text-muted">
-            작성 시점에 기록된 보유 정보입니다. 이후 글을 수정해도 바뀌지 않습니다.
-          </p>
-        </section>
-      ) : null}
+      {data.attachments ? (
+        <HolderRecords records={data.attachments} room={room} general={isGeneralRoom(room)} />
+      ) : (
+        // 코인별 기록 필드가 생기기 전 응답. 방 코인 기록 하나로 그린다.
+        <LegacyHolder holder={data.holder} room={room} />
+      )}
 
       <div className="mt-6">
         <PostBody markdown={data.content} />
@@ -206,5 +175,49 @@ function ClosedRoom({ symbol }: { symbol: string }) {
       subject="글을 볼 수 없습니다."
       openRooms={rooms.data?.filter((room) => room.open)}
     />
+  );
+}
+
+/** 코인별 기록(`attachedCoinSnapshots`)이 없는 옛 응답용. 방 코인 기록 하나만 그린다. */
+function LegacyHolder({ holder, room }: { holder: PostDetail["holder"]; room: string }) {
+  if (!holder) return null;
+  return (
+    <>
+      {holder && !holder.verifiable ? (
+        <p className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4 text-sm text-text-muted">
+          <b className="font-semibold text-text-primary">{UNSUPPORTED_LABEL}</b> · {room} 방은 아직
+          보유 인증을 지원하지 않아 이 글에는 보유 정보가 붙지 않습니다.
+        </p>
+      ) : null}
+
+      {holder?.verifiable ? (
+        <section
+          aria-label="작성 시점 보유 정보"
+          className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <AnimalBadge badge={holder.badge} position="detail" />
+            <TierBadge tier={holder.tier} symbol={room} holderStatus={holder.holderStatus} />
+            {holder.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}
+            {isHolderTier(holder.tier) ? (
+              <span className="text-sm font-semibold text-text-primary">{holder.holding}</span>
+            ) : null}
+            {holder.tier === "empty" ? (
+              <span className="text-sm text-text-muted">
+                작성 시점에 연결한 지갑 · 거래소를 모두 확인했고 {room} 잔액이 0이었습니다.
+              </span>
+            ) : null}
+            {holder.amount ? (
+              <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
+                {holder.amount}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-xs text-text-muted">
+            작성 시점에 기록된 보유 정보입니다. 이후 글을 수정해도 바뀌지 않습니다.
+          </p>
+        </section>
+      ) : null}
+    </>
   );
 }
