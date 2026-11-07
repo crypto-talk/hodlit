@@ -85,7 +85,7 @@ function renderGroup(items: SymbolQuote[], hidden: boolean) {
         return (
           <li
             key={symbol}
-            className="flex h-full items-center gap-2 border-r border-brand-soft px-4 text-sm whitespace-nowrap tabular-nums"
+            className="flex h-full items-center gap-2 px-5 text-sm whitespace-nowrap tabular-nums"
           >
             <span className="font-semibold text-brand">{symbol}</span>
             <span className="text-text-primary">{formatCoinKrw(quote.price)}</span>

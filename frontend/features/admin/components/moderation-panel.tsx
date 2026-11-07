@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,6 @@ export default function ModerationPanel({ type, q, page, state, navigate }: Prop
   const { member } = useSession();
   const [selected, setSelected] = useState<number | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
-  const detailPanel = useRef<HTMLElement>(null);
   const client = useQueryClient();
   const rows = useQuery({
     queryKey: ["moderation", type, q, state, page],
@@ -112,17 +112,74 @@ export default function ModerationPanel({ type, q, page, state, navigate }: Prop
   const flaggedLabel = type === "posts" ? "숨김" : "정지";
   const heading = HEADING[type];
 
-  // 상세 칸은 목록 아래에 열린다. 목록이 길면 눌러도 안 보이므로 그 칸으로 내려간다.
-  useEffect(() => {
-    if (selected === null) return;
-    detailPanel.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [selected]);
-
   const flaggedNow = Boolean(
     type === "posts" ? detail.data?.hidden : type === "members" ? detail.data?.suspended : false,
   );
   const actionLabel =
     type === "posts" ? (flaggedNow ? "복구" : "숨김") : flaggedNow ? "정지 해제" : "이용 정지";
+
+  // 상세는 누른 줄 바로 아래에 펼친다(아코디언). 다시 누르면 접힌다.
+  const detailBody = (
+    <div
+      id="moderation-detail"
+      className="flex flex-col gap-4 border-t border-border-subtle bg-surface-muted/50 px-4 py-4"
+    >
+      {detail.isPending ? (
+        <p className="py-6 text-center text-sm text-text-muted">상세 불러오는 중…</p>
+      ) : detail.isError ? (
+        <p className="py-6 text-center text-sm text-text-muted">
+          상세를 불러오지 못했습니다.{" "}
+          <button
+            type="button"
+            className="text-brand hover:underline"
+            onClick={() => void detail.refetch()}
+          >
+            다시 시도
+          </button>
+        </p>
+      ) : (
+        detail.data && (
+          <>
+            {detail.data.content != null && (
+              <p className="max-h-80 overflow-y-auto rounded-sm border border-border-subtle bg-surface p-4 text-sm whitespace-pre-wrap break-words text-text-primary">
+                {detail.data.content}
+              </p>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const reason = String(new FormData(e.currentTarget).get("reason")).trim();
+                if (!reason || selected === null) return;
+                const name = detail.data?.title ?? detail.data?.nickname ?? `#${selected}`;
+                const target = `"${name}" ${type === "posts" ? "글을" : "회원을"}`;
+                const [ask, said] = VERB[actionLabel];
+                setPending({
+                  id: selected,
+                  enabled: !flaggedNow,
+                  reason,
+                  label: actionLabel,
+                  question: `${target} ${ask}`,
+                  done: `${target} ${said}`,
+                });
+              }}
+              className="flex flex-wrap items-end gap-2"
+            >
+              <label className="flex min-w-60 flex-1 flex-col gap-1.5">
+                <span className="text-xs font-semibold text-text-muted">조치 사유</span>
+                <Input name="reason" required maxLength={500} />
+              </label>
+              <Button
+                disabled={action.isPending}
+                className={flaggedNow ? "" : "text-danger hover:border-danger"}
+              >
+                {actionLabel}
+              </Button>
+            </form>
+          </>
+        )
+      )}
+    </div>
+  );
 
   return (
     <section className="flex flex-col gap-4" aria-labelledby="moderation-title">
@@ -209,8 +266,9 @@ export default function ModerationPanel({ type, q, page, state, navigate }: Prop
                   <li key={row.id}>
                     <button
                       type="button"
-                      onClick={() => setSelected(row.id)}
-                      aria-pressed={active}
+                      onClick={() => setSelected(active ? null : row.id)}
+                      aria-expanded={active}
+                      aria-controls={active ? "moderation-detail" : undefined}
                       className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-muted ${
                         active ? "bg-surface-muted" : ""
                       }`}
@@ -227,7 +285,14 @@ export default function ModerationPanel({ type, q, page, state, navigate }: Prop
                         </span>
                       </span>
                       <StateChip flagged={flagged} label={flagged ? flaggedLabel : "정상"} />
+                      <ChevronDown
+                        aria-hidden
+                        className={`size-4 flex-none text-text-muted transition-transform ${
+                          active ? "rotate-180" : ""
+                        }`}
+                      />
                     </button>
+                    {active ? detailBody : null}
                   </li>
                 );
               })}
@@ -256,82 +321,6 @@ export default function ModerationPanel({ type, q, page, state, navigate }: Prop
           )}
         </>
       )}
-      {selected !== null && (
-        <section
-          ref={detailPanel}
-          className={`${CARD} flex scroll-mt-24 flex-col gap-4 p-5`}
-          aria-label="관리 대상 상세"
-        >
-          {detail.isPending ? (
-            <p className="py-6 text-center text-sm text-text-muted">상세 불러오는 중…</p>
-          ) : detail.isError ? (
-            <p className="py-6 text-center text-sm text-text-muted">
-              상세를 불러오지 못했습니다.{" "}
-              <button
-                type="button"
-                className="text-brand hover:underline"
-                onClick={() => void detail.refetch()}
-              >
-                다시 시도
-              </button>
-            </p>
-          ) : (
-            detail.data && (
-              <>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-h2 font-semibold break-words text-text-primary">
-                      {detail.data.title ?? detail.data.nickname}
-                    </h3>
-                    <div className="mt-1">
-                      <StateChip flagged={flaggedNow} label={flaggedNow ? flaggedLabel : "정상"} />
-                    </div>
-                  </div>
-                  <Button type="button" className="flex-none" onClick={() => setSelected(null)}>
-                    상세 닫기
-                  </Button>
-                </div>
-                {detail.data.content != null && (
-                  <p className="max-h-80 overflow-y-auto rounded-sm bg-surface-muted p-4 text-sm whitespace-pre-wrap break-words text-text-primary">
-                    {detail.data.content}
-                  </p>
-                )}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const reason = String(new FormData(e.currentTarget).get("reason")).trim();
-                    if (!reason) return;
-                    const name = detail.data?.title ?? detail.data?.nickname ?? `#${selected}`;
-                    const target = `"${name}" ${type === "posts" ? "글을" : "회원을"}`;
-                    const [ask, said] = VERB[actionLabel];
-                    setPending({
-                      id: selected,
-                      enabled: !flaggedNow,
-                      reason,
-                      label: actionLabel,
-                      question: `${target} ${ask}`,
-                      done: `${target} ${said}`,
-                    });
-                  }}
-                  className="flex flex-wrap items-end gap-2 border-t border-border-subtle pt-4"
-                >
-                  <label className="flex min-w-60 flex-1 flex-col gap-1.5">
-                    <span className="text-xs font-semibold text-text-muted">조치 사유</span>
-                    <Input name="reason" required maxLength={500} />
-                  </label>
-                  <Button
-                    disabled={action.isPending}
-                    className={flaggedNow ? "" : "text-danger hover:border-danger"}
-                  >
-                    {actionLabel}
-                  </Button>
-                </form>
-              </>
-            )
-          )}
-        </section>
-      )}
-
       {pending ? (
         <ConfirmDialog
           title={pending.question}

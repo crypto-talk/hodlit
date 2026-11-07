@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -8,16 +8,7 @@ import ConfirmDialog from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import {
-  createRoom,
-  deleteCategory,
-  deleteRoom,
-  loadCategories,
-  saveCategory,
-  updateRoom,
-} from "../api";
-import type { AdminRoom } from "../types";
-import BadgeEditor from "./badge-editor";
+import { createRoom, deleteCategory, loadCategories, saveCategory } from "../api";
 
 const CARD = "rounded-lg border border-border-subtle bg-surface";
 const SUMMARY =
@@ -29,18 +20,14 @@ type Work = { run: () => Promise<unknown>; success: string };
 /** 삭제처럼 확인을 거치는 동작. 확인 창에 보일 문구와 실행할 일을 함께 둔다. */
 type Pending = Work & { title: string; body: string; label: string };
 
-/** Extends the existing room-status screen with catalog and badge settings. */
-export default function RoomCatalogTools({
-  selected,
-  close,
-}: {
-  selected: AdminRoom | null;
-  close: () => void;
-}) {
+/**
+ * 방 목록 아래의 카탈로그 도구 — 새 방 생성, 방 카테고리 관리.
+ * 방 한 개의 설정은 목록 줄 아래에 펼쳐지는 `room-settings.tsx` 에 있다.
+ */
+export default function RoomCatalogTools() {
   const client = useQueryClient();
   const categories = useQuery({ queryKey: ["admin", "categories"], queryFn: loadCategories });
   const [pending, setPending] = useState<Pending | null>(null);
-  const panel = useRef<HTMLElement>(null);
   const action = useMutation({
     mutationFn: (work: Work) => work.run(),
     onSuccess: async (_, work) => {
@@ -50,7 +37,6 @@ export default function RoomCatalogTools({
       await client.invalidateQueries({ queryKey: ["admin", "categories"] });
       await client.invalidateQueries({ queryKey: ["room"] });
       await client.invalidateQueries({ queryKey: ["open-rooms"] });
-      close();
     },
     onError: (error) => {
       setPending(null);
@@ -58,32 +44,17 @@ export default function RoomCatalogTools({
     },
   });
 
-  // 설정 칸은 방 목록 아래에 열린다. 목록이 길면 눌러도 안 보이므로 그 칸으로 내려간다.
-  const selectedId = selected?.id;
-  const panelReady = Boolean(categories.data);
-  useEffect(() => {
-    if (selectedId === undefined || !panelReady) return;
-    panel.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [selectedId, panelReady]);
-
-  function saveRoom(form: HTMLFormElement, room?: AdminRoom) {
+  function createFrom(form: HTMLFormElement) {
     const data = new FormData(form);
     const fields = {
       name: String(data.get("name")),
       displayOrder: Number(data.get("order")),
       categoryId: data.get("category") ? Number(data.get("category")) : null,
     };
-    action.mutate(
-      room
-        ? {
-            run: () => updateRoom({ ...room, ...fields, active: data.get("active") === "on" }),
-            success: `${fields.name} 방 정보를 저장했습니다.`,
-          }
-        : {
-            run: () => createRoom({ ...fields, symbol: String(data.get("symbol")) }),
-            success: `${fields.name} 방을 공사 중으로 만들었습니다.`,
-          },
-    );
+    action.mutate({
+      run: () => createRoom({ ...fields, symbol: String(data.get("symbol")) }),
+      success: `${fields.name} 방을 공사 중으로 만들었습니다.`,
+    });
   }
 
   const categoryOptions = (
@@ -112,100 +83,6 @@ export default function RoomCatalogTools({
         </p>
       )}
 
-      {selected && categories.data && (
-        <section
-          key={selected.id}
-          ref={panel}
-          className={`${CARD} flex scroll-mt-24 flex-col gap-5 p-5`}
-          aria-label="방 상세 설정"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-h2 font-semibold text-text-primary">
-              {selected.name} · {selected.symbol} 설정
-            </h2>
-            <Button type="button" onClick={close} className="flex-none">
-              설정 닫기
-            </Button>
-          </div>
-          <form
-            className="flex flex-wrap items-end gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              saveRoom(e.currentTarget, selected);
-            }}
-          >
-            <label className="flex flex-col gap-1.5">
-              <span className={LABEL}>이름</span>
-              <Input
-                name="name"
-                defaultValue={selected.catalogName ?? selected.name}
-                required
-                maxLength={80}
-                className="w-48"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={LABEL}>순서</span>
-              <Input
-                name="order"
-                type="number"
-                min={0}
-                defaultValue={selected.displayOrder}
-                required
-                className="w-20 tabular-nums"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={LABEL}>카테고리</span>
-              <NativeSelect
-                name="category"
-                defaultValue={selected.categoryId ?? ""}
-                className="w-36"
-              >
-                {categoryOptions}
-              </NativeSelect>
-            </label>
-            <label className="flex h-10 items-center gap-2 text-sm text-text-primary">
-              <input
-                name="active"
-                type="checkbox"
-                defaultChecked={selected.active}
-                className="size-4 accent-brand"
-              />
-              활성
-            </label>
-            <div className="ml-auto flex gap-2">
-              <Button
-                type="button"
-                className="text-danger hover:border-danger"
-                disabled={action.isPending || !selected.active}
-                onClick={() =>
-                  setPending({
-                    title: `${selected.name}(${selected.symbol}) 방을 삭제할까요?`,
-                    body: "방이 비활성화되어 목록과 사용자 화면에서 빠집니다. 기존 글·댓글은 보존됩니다.",
-                    label: "삭제",
-                    run: () => deleteRoom(selected.symbol),
-                    success: `${selected.name} 방을 삭제했습니다.`,
-                  })
-                }
-              >
-                방 삭제
-              </Button>
-              <Button variant="primary" disabled={action.isPending || categories.isPending}>
-                방 정보 저장
-              </Button>
-            </div>
-          </form>
-          {selected.active ? (
-            <BadgeEditor symbol={selected.symbol} close={close} />
-          ) : (
-            <p className="border-t border-border-subtle pt-5 text-sm text-text-muted">
-              비활성 방은 방 정보를 저장해 활성화한 뒤 등급을 설정할 수 있습니다.
-            </p>
-          )}
-        </section>
-      )}
-
       <details className={`${CARD} group`}>
         <summary className={SUMMARY}>
           <ChevronRight
@@ -218,7 +95,7 @@ export default function RoomCatalogTools({
           className="flex flex-wrap items-end gap-3 border-t border-border-subtle px-5 py-4"
           onSubmit={(e) => {
             e.preventDefault();
-            saveRoom(e.currentTarget);
+            createFrom(e.currentTarget);
           }}
         >
           <label className="flex flex-col gap-1.5">

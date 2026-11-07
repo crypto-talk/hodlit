@@ -4,6 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/confirm-dialog";
 import PageLinks from "@/components/page-links";
@@ -14,6 +15,7 @@ import { loadAdminRooms, setRoomStatus } from "../api";
 import type { RoomOperationStatus } from "@/lib/room-status";
 import type { AdminRoom } from "../types";
 import RoomCatalogTools from "./room-catalog-tools";
+import RoomSettings from "./room-settings";
 
 type Props = {
   q: string;
@@ -45,7 +47,8 @@ export default function RoomManager({ q, status, page }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(q);
-  const [selected, setSelected] = useState<AdminRoom | null>(null);
+  /** 설정이 펼쳐진 방. 한 번에 하나만 펼친다. */
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [closing, setClosing] = useState<AdminRoom | null>(null);
   const cancelClose = useCallback(() => setClosing(null), []);
 
@@ -152,18 +155,24 @@ export default function RoomManager({ q, status, page }: Props) {
       ) : (
         <>
           <p className="text-sm text-text-muted">방 {data.totalElements}개</p>
-          <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface">
-            {data.items.map((room) => (
-              <RoomRow
-                key={room.id}
-                room={room}
-                pending={pendingSymbol === room.symbol}
-                disabled={change.isPending}
-                onSettings={() => setSelected(room)}
-                onOpen={() => change.mutate({ room, next: "OPEN" })}
-                onClose={() => setClosing(room)}
-              />
-            ))}
+          <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-surface">
+            {data.items.map((room) => {
+              const open = expanded === room.symbol;
+              return (
+                <li key={room.id}>
+                  <RoomRow
+                    room={room}
+                    expanded={open}
+                    pending={pendingSymbol === room.symbol}
+                    disabled={change.isPending}
+                    onSettings={() => setExpanded(open ? null : room.symbol)}
+                    onOpen={() => change.mutate({ room, next: "OPEN" })}
+                    onClose={() => setClosing(room)}
+                  />
+                  {open ? <RoomSettings room={room} close={() => setExpanded(null)} /> : null}
+                </li>
+              );
+            })}
           </ul>
           <PageLinks
             page={data.page}
@@ -173,7 +182,7 @@ export default function RoomManager({ q, status, page }: Props) {
         </>
       )}
 
-      <RoomCatalogTools selected={selected} close={() => setSelected(null)} />
+      <RoomCatalogTools />
       {closing ? (
         <ConfirmDialog
           title={`${closing.name}(${closing.symbol}) 방을 닫을까요?`}
@@ -193,6 +202,7 @@ export default function RoomManager({ q, status, page }: Props) {
 
 function RoomRow({
   room,
+  expanded,
   pending,
   disabled,
   onOpen,
@@ -200,6 +210,7 @@ function RoomRow({
   onSettings,
 }: {
   room: AdminRoom;
+  expanded: boolean;
   pending: boolean;
   disabled: boolean;
   onOpen: () => void;
@@ -209,7 +220,7 @@ function RoomRow({
   const open = room.operationStatus === "OPEN";
 
   return (
-    <li className="flex items-center gap-3 px-4 py-3">
+    <div className={`flex items-center gap-3 px-4 py-3 ${expanded ? "bg-surface-muted/50" : ""}`}>
       <span className="w-14 flex-none font-semibold tabular-nums">{room.symbol}</span>
       <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{room.name}</span>
 
@@ -230,8 +241,19 @@ function RoomRow({
         {open ? "열림" : "닫힘"}
       </span>
 
-      <Button type="button" onClick={onSettings} disabled={disabled}>
+      <Button
+        type="button"
+        onClick={onSettings}
+        disabled={disabled}
+        aria-expanded={expanded}
+        aria-controls={`room-settings-${room.symbol}`}
+        className={expanded ? "border-text-muted" : ""}
+      >
         설정
+        <ChevronDown
+          aria-hidden
+          className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+        />
       </Button>
       {open ? (
         <Button type="button" className="w-20 flex-none" onClick={onClose} disabled={disabled}>
@@ -248,6 +270,6 @@ function RoomRow({
           {pending ? "여는 중…" : "열기"}
         </Button>
       )}
-    </li>
+    </div>
   );
 }

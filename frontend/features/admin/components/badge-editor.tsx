@@ -1,11 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { loadBadgeConfig, loadBadgePresets } from "../api";
 import BadgeConfigForm from "./badge-config-form";
 
-export default function BadgeEditor({ symbol, close }: { symbol: string; close: () => void }) {
+export default function BadgeEditor({ symbol }: { symbol: string }) {
   const config = useQuery({
     queryKey: ["badge-config", symbol],
     queryFn: () => loadBadgeConfig(symbol),
@@ -27,9 +26,6 @@ export default function BadgeEditor({ symbol, close }: { symbol: string; close: 
             저장 후 새로 작성하는 글·댓글에만 적용됩니다. 이미 붙은 배지는 바뀌지 않습니다.
           </p>
         </div>
-        <Button type="button" onClick={close} className="flex-none">
-          닫기
-        </Button>
       </div>
       {config.isError || presets.isError ? (
         <p className="py-6 text-center text-sm text-text-muted">
