@@ -130,7 +130,8 @@ public class AuthService {
     }
 
     private MemberResponse profile(Member member, String address) {
-        return new MemberResponse(member.getId(), member.getNickname(), member.getAvatarColor(), address, member.getAssetVisibility().name());
+        return new MemberResponse(member.getId(), member.getNickname(), member.getAvatarColor(), address,
+            member.getAssetVisibility().name(), member.getRole());
     }
 
     private String colorFor(String value) {

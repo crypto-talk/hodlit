@@ -1,6 +1,8 @@
 package com.cryptalk.auth;
 
 import com.cryptalk.member.Nickname;
+import com.cryptalk.member.MemberRole;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -35,5 +37,8 @@ public final class AuthDtos {
         @NotBlank @Size(max = 72) String password
     ) {}
     public record AuthResponse(String accessToken, String tokenType, MemberResponse member) {}
-    public record MemberResponse(Long id, String nickname, String avatarColor, String walletAddress, String assetVisibility) {}
+    public record MemberResponse(Long id, String nickname, String avatarColor, String walletAddress, String assetVisibility,
+                                 @Schema(description = "본인 계정의 현재 역할. 화면 표시용이며 관리자 API 권한은 서버가 확인합니다.",
+                                         accessMode = Schema.AccessMode.READ_ONLY)
+                                 MemberRole role) {}
 }

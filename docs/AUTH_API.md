@@ -44,7 +44,8 @@ Authorization: Bearer <accessToken>
     "nickname": "satoshi",
     "avatarColor": "#7c3aed",
     "walletAddress": null,
-    "assetVisibility": "EXACT"
+    "assetVisibility": "EXACT",
+    "role": "USER"
   }
 }
 ```
@@ -58,6 +59,16 @@ Authorization: Bearer <accessToken>
 | `member.avatarColor` | string | 프로필 색상 |
 | `member.walletAddress` | string \| null | 연결된 EVM 지갑 주소 |
 | `member.assetVisibility` | string | `EXACT`, `RANGE`, `HIDDEN` 중 하나 |
+| `member.role` | string | 현재 DB에 저장된 본인 계정 역할. `USER` 또는 `ADMIN` |
+
+인증된 본인 정보 응답인 `GET /me`, `PATCH /me`, `PATCH /me/asset-visibility`,
+지갑 연결 응답도 같은 `MemberResponse`와 `role`을 반환합니다. 회원가입·로그인·세션 갱신은
+위 예시처럼 `member.role`로 제공합니다. 역할이 변경되면 `/me` 재조회 또는 세션 갱신으로
+현재 역할을 확인할 수 있습니다.
+
+`role`은 관리자 메뉴 등 화면 표시용입니다. 관리자 API는 서버에서 현재 DB 역할을 검증하며,
+회원가입·프로필 수정 요청으로 역할을 변경할 수 없습니다. 공개 프로필 및 공개 글·댓글 응답에는
+회원의 역할을 포함하지 않습니다.
 
 응답에는 `cryptalk_refresh` HttpOnly cookie도 설정됩니다. JavaScript에서는 이
 cookie를 읽을 수 없으며 브라우저가 refresh와 logout 요청에 자동으로 첨부합니다.
