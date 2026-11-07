@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -58,6 +59,7 @@ public class PollService {
             throw new ApiException(HttpStatus.BAD_REQUEST,"중복 선택지는 허용하지 않습니다.");
         var coin = coins.lockActiveBySymbol(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"코인 방을 찾을 수 없습니다."));
+        rooms.requireCoinFeatures(coin);
         polls.findByCoinIdAndActiveTrue(coin.getId()).forEach(CommunityPoll::close);
         var poll = polls.saveAndFlush(new CommunityPoll(coin,request.question(),request.choices()));
         return response(poll,memberId,today());
@@ -68,6 +70,7 @@ public class PollService {
         var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"코인 방을 찾을 수 없습니다."));
         rooms.requireOpen(coin);
+        if (coin.isGeneralRoom()) throw new ApiException(HttpStatus.NOT_FOUND,"현재 투표가 없습니다.");
         var poll = polls.findFirstByCoinIdAndActiveTrueOrderByCreatedAtDescIdDesc(coin.getId())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"현재 투표가 없습니다."));
         return response(poll,memberId,today());
@@ -77,6 +80,7 @@ public class PollService {
     public PollDtos.PollResponse get(Long pollId,Long memberId) {
         var poll = polls.findById(pollId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"투표를 찾을 수 없습니다."));
         rooms.requireOpen(poll.getCoin());
+        rooms.requireCoinFeatures(poll.getCoin());
         return response(poll,memberId,today());
     }
 
@@ -85,6 +89,7 @@ public class PollService {
         var member = members.lockById(memberId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"회원을 찾을 수 없습니다."));
         var poll = polls.lockById(pollId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"투표를 찾을 수 없습니다."));
         rooms.requireOpen(poll.getCoin());
+        rooms.requireCoinFeatures(poll.getCoin());
         if (!poll.isActive() || !poll.getCoin().isActive()) throw new ApiException(HttpStatus.CONFLICT,"종료된 투표입니다.");
         var choice = poll.getChoices().stream().filter(item -> item.getId().equals(choiceId)).findFirst()
             .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST,"해당 투표의 선택지가 아닙니다."));
@@ -116,6 +121,7 @@ public class PollService {
     public PageResponse<PollDtos.DailyResult> roomResults(String symbol,int page,int size) {
         var request = PageResponse.request(page,size,Sort.unsorted());
         var coin = rooms.requireOpen(symbol);
+        if (coin.isGeneralRoom()) return PageResponse.of(Page.empty(request));
         return PageResponse.of(votes.roomResultDays(coin.getId(),today(),request).map(row ->
             dailyResult(polls.findById(row.getPollId()).orElseThrow(),row.getVoteDay())));
     }
@@ -126,6 +132,7 @@ public class PollService {
         var poll = polls.findById(pollId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"투표를 찾을 수 없습니다."));
         rooms.requireOpen(poll.getCoin());
+        rooms.requireCoinFeatures(poll.getCoin());
         LocalDate today = today();
         LocalDate start = from == null ? LocalDate.of(1970,1,1) : from;
         LocalDate end = to == null ? (poll.isActive() ? today.minusDays(1) : today) : to;

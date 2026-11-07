@@ -11,13 +11,16 @@ import com.cryptalk.member.Member;
 import com.cryptalk.member.MemberRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 class RoomOperationApiTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired DataSource dataSource;
     @Autowired MemberRepository members;
     @Autowired CoinRepository coins;
     long user;
@@ -56,18 +60,79 @@ class RoomOperationApiTest {
     }
 
     @Test
-    void initializesOnlyEthOpenAndKeepsClosedRoomsDiscoverable() throws Exception {
+    void initializesEthAndOtherOpenAndKeepsClosedRoomsDiscoverable() throws Exception {
         assertThat(coins.findByActiveTrueOrderByDisplayOrder().stream()
             .filter(c -> c.getOperationStatus() == RoomOperationStatus.OPEN).map(c -> c.getSymbol()).toList())
-            .containsExactly("ETH");
-        mvc.perform(get("/api/v1/coins")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(20))
+            .containsExactly("ETH", "OTHER");
+        mvc.perform(get("/api/v1/coins")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(21))
             .andExpect(jsonPath("$[0].operationStatus").value("CLOSE"));
-        mvc.perform(get("/api/v1/coins/page")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(20))
+        mvc.perform(get("/api/v1/coins/page")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(21))
             .andExpect(jsonPath("$.items[0].operationStatus").value("CLOSE"));
         mvc.perform(get("/api/v1/communities/BTC")).andExpect(status().isOk())
             .andExpect(jsonPath("$.coin.operationStatus").value("CLOSE")).andExpect(jsonPath("$.postCount").value(0));
         mvc.perform(get("/api/v1/communities/ETH")).andExpect(status().isOk())
             .andExpect(jsonPath("$.coin.operationStatus").value("OPEN"));
+    }
+
+    @Test
+    void otherRoomMetadataAndPaginationKeepTheGeneralRoomLast() throws Exception {
+        jdbc.update("UPDATE coins SET display_order=0 WHERE symbol='OTHER'");
+        mvc.perform(get("/api/v1/coins"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[20].symbol").value("OTHER"));
+        mvc.perform(get("/api/v1/coins/page").param("page", "1").param("size", "20"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].symbol").value("OTHER"));
+        mvc.perform(get("/api/v1/communities/other"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.coin.name").value("기타"))
+            .andExpect(jsonPath("$.coin.operationStatus").value("OPEN"))
+            .andExpect(jsonPath("$.coin.verificationAvailability").value("NOT_SUPPORTED"))
+            .andExpect(jsonPath("$.coin.chainId").doesNotExist())
+            .andExpect(jsonPath("$.coin.assetType").doesNotExist());
+    }
+
+    @Test
+    void otherRoomDoesNotOfferPricesNewsPollsOrAssetVisibilitySettings() throws Exception {
+        mvc.perform(get("/api/v1/market/prices/OTHER")).andExpect(status().isUnprocessableEntity());
+        mvc.perform(get("/api/v1/communities/OTHER/news")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get("/api/v1/communities/OTHER/poll")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/communities/OTHER/polls/results")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(post("/api/v1/communities/OTHER/news").with(jwt().jwt(t -> t.subject("100000")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"제목\",\"summary\":\"요약\",\"sourceName\":\"출처\",\"sourceUrl\":\"https://example.com/article\"}"))
+            .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("ROOM_FEATURE_UNSUPPORTED"));
+        mvc.perform(post("/api/v1/communities/OTHER/polls").with(jwt().jwt(t -> t.subject("100000")))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"question\":\"투표\",\"choices\":[\"상승\",\"하락\"]}"))
+            .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("ROOM_FEATURE_UNSUPPORTED"));
+        mvc.perform(get("/api/v1/me/asset-visibility").with(jwt().jwt(t -> t.subject(Long.toString(user)))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[?(@.symbol == 'OTHER')]").isEmpty());
+        mvc.perform(put("/api/v1/me/asset-visibility/OTHER").with(jwt().jwt(t -> t.subject(Long.toString(user))))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"visible\":false}"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void migrationReusesAnExistingOtherRoomAndItsPosts() throws Exception {
+        long roomId = coins.findBySymbolIgnoreCaseAndActiveTrue("OTHER").orElseThrow().getId();
+        long postId = insertPost("OTHER", "기존 기타 방 글");
+        jdbc.update("""
+            UPDATE coins SET symbol='other', name='기존 방', active=FALSE, operation_status='CLOSE',
+                verification_availability='SUPPORTED', market_price_id='legacy-price', chain_id=1
+            WHERE id=?
+            """, roomId);
+
+        var migration = new ResourceDatabasePopulator(new ClassPathResource("db/changelog/025-other-room.sql"));
+        migration.execute(dataSource);
+
+        assertThat(jdbc.queryForList("SELECT id FROM coins WHERE UPPER(symbol)='OTHER'", Long.class))
+            .containsExactly(roomId);
+        assertThat(jdbc.queryForObject("SELECT market_price_id FROM coins WHERE id=?", String.class, roomId)).isNull();
+        assertThat(jdbc.queryForObject("SELECT verification_availability FROM coins WHERE id=?", String.class, roomId))
+            .isEqualTo("NOT_SUPPORTED");
+        assertThat(jdbc.queryForObject("SELECT operation_status FROM coins WHERE id=?", String.class, roomId))
+            .isEqualTo("OPEN");
+        assertThat(jdbc.queryForObject("SELECT coin_id FROM posts WHERE id=?", Long.class, postId)).isEqualTo(roomId);
     }
 
     @Test
@@ -166,7 +231,8 @@ class RoomOperationApiTest {
         mvc.perform(get("/api/v1/me/bookmarks").with(jwt().jwt(t -> t.subject(Long.toString(user)))))
             .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
         mvc.perform(get("/api/v1/communities/stats").param("window", "all"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.rooms.length()").value(1));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.rooms[*].symbol")
+                .value(org.hamcrest.Matchers.contains("ETH", "OTHER")));
         change("BTC", "OPEN");
         mvc.perform(get("/api/v1/feed/page")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(27));
         mvc.perform(get("/api/v1/search").param("q", "operation-needle"))
@@ -174,7 +240,8 @@ class RoomOperationApiTest {
         mvc.perform(get("/api/v1/me/bookmarks/page").with(jwt().jwt(t -> t.subject(Long.toString(user)))))
             .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2));
         mvc.perform(get("/api/v1/communities/stats").param("window", "all"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.rooms.length()").value(2));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.rooms[*].symbol")
+                .value(org.hamcrest.Matchers.contains("BTC", "ETH", "OTHER")));
     }
 
     @Test

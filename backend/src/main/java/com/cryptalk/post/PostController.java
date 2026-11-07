@@ -39,7 +39,11 @@ public class PostController {
     PostResponse get(@PathVariable Long postId, @AuthenticationPrincipal Jwt jwt) {
         return posts.get(postId, jwt == null ? null : id(jwt));
     }
-    @Operation(summary = "게시글 작성", description = "로그인 회원이 커뮤니티에 게시글을 작성하고 현재 가격 스냅샷을 저장합니다. 첨부 코인은 작성 시점의 보유 상태를 저장합니다. 보유 인증 지원 코인은 서버에서 잔액을 갱신하며, 조회 실패 시 최신성 제한 내의 캐시만 인증에 사용합니다. 잔액 조회·인증 여부는 작성 권한과 무관합니다.")
+    @Operation(summary = "게시글 작성", description =
+        "로그인 회원이 게시글을 작성하고 지원하는 방 코인의 시세·보유 기록을 저장합니다. "
+        + "기타(OTHER) 방은 추가로 선택한 코인의 보유 기록만 저장합니다. "
+        + "보유 인증 지원 코인의 잔액 조회가 실패하면 최신성 제한 내의 캐시만 인증에 사용합니다. "
+        + "잔액 조회·인증 여부는 작성 권한과 무관합니다.")
     @PostMapping("/posts") PostResponse create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreatePostRequest request) { return posts.create(id(jwt), request); }
     @Operation(summary = "게시글 수정", description = "작성자 본인의 게시글을 수정합니다. 첨부 코인과 발행 시점 보유 기록은 고정됩니다.")
     @PutMapping("/posts/{postId}") PostResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable Long postId, @Valid @RequestBody UpdatePostRequest request) { return posts.update(id(jwt), postId, request); }

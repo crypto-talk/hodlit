@@ -153,15 +153,16 @@ public class PostService {
         Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(request.coinSymbol())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
         rooms.requireOpen(coin);
+        boolean generalRoom = coin.isGeneralRoom();
         List<Coin> selected = attachments.selectExtraCoins(coin, request.attachedCoins());
         java.util.Map<Long, AssetSnapshot> captured = java.util.Map.of();
         AssetSnapshot snapshot = null;
         if (!selected.isEmpty()) {
             var captureCoins = new ArrayList<>(selected);
-            if (!PostCoinAttachments.isGeneralRoom(coin)) captureCoins.addFirst(coin);
+            if (!generalRoom) captureCoins.addFirst(coin);
             captured = assets.snapshotsForPublication(memberId, captureCoins);
             snapshot = captured.get(coin.getId());
-        } else if (!PostCoinAttachments.isGeneralRoom(coin)) {
+        } else if (!generalRoom) {
             snapshot = assets.snapshotForPublication(memberId, coin);
         }
         boolean verified = snapshot != null && snapshot.isVerified();
@@ -169,17 +170,18 @@ public class PostService {
         BigDecimal value = verified && snapshot.getExchangeCount() == 0 && "READY".equals(snapshot.getSyncStatus())
             ? snapshot.getValueKrw() : null;
         YoutubeData youtube = youtube(request.youtubeUrl());
-        PriceQuote quote = coin.getMarketPriceId() == null || coin.getMarketPriceId().isBlank()
-            ? null : marketPrices.currentPrice(coin, request.assetPriceCurrency());
+        PriceQuote quote = coin.hasMarketPrice() ? marketPrices.currentPrice(coin, request.assetPriceCurrency()) : null;
         Post saved = posts.save(new Post(member, coin, request.title().trim(), request.content().trim(), value, verified,
             clean(request.tradingViewSymbol()), clean(request.tradingViewInterval()), clean(request.tradingViewAnalysis()),
             quote == null ? null : quote.price(), quote == null ? null : quote.currency(),
             quote == null ? null : quote.capturedAt(), quote == null ? null : quote.source(),
             youtube == null ? null : youtube.url(), youtube == null ? null : youtube.videoId(),
             youtube == null ? null : youtube.thumbnailUrl()));
-        var holderRecord = new PostHolderSnapshot(saved, snapshot);
-        holderRecord.applyBadge(badges.capture(coin, snapshot));
-        holderSnapshots.save(holderRecord);
+        if (!generalRoom) {
+            var holderRecord = new PostHolderSnapshot(saved, snapshot);
+            holderRecord.applyBadge(badges.capture(coin, snapshot));
+            holderSnapshots.save(holderRecord);
+        }
         for (int index = 0; index < selected.size(); index++) {
             Coin attached = selected.get(index);
             AssetSnapshot holding = captured.get(attached.getId());
@@ -380,7 +382,8 @@ public class PostService {
 
     private PostResponse response(Post post, Long viewerId) {
         Member member = post.getMember();
-        boolean visible = member.getAssetVisibility() != AssetVisibility.HIDDEN;
+        boolean generalRoom = post.getCoin().isGeneralRoom();
+        boolean visible = !generalRoom && member.getAssetVisibility() != AssetVisibility.HIDDEN;
         BigDecimal value = visible ? post.getAuthorAssetValueKrw() : null;
         boolean liked = viewerId != null && likes.existsById(new PostLikeId(post.getId(), viewerId));
         boolean reposted = viewerId != null && reposts.existsById(new PostMemberId(post.getId(), viewerId));
@@ -390,11 +393,11 @@ public class PostService {
                 item.getThumbnailUrl(), item.getDisplayOrder())).toList();
         TradingViewResponse tradingView = post.getTradingViewSymbol() == null ? null
             : new TradingViewResponse(post.getTradingViewSymbol(), post.getTradingViewInterval(), post.getTradingViewAnalysis());
-        PriceSnapshotResponse priceSnapshot = post.getAssetPrice() == null ? null
+        PriceSnapshotResponse priceSnapshot = generalRoom || post.getAssetPrice() == null ? null
             : new PriceSnapshotResponse(post.getAssetPrice(), post.getAssetPriceCurrency(), post.getAssetPriceAt(), post.getAssetPriceSource());
         YoutubeResponse youtube = post.getYoutubeVideoId() == null ? null
             : new YoutubeResponse(post.getYoutubeUrl(), post.getYoutubeVideoId(), post.getYoutubeThumbnailUrl());
-        PostHolderSnapshot roomSnapshot = holderSnapshots.findById(post.getId()).orElse(null);
+        PostHolderSnapshot roomSnapshot = generalRoom ? null : holderSnapshots.findById(post.getId()).orElse(null);
         HolderSnapshotResponse holderSnapshot = java.util.Optional.ofNullable(roomSnapshot).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getWalletCount(),

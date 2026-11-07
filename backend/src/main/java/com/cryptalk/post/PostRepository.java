@@ -22,7 +22,12 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     long countPublicByMemberId(@Param("memberId") Long memberId);
 
     long countByCoinId(Long coinId);
-    @Query("select p from Post p where p.coin.active = true and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN and (:symbol is null or lower(p.coin.symbol) = lower(:symbol)) and (:verified = false or p.authorVerified = true)")
+    @Query("""
+        select p from Post p where p.coin.active = true
+        and p.coin.operationStatus = com.cryptalk.coin.RoomOperationStatus.OPEN
+        and (:symbol is null or lower(p.coin.symbol) = lower(:symbol))
+        and (:verified = false or (p.authorVerified = true and upper(p.coin.symbol) <> 'OTHER'))
+        """)
     org.springframework.data.domain.Page<Post> numberedPage(@Param("symbol") String symbol,
         @Param("verified") boolean verified, Pageable pageable);
     List<Post> findByCoinSymbolIgnoreCaseOrderByCreatedAtDesc(String symbol, Pageable pageable);

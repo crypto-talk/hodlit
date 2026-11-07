@@ -23,4 +23,11 @@ public class RoomAccess {
             throw new ApiException(HttpStatus.FORBIDDEN, "ROOM_CLOSED", "현재 닫힌 방입니다.");
         }
     }
+
+    public void requireCoinFeatures(Coin coin) {
+        if (coin.isGeneralRoom()) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "ROOM_FEATURE_UNSUPPORTED",
+                "기타 방에서는 이 기능을 지원하지 않습니다.");
+        }
+    }
 }

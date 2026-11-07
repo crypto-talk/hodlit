@@ -57,3 +57,5 @@ databaseChangeLog:
       file: db/changelog/023-poll-vote-history.sql
   - include:
       file: db/changelog/024-post-coin-snapshots.sql
+  - include:
+      file: db/changelog/025-other-room.sql

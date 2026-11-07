@@ -166,10 +166,10 @@ class ListPaginationTest {
     void validatesBoundsAndPagesOnlyActiveRooms() throws Exception {
         mvc.perform(get("/api/v1/coins/page"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.size").value(20))
-            .andExpect(jsonPath("$.totalElements").value(20));
+            .andExpect(jsonPath("$.totalElements").value(21));
         jdbc.update("UPDATE coins SET active=FALSE WHERE symbol='BTC'");
         mvc.perform(get("/api/v1/coins/page").param("size", "5"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(19))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(20))
             .andExpect(jsonPath("$.totalPages").value(4));
         for (String page : new String[] {"-1", "2147483647"}) {
             mvc.perform(get("/api/v1/posts/page").param("page", page)).andExpect(status().isBadRequest());

@@ -1,12 +1,14 @@
 package com.cryptalk.asset;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.cryptalk.coin.Coin;
+import com.cryptalk.coin.CoinRepository;
 import com.cryptalk.common.ApiException;
 import com.cryptalk.exchange.*;
 import com.cryptalk.market.MarketPriceService;
@@ -41,6 +43,8 @@ class PartialAssetPublicationApiTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired MemberRepository members;
+    @Autowired CoinRepository coins;
+    @Autowired AssetSnapshotRepository snapshots;
     @Autowired WalletRepository wallets;
     @Autowired ExchangeConnectionRepository connections;
     @Autowired ExchangeCredentialCipher cipher;
@@ -182,6 +186,28 @@ class PartialAssetPublicationApiTest {
             .andExpect(jsonPath("$.holderSnapshot.holderStatus").value("EMPTY"))
             .andExpect(jsonPath("$.holderSnapshot.syncStatus").value("READY"))
             .andExpect(jsonPath("$.verifiedHolder").value(false));
+    }
+
+    @Test
+    void excludesGeneralRoomFromPortfolioEvenIfAnExchangeReturnsTheSameSymbol() throws Exception {
+        var general = coins.findBySymbolIgnoreCaseAndActiveTrue("OTHER").orElseThrow();
+        var legacy = new AssetSnapshot(members.findById(owner).orElseThrow(), general);
+        legacy.capture(BigDecimal.TEN, BigDecimal.TEN, true, "VERIFIED", 1);
+        legacy.captureSources("EXCHANGE", 1, "READY");
+        snapshots.saveAndFlush(legacy);
+        sources(true, true, "2");
+        org.mockito.Mockito.doReturn(List.of(
+            new ExchangeBalanceClient.Balance("ETH", BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ONE),
+            new ExchangeBalanceClient.Balance("OTHER", BigDecimal.valueOf(99), BigDecimal.ZERO, BigDecimal.valueOf(99))))
+            .when(balances).balances(eq(Exchange.UPBIT), anyString(), anyString());
+
+        mvc.perform(get("/api/v1/me/assets").with(jwt().jwt(t -> t.subject(Long.toString(owner)))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.assets[0].symbol").value("ETH"))
+            .andExpect(jsonPath("$.assets[?(@.symbol == 'OTHER')]").isEmpty());
+        mvc.perform(get("/api/v1/members/{id}", owner)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.assets[?(@.coinSymbol == 'OTHER')]").isEmpty());
+        assertThat(snapshots.findByMemberIdAndCoinId(owner, general.getId()).orElseThrow().getQuantity())
+            .isEqualByComparingTo(BigDecimal.TEN);
     }
 
     private void sources(boolean walletSuccess, boolean exchangeSuccess, String amount) {

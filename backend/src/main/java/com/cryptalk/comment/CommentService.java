@@ -41,11 +41,15 @@ public class CommentService {
         if (target != null && !target.getPost().getId().equals(postId)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "다른 게시글의 댓글에 답글을 달 수 없습니다.");
         }
-        AssetSnapshot asset = assets.snapshotForPublication(memberId, post.getCoin());
+        var coin = post.getCoin();
+        boolean generalRoom = coin.isGeneralRoom();
+        AssetSnapshot asset = generalRoom ? null : assets.snapshotForPublication(memberId, coin);
         Comment saved = comments.save(new Comment(post, posts.member(memberId), content, target));
-        var holderRecord = new CommentHolderSnapshot(saved, asset);
-        holderRecord.applyBadge(badges.capture(post.getCoin(), asset));
-        holderSnapshots.save(holderRecord);
+        if (!generalRoom) {
+            var holderRecord = new CommentHolderSnapshot(saved, asset);
+            holderRecord.applyBadge(badges.capture(coin, asset));
+            holderSnapshots.save(holderRecord);
+        }
         return response(saved);
     }
     @Transactional
@@ -65,7 +69,7 @@ public class CommentService {
     }
     private CommentResponse response(Comment comment) {
         Member member = comment.getMember();
-        HolderSnapshotResponse snapshot = holderSnapshots.findById(comment.getId()).map(item ->
+        HolderSnapshotResponse snapshot = comment.getPost().getCoin().isGeneralRoom() ? null : holderSnapshots.findById(comment.getId()).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getHoldingMonths(), item.getWalletCount(), item.getCapturedAt(),
                 item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null);

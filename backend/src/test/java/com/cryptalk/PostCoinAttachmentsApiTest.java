@@ -60,9 +60,7 @@ class PostCoinAttachmentsApiTest {
         owner = members.saveAndFlush(new Member("attachment-owner", "#123456"));
         eth = coins.findBySymbolIgnoreCaseAndActiveTrue("ETH").orElseThrow();
         pol = coins.findBySymbolIgnoreCaseAndActiveTrue("POL").orElseThrow();
-        general = new Coin("OTHER", "기타", 999, null);
-        general.changeOperationStatus(RoomOperationStatus.OPEN);
-        coins.saveAndFlush(general);
+        general = coins.findBySymbolIgnoreCaseAndActiveTrue("OTHER").orElseThrow();
         coins.saveAndFlush(new Coin("UNSUPPORTED", "미지원", 1000, null));
         ethHolding = holding(eth, "5");
         polHolding = holding(pol, "100");
@@ -103,11 +101,46 @@ class PostCoinAttachmentsApiTest {
     void generalRoomHasOnlySelectedCoinsAndAllowsEmptySelection() throws Exception {
         long empty = publish("OTHER", "[]");
         assertSymbols(empty);
-        verifyNoInteractions(assets);
+        mvc.perform(get("/api/v1/posts/{id}", empty)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.priceSnapshot").doesNotExist())
+            .andExpect(jsonPath("$.holderSnapshot").doesNotExist());
+        String comment = mvc.perform(post("/api/v1/posts/{id}/comments", empty)
+                .with(jwt().jwt(t -> t.subject(owner.getId().toString())))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"기타 방 댓글\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.holderSnapshot").doesNotExist())
+            .andReturn().getResponse().getContentAsString();
+        long commentId = json.readTree(comment).path("id").asLong();
+        em.flush();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comment_holder_snapshots WHERE comment_id=?", Long.class, commentId))
+            .isZero();
+        verifyNoInteractions(assets, prices);
         long selected = publish("OTHER", "[\"ETH\",\"POL\"]");
         assertSymbols(selected, "ETH", "POL");
+        assertThat(roomSnapshots.findById(empty)).isEmpty();
+        assertThat(roomSnapshots.findById(selected)).isEmpty();
+        verify(assets).snapshotsForPublication(eq(owner.getId()), argThat(selectedCoins ->
+            selectedCoins.stream().map(Coin::getSymbol).toList().equals(List.of("ETH", "POL"))));
         mvc.perform(get("/api/v1/posts/{id}", selected))
-            .andExpect(jsonPath("$.verifiedHolder").value(false));
+            .andExpect(jsonPath("$.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.priceSnapshot").doesNotExist())
+            .andExpect(jsonPath("$.holderSnapshot").doesNotExist());
+    }
+
+    @Test
+    void generalRoomKeepsLegacyContentWithoutPublishingRoomProof() throws Exception {
+        Post legacy = posts.saveAndFlush(new Post(owner, general, "legacy", "body", BigDecimal.TEN, true,
+            null, null, null, BigDecimal.TEN, "USD", Instant.now(), "TEST", null, null, null));
+        roomSnapshots.saveAndFlush(new PostHolderSnapshot(legacy, null));
+        mvc.perform(get("/api/v1/posts/{id}", legacy.getId())).andExpect(status().isOk())
+            .andExpect(jsonPath("$.verifiedHolder").value(false))
+            .andExpect(jsonPath("$.assetValueKrw").doesNotExist())
+            .andExpect(jsonPath("$.priceSnapshot").doesNotExist())
+            .andExpect(jsonPath("$.holderSnapshot").doesNotExist());
+        mvc.perform(get("/api/v1/communities/OTHER/posts/page").param("verified", "true"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get("/api/v1/members/{id}/posts/page", owner.getId())).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].holderSnapshot").doesNotExist());
+        assertThat(roomSnapshots.findById(legacy.getId())).isPresent();
     }
 
     @Test

@@ -89,10 +89,9 @@ public class MarketPriceService {
     }
 
     private String requireMarketId(Coin coin) {
-        String marketId = coin.getMarketPriceId();
-        if (marketId == null || marketId.isBlank())
+        if (!coin.hasMarketPrice())
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "이 자산은 실시간 시세 조회를 지원하지 않습니다.");
-        return marketId;
+        return coin.getMarketPriceId();
     }
 
     private String cacheKey(String marketId, String currency) { return marketId + ":" + currency; }

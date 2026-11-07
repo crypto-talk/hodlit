@@ -30,15 +30,15 @@ public class CoinController {
                                                             @RequestParam(defaultValue="24h") String window) {
         return statistics.statistics(window, symbol);
     }
-    @Operation(summary = "지원 코인 목록 조회", description = "현재 활성화된 코인을 화면 표시 순서대로 반환합니다.")
+    @Operation(summary = "지원 코인 목록 조회", description = "활성 방을 표시 순서대로 반환합니다. 게시판 전용 기타(OTHER) 방은 마지막에 표시합니다.")
     @GetMapping("/coins")
     List<CoinResponse> coins() { return coins.findByActiveTrueOrderByDisplayOrder().stream().map(this::response).toList(); }
-    @Operation(summary = "방 목록 페이지 조회", description = "활성 코인 방만 표시 순서·ID 순으로 조회합니다. page 0부터, size 기본 20.")
+    @Operation(summary = "방 목록 페이지 조회", description = "활성 방을 표시 순서·ID 순으로 조회하고 기타(OTHER) 방은 마지막에 표시합니다. page 0부터, size 기본 20.")
     @GetMapping("/coins/page")
     com.cryptalk.common.PageResponse<CoinResponse> coinPage(@RequestParam(defaultValue="0") int page,
                                                           @RequestParam(defaultValue="20") int size) {
         var request = com.cryptalk.common.PageResponse.request(page, size,
-            org.springframework.data.domain.Sort.by("displayOrder", "id"));
+            org.springframework.data.domain.Sort.unsorted());
         return com.cryptalk.common.PageResponse.of(coins.findByActiveTrue(request).map(this::response));
     }
     @Operation(summary = "코인 커뮤니티 정보 조회", description = "코인 기본 정보, 게시글 수와 커뮤니티 설명을 반환합니다.")
@@ -46,7 +46,9 @@ public class CoinController {
     CommunityResponse community(@PathVariable String symbol) {
         Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
         long postCount = coin.getOperationStatus() == RoomOperationStatus.OPEN ? posts.countByCoinId(coin.getId()) : 0;
-        return new CommunityResponse(response(coin), postCount, coin.getName() + " 홀더와 투자자가 정보를 나누는 공간입니다.");
+        String description = coin.isGeneralRoom() ? "전용 방이 없는 코인에 대해 이야기하는 공간입니다."
+            : coin.getName() + " 홀더와 투자자가 정보를 나누는 공간입니다.";
+        return new CommunityResponse(response(coin), postCount, description);
     }
     private CoinResponse response(Coin coin) {
         return new CoinResponse(coin.getId(), coin.getSymbol(), coin.getName(), coin.getChainType(), coin.getAccentColor(),

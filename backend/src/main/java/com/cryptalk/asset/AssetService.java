@@ -71,7 +71,9 @@ public class AssetService {
                 false, "NOT_CONFIGURED", Instant.now())
             : alchemy.fetch(connectedWallets.stream().map(wallet -> wallet.getAddress()).toList(),
                 publication ? Duration.ofNanos(Math.max(0, deadline - System.nanoTime())) : Duration.ofSeconds(15));
-        var walletCoins = coins.findByActiveTrueOrderByDisplayOrder().stream().filter(this::walletSupported).toList();
+        var assetCoins = coins.findByActiveTrueOrderByDisplayOrder().stream()
+            .filter(coin -> !coin.isGeneralRoom()).toList();
+        var walletCoins = assetCoins.stream().filter(this::walletSupported).toList();
         Map<String, WalletBalance> walletBalances = new HashMap<>();
         for (var coin : walletCoins) walletBalances.put(coin.getSymbol(), alchemyBalance(coin, discovered));
         Map<String,BigDecimal> exchangeQuantities = new HashMap<>();
@@ -85,9 +87,7 @@ public class AssetService {
                 exchangeComplete = false;
             }
         }
-        var candidates = connections.isEmpty()
-            ? walletCoins
-            : coins.findByActiveTrueOrderByDisplayOrder();
+        var candidates = connections.isEmpty() ? walletCoins : assetCoins;
         for (Coin coin : candidates) {
             String symbol = coin.getSymbol();
             boolean walletAsset = walletBalances.containsKey(symbol);
@@ -123,7 +123,9 @@ public class AssetService {
             snapshot.captureSources(level,connections.size(),sync);
             snapshots.save(snapshot);
         }
-        return new RefreshResult(snapshots.findByMemberIdOrderByCoinDisplayOrder(memberId).stream().map(this::response).toList(), discovered);
+        return new RefreshResult(snapshots.findByMemberIdOrderByCoinDisplayOrder(memberId).stream()
+            .filter(snapshot -> !snapshot.getCoin().isGeneralRoom())
+            .map(this::response).toList(), discovered);
     }
 
     @Transactional
@@ -140,6 +142,7 @@ public class AssetService {
 
     @Transactional
     public AssetSnapshot snapshotForPublication(Long memberId,Coin coin) {
+        if (coin.isGeneralRoom()) return null;
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED
                 && !(alchemy.isConfigured() && walletSupported(coin)) && exchanges.list(memberId).isEmpty()) return null;
         boolean refreshFailed = refreshForPublicationFailed(memberId);
@@ -169,7 +172,7 @@ public class AssetService {
     }
 
     private AssetSnapshot publicationSnapshot(Long memberId, Coin coin, Instant now, boolean refreshFailed) {
-        if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
+        if (coin.isGeneralRoom() || coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
         var snapshot = snapshots.findByMemberIdAndCoinId(memberId,coin.getId()).orElse(null);
         if (snapshot == null) return null;
         boolean fresh = snapshot.getCapturedAt() != null && !snapshot.getCapturedAt().isAfter(now)

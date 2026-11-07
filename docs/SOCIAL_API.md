@@ -161,7 +161,7 @@ Content-Type: application/json
   방 코인은 서버가 자동 포함하며 같은 심볼을 명시해도 중복 저장하지 않습니다.
   선택 코인은 대소문자를 구분하지 않으며 중복 심볼, 미등록·비활성·인증 미지원 코인은 `400`입니다.
   코인의 방이 닫혀 있어도 보유 인증을 지원하는 활성 코인이면 선택할 수 있습니다.
-  `OTHER` 방은 선택한 코인만 저장하고 빈 배열도 허용합니다. 기타 방 카탈로그 생성·개방은 HODL-87과 연동합니다.
+  `OTHER` 방은 선택한 코인만 저장하고 빈 배열도 허용합니다. 방 자체의 시세·보유 스냅샷은 만들지 않습니다.
 - `attachedCoinSnapshots`: 상세·목록·피드·북마크 및 공개 프로필 글 목록에 반환하는 발행 시점 기록 배열.
   방 코인 다음에 선택 순서로 반환합니다. 각 항목은 `coinSymbol`, `verificationAvailability`,
   `holderStatus`, `verifiedHolder`, `quantityBand`, `holdingMonths`, `badge`,
@@ -361,12 +361,13 @@ API에서 `503`이지만, 발행 경로에서는 성공한 거래소 조회를 �
 }
 ```
 
-`GET /market/prices?currency=KRW`는 모든 활성 코인의 같은 응답 객체를 표시 순서대로 배열로
+`GET /market/prices?currency=KRW`는 시세를 지원하는 활성 코인의 같은 응답 객체를 표시 순서대로 배열로
 반환합니다. 공급자에는 코인 ID를 묶어 한 번만 요청하므로 커뮤니티 화면은 이 API를 30초마다
-호출합니다. `change24h`는 공급자가 등락률을 제공하지 않으면 `null`일 수 있습니다.
+호출합니다. `OTHER` 및 시세 미지원 방은 배열에서 제외하며, 단일 시세 요청은 `422`입니다.
+`change24h`는 공급자가 등락률을 제공하지 않으면 `null`일 수 있습니다.
 
 가격은 20초간 서버 캐시를 사용합니다. 공급자 장애나 rate limit으로 조회하지 못하면
-`503 Service Unavailable`을 반환하며 가격이 없는 게시글을 저장하지 않습니다. 운영 환경은
+`503 Service Unavailable`을 반환합니다. 시세 지원 방은 글 작성 중 시세 조회가 실패하면 저장하지 않습니다. 운영 환경은
 `MARKET_PRICE_BASE_URL`로 공급자 호스트를 교체할 수 있습니다. 기본 구현은
 [CoinGecko Keyless Public API](https://docs.coingecko.com/docs/keyless-public-api)의
 [`/simple/price`](https://docs.coingecko.com/reference/simple-price)를 사용합니다.
