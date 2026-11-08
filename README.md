@@ -87,6 +87,13 @@ sudo systemctl restart 'actions.runner.*'
 Runner는 저장소의 workflow 코드를 서버에서 실행할 권한을 갖습니다. 이 workflow는
 pull request가 아닌 보호된 `main` 브랜치의 push에만 자동 실행되도록 유지하세요.
 
+백엔드 Docker 빌드는 Gradle 8.14.3·JDK 24가 포함된 공식 Gradle 이미지를
+태그와 digest로 고정해 사용합니다. 빌드 중 Wrapper의 Gradle ZIP을 GitHub에서
+다시 내려받지 않으므로 해당 다운로드의 504 오류를 피합니다. 애플리케이션 의존성
+다운로드와 전체 테스트는 계속 실행합니다. Gradle 버전을 올릴 때는
+`backend/gradle/wrapper/gradle-wrapper.properties`와 `backend/Dockerfile`의
+이미지를 함께 갱신해야 하며, 불일치하면 빌드를 중단합니다.
+
 ## GitHub에서 내려받아 재배포
 
 배포 서버에서 GitHub 인증을 한 번 설정한 후 `deploy.sh`를 실행하면 private
