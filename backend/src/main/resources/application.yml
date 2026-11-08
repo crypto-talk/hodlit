@@ -25,6 +25,8 @@ server:
   port: ${PORT:8080}
 
 cryptalk:
+  news-publisher:
+    token: ${NEWS_PUBLISHER_TOKEN:}
   admin:
     member-ids: ${ADMIN_MEMBER_IDS:}
   jwt:
