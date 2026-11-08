@@ -35,3 +35,28 @@ Sources:
 The attempted Cointelegraph `/rss-feeds` URL returned 404; use the verified `/rss` endpoint. A CoinDesk terms URL returned a 404 page despite HTTP 200, so no claim about its current licence was inferred.
 
 **Recommendation:** launch manual administrator registration with original, short editorial summaries and verified original-source links; use Cointelegraph RSS only for administrator discovery subject to rights checks. Include Korean sources only after checking their current publisher terms directly; none were misrepresented as a confirmed licensed API. Do not buy NewsAPI's commercial plan for this initial requirement, use its free plan only in a development environment if evaluated later, and do not auto-ingest/repost any provider. This preserves the confirmed administrator-only publication model and avoids unverified licence/cost commitments. Any later automation requires a separate explicit decision and licence review.
+
+## Skill publisher API
+
+`POST /api/v1/news-publisher/communities/{symbol}/news` accepts the same
+`{title,summary,sourceName,sourceUrl}` JSON and returns the same news response (201).
+Send the dedicated password in `X-News-Publisher-Token` over HTTPS. This exact
+POST route uses its own security chain without JWT processing, including when a
+stale Authorization header is present. The password grants only news creation;
+existing admin creation, updates, deletion and other APIs still require their
+existing JWT/admin checks. Unknown/inactive rooms return 404; closed rooms return
+403 (`ROOM_CLOSED`). Payload and source URL validation remain the same (400).
+
+Set `NEWS_PUBLISHER_TOKEN` in the backend deployment environment. It must be at
+least 32 UTF-8 bytes; a nonempty shorter value prevents startup. Empty/unset disables
+publication. Missing, wrong and disabled credentials all return 401 with the common
+error body. The password is compared using fixed-length SHA-256 digests and a
+constant-time comparison. No database migration or administrator member is needed.
+
+Generate a password with Python `secrets.token_urlsafe(48)` and store it in a
+private secret file/secret manager, never in Git, the skill text, CLI arguments or
+article JSON. Give the skill runtime the same value as
+`HODLIT_NEWS_PUBLISHER_TOKEN`. Rotation means replacing the server environment
+value, restarting the backend, and updating the client's secret. Do not send the
+password in a URL. Clients should retain duplicate checks and persistent journals:
+this API does not add atomic deduplication or automatic retries.

@@ -37,7 +37,7 @@ class CrypTalkApplicationTest {
             .andReturn();
         JsonNode document = json.readTree(result.getResponse().getContentAsString());
         Set<String> expectedTags = Set.of("인증", "코인·커뮤니티", "댓글", "실시간 시세", "미디어",
-            "내 정보·자산", "게시글·피드", "팔로우", "지갑 연결", "거래소 자산", "임시저장", "방 뉴스", "방 투표", "검색", "서비스 관리자 방 관리", "공개 프로필", "배너", "뽑기 이벤트", "관리자 등급 배지", "서비스 운영 관리", "방·카테고리 관리", "공개 프로필 자산 설정");
+            "내 정보·자산", "게시글·피드", "팔로우", "지갑 연결", "거래소 자산", "임시저장", "방 뉴스", "방 투표", "검색", "서비스 관리자 방 관리", "공개 프로필", "배너", "뽑기 이벤트", "관리자 등급 배지", "서비스 운영 관리", "방·카테고리 관리", "공개 프로필 자산 설정", "뉴스 게시 연동");
         Set<String> actualTags = new HashSet<>();
         Set<String> httpMethods = Set.of("get", "post", "put", "patch", "delete", "options", "head");
         int operationCount = 0;
@@ -52,7 +52,8 @@ class CrypTalkApplicationTest {
             }
         }
 
-        assertTrue(operationCount >= 83);
+        assertTrue(operationCount >= 84);
+        assertTrue(document.path("paths").has("/api/v1/news-publisher/communities/{symbol}/news"));
         assertTrue(document.path("paths").has("/api/v1/communities/stats"));
         assertTrue(document.path("paths").has("/api/v1/communities/{symbol}/polls/results"));
         assertTrue(document.path("paths").has("/api/v1/polls/{pollId}/results"));
