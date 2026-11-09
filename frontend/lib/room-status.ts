@@ -31,3 +31,19 @@ export function isOpenRoom(coin: { operationStatus?: RoomOperationStatus }): boo
 export function isRoomClosedError(error: unknown): boolean {
   return error instanceof ApiError && error.status === 403 && error.code === "ROOM_CLOSED";
 }
+
+/**
+ * 기타 방(HODL-87). 전용 방이 없는 코인 이야기를 하는 게시판이라 방 자체의 코인이 없다.
+ * 그래서 시세 · 차트 · 뉴스 · 투표 · 방 코인 보유 배지가 없고, 글마다 고른 코인의 보유 기록만
+ * 붙는다(`attachedCoinSnapshots`). 백엔드 문서가 `symbol: "OTHER"` 로 가르라고 정해 두었다.
+ */
+export const GENERAL_ROOM_SYMBOL = "OTHER";
+
+export function isGeneralRoom(symbol: string | null | undefined): boolean {
+  return symbol === GENERAL_ROOM_SYMBOL;
+}
+
+/** 방을 문장 속에서 부를 이름. 기타 방은 `OTHER` 대신 "기타" 로 쓴다(검색칸 안내 등). */
+export function roomCallName(symbol: string): string {
+  return isGeneralRoom(symbol) ? "기타" : symbol;
+}

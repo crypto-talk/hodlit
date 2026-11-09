@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MYPAGE_HREF, roomSymbolOf, searchHref, writeHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import Logo from "./logo";
+import { roomCallName } from "@/lib/room-status";
 
 /**
  * 모든 화면 위에 오는 헤더.
@@ -63,9 +64,11 @@ export default function Header() {
           <input
             type="search"
             enterKeyHint="search"
-            aria-label={room ? `${room} 방에서 검색` : "검색"}
+            aria-label={room ? `${roomCallName(room)} 방에서 검색` : "검색"}
             className="min-w-0 flex-1 bg-transparent text-text-primary outline-none placeholder:text-text-muted"
-            placeholder={room ? `${room} 방에서 검색` : "글 · 댓글 · 방 · 닉네임 검색"}
+            placeholder={
+              room ? `${roomCallName(room)} 방에서 검색` : "글 · 댓글 · 방 · 닉네임 검색"
+            }
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
