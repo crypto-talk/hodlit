@@ -8,6 +8,8 @@
   "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "next dev",
+    "dev:mock": "node mock/dev.mjs",
+    "mock": "node mock/server.mjs",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
