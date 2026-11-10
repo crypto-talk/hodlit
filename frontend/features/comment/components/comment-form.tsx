@@ -116,7 +116,9 @@ export default function CommentForm({ postId, verifiable, replyTo, onClose }: Pr
       />
       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-muted">
         {verifiable ? (
-          <span>댓글에는 보유 등급 배지와 보유 기간이 붙습니다. 정확한 수량은 표시되지 않습니다.</span>
+          <span>
+            댓글에는 보유 등급 배지와 보유 기간이 붙습니다. 정확한 수량은 표시되지 않습니다.
+          </span>
         ) : null}
         <span className="flex-1" />
         <span className={`tabular-nums ${length > COMMENT_MAX ? "text-danger" : ""}`}>
