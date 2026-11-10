@@ -184,3 +184,25 @@ export function adminRoomsHref(
   const search = query.toString();
   return search ? `/admin/rooms?${search}` : "/admin/rooms";
 }
+
+/** 관리자 화면에서 고른 방. 주소에 `?room=ETH` 로 싣는다. 모양이 아니면 null. */
+export function adminRoomParam(value: string | undefined): string | null {
+  return value ? safeSymbol(value) : null;
+}
+
+/** 관리자 방 뉴스 관리(HODL-110). 방과 쪽은 쿼리스트링이다. 쪽은 1부터, 1쪽은 적지 않는다. */
+export function adminNewsHref(options: { room?: string | null; page?: number } = {}): string {
+  const query = new URLSearchParams();
+  if (options.room) query.set("room", options.room);
+  if (options.page && options.page > 1) query.set("page", String(options.page));
+  const search = query.toString();
+  return search ? `/admin/news?${search}` : "/admin/news";
+}
+
+/** 관리자 방 투표 관리(HODL-111). */
+export function adminPollsHref(room?: string | null): string {
+  return room ? `/admin/polls?room=${encodeURIComponent(room)}` : "/admin/polls";
+}
+
+/** 관리자 배너 관리(HODL-92). */
+export const ADMIN_BANNERS_HREF = "/admin/banners";

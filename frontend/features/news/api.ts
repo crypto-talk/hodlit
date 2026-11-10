@@ -1,4 +1,5 @@
 import type { components } from "@/lib/api-schema";
+import { safeExternalUrl } from "@/lib/safe-url";
 import { http } from "@/lib/http";
 import type { RoomNewsItem, RoomNewsPage } from "./types";
 
@@ -60,20 +61,4 @@ export function toNewsItem(raw: NewsResponse): RoomNewsItem | null {
     sourceUrl: safeExternalUrl(raw.sourceUrl),
     createdAt: raw.createdAt ?? "",
   };
-}
-
-/**
- * 바깥 링크로 써도 되는 주소인지. 서버도 http(s) 만 받지만, `javascript:` 같은 주소가
- * href 에 들어가면 바로 스크립트가 되니 화면 쪽에서도 한 번 더 막는다.
- */
-export function safeExternalUrl(value: string | null | undefined): string | null {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    if (url.username || url.password) return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
 }
