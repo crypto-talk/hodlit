@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import AnimalBadge from "@/components/holder/animal-badge";
-import TierBadge from "@/components/holder/tier-badge";
+import HolderBadge from "@/components/holder/holder-badge";
 import RoomClosedNotice from "@/components/room-closed-notice";
 import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
 import { coinNameKo } from "@/lib/coin-name-ko";
@@ -196,8 +195,14 @@ function LegacyHolder({ holder, room }: { holder: PostDetail["holder"]; room: st
           className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <AnimalBadge badge={holder.badge} position="detail" />
-            <TierBadge tier={holder.tier} symbol={room} holderStatus={holder.holderStatus} />
+            <HolderBadge
+              badge={holder.badge}
+              tier={holder.tier}
+              symbol={room}
+              holderStatus={holder.holderStatus}
+              partial={holder.partial}
+              position="detail"
+            />
             {holder.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}
             {isHolderTier(holder.tier) ? (
               <span className="text-sm font-semibold text-text-primary">{holder.holding}</span>

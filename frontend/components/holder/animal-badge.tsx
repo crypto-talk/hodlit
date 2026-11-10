@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { effectAt, type BadgePosition } from "@/lib/holder-snapshot/badge-effect";
 import { animalBadgeExplanation } from "@/lib/holder-snapshot/label";
+import type { Tier } from "@/lib/holder-snapshot/types";
 
 export type AnimalBadgeData = {
   version?: number;
@@ -20,20 +22,28 @@ const PATHS: Record<string, string> = {
   whale: "M3 12c1-6 10-7 13-2l3 3 3-3-1 7c-4 6-17 5-18-5Zm7-7V2m0 0L7 3m3-1 3 1M7 12h.01",
 };
 
-export default function AnimalBadge({
-  badge,
-  position = "list",
-}: {
+const COLORS = ["coral", "mint", "blue", "purple", "gold"];
+type Props = {
   badge: AnimalBadgeData | null | undefined;
-  position?: "detail" | "list" | "comment";
-}) {
+  position?: BadgePosition;
+  /** 어떤 수단으로 확인한 보유인지. 설명에만 쓴다. */
+  tier?: Tier;
+  /** 일부만 조회된 기록인지. 설명에만 쓴다. */
+  partial?: boolean;
+};
+
+/**
+ * 보유량 동물 등급 배지 (HODL-79). 등급 · 아이콘 · 색 · 효과는 전부 글 · 댓글을 쓸 때 서버가
+ * 찍어 둔 값이다. 지금 보유량이나 시세로 다시 계산하지 않는다.
+ *
+ * 누르면 설명이 아래에 펼쳐진다 — 터치 화면에는 툴팁이 없어서다.
+ */
+export default function AnimalBadge({ badge, position = "list", tier, partial }: Props) {
   const [expanded, setExpanded] = useState(false);
   if (!badge?.name) return null;
-  const explanation = animalBadgeExplanation(badge);
-  const color = ["coral", "mint", "blue", "purple", "gold"].includes(badge.color ?? "")
-    ? badge.color
-    : "blue";
-  const effect = position === "detail" ? badge.effect : "none";
+  const explanation = animalBadgeExplanation(badge, { tier, partial });
+  const color = COLORS.includes(badge.color ?? "") ? badge.color : "blue";
+  const effect = effectAt(position, badge.effect);
   return (
     <span className="inline-flex flex-col items-start gap-1">
       <button

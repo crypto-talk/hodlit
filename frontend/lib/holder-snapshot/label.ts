@@ -139,12 +139,38 @@ export function holdingPeriodLabel(holdingMonths: number | null | undefined): st
   return rest === 0 ? `${years}년 보유` : `${years}년 ${rest}개월 보유`;
 }
 
-export function holderStateLabel(status?: string | null): string | null {
-  if (status === "NOT_CONNECTED" || status === "EMPTY") return "미보유";
-  if (status === "UNKNOWN") return "조회 실패";
-  return null;
+/**
+ * 배지 한 칸에 적을 문구 (HODL-79 · 81).
+ *
+ * - `UNKNOWN`       확인하려 했지만 실패했거나 기록이 오래됐다 → `조회 실패`. 미보유라고 말하지 않는다
+ * - `EMPTY`         모두 확인했고 0개 → `ETH 미보유`
+ * - `NOT_CONNECTED` 연결한 수단이 없다 → `미인증`. 지갑을 붙이지 않은 사람을 미보유라고 부르지
+ *                   않는다 — 확인한 적이 없는 것을 없다고 말하는 셈이라서다(2026-11-11 성지)
+ * - 그 밖에는 등급 문구(`지갑연결` · `거래소연동`)
+ */
+export function holderBadgeLabel(
+  tier: Tier,
+  symbol?: string,
+  holderStatus?: string | null,
+): string {
+  if (holderStatus === "UNKNOWN") return "조회 실패";
+  return tierLabel(tier, symbol);
 }
 
-export function animalBadgeExplanation(badge: { name?: string; quantityBand?: string }): string {
-  return `${badge.name ?? ""} · ${badge.quantityBand ?? ""} · 작성 시점 기준, 정확 수량 비공개`;
+/**
+ * 동물 등급 배지의 설명(툴팁 · 눌렀을 때 펼쳐지는 문구).
+ *
+ * 동물 배지가 있으면 `지갑연결` · `거래소연동` 배지는 따로 그리지 않는다(2026-11-11 성지).
+ * 그래서 어떤 수단으로 확인했는지는 이 설명에 남긴다. 일부만 조회된 기록이면 그 사실도 적는다 —
+ * 구간이 실제보다 작게 찍혔을 수 있다.
+ */
+export function animalBadgeExplanation(
+  badge: { name?: string; quantityBand?: string },
+  options: { tier?: Tier; partial?: boolean } = {},
+): string {
+  const parts = [badge.name ?? "", badge.quantityBand ?? ""];
+  if (options.tier && isHolderTier(options.tier)) parts.push(TIER_LABEL[options.tier]);
+  parts.push(options.partial ? "일부 조회 기준" : "작성 시점 기준");
+  parts.push("정확 수량 비공개");
+  return parts.filter(Boolean).join(" · ");
 }
