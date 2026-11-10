@@ -5,11 +5,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatShare } from "@/lib/format/number";
-import { roomHref } from "@/lib/routes";
+import { pollResultsHref, roomHref } from "@/lib/routes";
 import { useRequireLogin } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { canShowResults } from "../api";
 import { useRoomPoll, useVote } from "../hooks/use-room-poll";
+import { formatKstDay } from "../kst-label";
 import type { RoomPoll as Poll } from "../types";
 
 type Props = {
@@ -29,8 +30,9 @@ type Props = {
  * - 참여 뒤: 오늘 결과. 다시 내거나 바꿀 수 없다
  * - 한국 자정이 지나면 결과를 지우고 다시 받는다. 같은 질문이면 다시 참여할 수 있다
  *
- * 보유자와 전체를 나눠 보여 주는 것은 아직 없다. 투표 기록에 투표자의 보유 상태가 남지 않아서다
- * (설계 원칙 5장 "투표 기록"). 백엔드에서 남기기 시작하면 결과에 줄을 더한다.
+ * 오늘 결과에는 보유자 집계가 없다(이 응답에 오지 않는다). 보유자와 전체를 견주는 것은 어제까지의
+ * 결과에서 본다 — 칸 머리의 "지난 결과" 가 `/subhodl/[symbol]/polls` 로 간다(HODL-109).
+ * 열린 투표가 없어도 지난 결과는 남아 있으므로 그 링크는 늘 보인다.
  */
 export default function RoomPoll({ symbol, showRoom = false }: Props) {
   const poll = useRoomPoll(symbol);
@@ -38,7 +40,7 @@ export default function RoomPoll({ symbol, showRoom = false }: Props) {
 
   if (poll.isPending) {
     return (
-      <PollFrame room={room}>
+      <PollFrame room={room} symbol={symbol}>
         <p className="mt-2 text-sm text-text-muted">투표를 불러오는 중…</p>
       </PollFrame>
     );
@@ -46,7 +48,7 @@ export default function RoomPoll({ symbol, showRoom = false }: Props) {
 
   if (poll.isError) {
     return (
-      <PollFrame room={room}>
+      <PollFrame room={room} symbol={symbol}>
         <p className="mt-2 text-sm text-text-muted">투표를 불러오지 못했습니다.</p>
         <button
           type="button"
@@ -61,7 +63,7 @@ export default function RoomPoll({ symbol, showRoom = false }: Props) {
 
   if (!poll.data) {
     return (
-      <PollFrame room={room}>
+      <PollFrame room={room} symbol={symbol}>
         <p className="mt-2 text-sm text-text-muted">지금 열린 투표가 없습니다.</p>
       </PollFrame>
     );
@@ -70,11 +72,11 @@ export default function RoomPoll({ symbol, showRoom = false }: Props) {
   const data = poll.data;
   // 키가 날짜별이라 자정이 지나면 새로 받는다. 그래도 결과는 응답 날짜가 오늘과 같을 때만 그린다.
   return canShowResults(data, poll.today) ? (
-    <PollFrame day={data.day} room={room}>
+    <PollFrame day={data.day} room={room} symbol={symbol}>
       <Results poll={data} />
     </PollFrame>
   ) : (
-    <PollFrame day={data.day} room={room}>
+    <PollFrame day={data.day} room={room} symbol={symbol}>
       <Ballot
         key={`${data.id}-${data.day}`}
         poll={data}
@@ -89,10 +91,13 @@ export default function RoomPoll({ symbol, showRoom = false }: Props) {
 function PollFrame({
   day,
   room,
+  symbol,
   children,
 }: {
   day?: string;
+  /** 랜딩에서 방 이름을 제목으로 보일 때만. */
   room: string | null;
+  symbol: string;
   children: React.ReactNode;
 }) {
   const Heading = room ? "h3" : "h2";
@@ -113,6 +118,13 @@ function PollFrame({
           )}
         </Heading>
         {day ? <span className="text-xs text-text-muted">{formatKstDay(day)}</span> : null}
+        <span className="flex-1" />
+        <Link
+          href={pollResultsHref(symbol)}
+          className="flex-none text-xs text-text-muted hover:text-brand"
+        >
+          지난 결과
+        </Link>
       </div>
       {children}
     </section>
@@ -249,10 +261,4 @@ function Results({ poll }: { poll: Poll }) {
       </p>
     </div>
   );
-}
-
-/** `2026-10-23` → `10월 23일`. 서버 날짜 문자열을 그대로 읽는다(시간대 변환 없음). */
-function formatKstDay(day: string): string {
-  const [, month, date] = day.split("-").map(Number);
-  return month && date ? `${month}월 ${date}일` : day;
 }
