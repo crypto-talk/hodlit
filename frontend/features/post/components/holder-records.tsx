@@ -49,7 +49,8 @@ export default function HolderRecords({
                       partial={record.partial}
                       position={roomCoin ? "detail" : "list"}
                     />
-                    {record.amount ? (
+                    {/* 방 코인의 동물 배지는 구간을 같이 적는다. 같은 구간을 한 번 더 그리지 않는다. */}
+                    {record.amount && !(roomCoin && record.badge?.name) ? (
                       <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
                         {record.amount}
                       </span>
