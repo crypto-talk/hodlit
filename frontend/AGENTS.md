@@ -359,6 +359,15 @@ onto a single line to save space.
   `features/admin/`. The header and mypage show the admin link only when `member.role === "ADMIN"`
   (HODL-108); access itself is still decided by the admin API's 403, not by the role. The poll admin
   screen never shows vote counts — the "no results before today's participation" rule has no admin bypass.
+- Home banners (`features/banner/`, HODL-92): `GET /banners` returns visible banners in order. The strip
+  renders nothing when there are none or the request fails; a banner whose image fails is dropped alone.
+  No auto-rotation. Server-supplied image URLs go through `lib/media.ts` `imageSrc()`.
+- Draw events (`features/draw/`, `/draw/[eventId]`, HODL-95): the POST is sent only on an explicit click,
+  the prize is whatever the server returns, and a lost response is recovered by re-reading
+  `/draw-events/{id}/me` — never assume "not drawn". The result is a record, not a delivery.
+- Poll history (`features/vote/history.ts`, HODL-109): `/subhodl/[symbol]/polls` shows past daily
+  results with the holder group next to the total, `/mypage/votes` shows the member's own choices.
+  Today's running result is not there — it stays behind today's participation.
 - `holdingMonths` is always `null` until an EVM indexer populates `holdingSince`. Render the
   fixed label `보유 기간 미확인`; do not build UI that assumes a value.
 - Public post and comment responses do not carry wallet addresses. Do not reintroduce them.

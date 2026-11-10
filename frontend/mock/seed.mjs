@@ -87,6 +87,57 @@ const comment = (id, nickname, content, holder, minutesAgo, reply = {}) => ({
   ...reply,
 });
 
+const day = (offset) =>
+  new Date(Date.now() + 9 * 3600 * 1000 - offset * 86400000).toISOString().slice(0, 10);
+const hours = (offset) => new Date(Date.now() + offset * 3600 * 1000).toISOString();
+
+const choices = (up, down) => [
+  { id: 11, label: "오른다", voteCount: up },
+  { id: 12, label: "내린다", voteCount: down },
+];
+
+/** 어느 날의 결과. 전체와 보유자가 반대로 갈린 날도 넣어 둔다. */
+const dailyResult = (offset, total, holder) => ({
+  pollId: 10,
+  coinSymbol: "ETH",
+  question: "오늘 ETH, 오를까 내릴까?",
+  active: true,
+  day: day(offset),
+  totalVotes: total[0] + total[1],
+  choices: choices(total[0], total[1]),
+  holderResults: holder
+    ? [
+        {
+          holderStatus: "HOLDER",
+          totalVotes: holder[0] + holder[1],
+          choices: choices(holder[0], holder[1]),
+        },
+      ]
+    : [],
+});
+
+const prize = (id, name, description) => ({
+  id,
+  name,
+  description,
+  imageUrl: `/api/v1/media/mock-prize-${id}.png`,
+  displayOrder: id,
+});
+const PRIZES = [
+  prize(1, "Hodlit 스티커", "가짜 서버의 상품입니다."),
+  prize(2, "커피 쿠폰", "실제로 지급되지 않습니다."),
+  prize(3, "다음 기회에", "꽝"),
+];
+const drawEvent = (id, title, startsAt, endsAt, status) => ({
+  id,
+  title,
+  description: "가짜 서버가 만든 이벤트입니다.\n한 사람이 한 번 참여할 수 있습니다.",
+  startsAt,
+  endsAt,
+  status,
+  prizes: PRIZES,
+});
+
 export function seed(role) {
   const members = {
     admin: {
@@ -243,6 +294,36 @@ export function seed(role) {
         votes: {},
       },
     ],
+    pollResults: [
+      dailyResult(1, [34, 16], [4, 8]),
+      dailyResult(2, [20, 20], [5, 5]),
+      dailyResult(3, [7, 3], null),
+    ],
+    myVotes: [
+      {
+        id: 1,
+        day: day(1),
+        votedAt: hours(-26),
+        choiceId: 12,
+        choiceLabel: "내린다",
+        result: dailyResult(1, [34, 16], [4, 8]),
+      },
+      {
+        id: 2,
+        day: day(3),
+        votedAt: hours(-74),
+        choiceId: 11,
+        choiceLabel: "오른다",
+        result: dailyResult(3, [7, 3], null),
+      },
+    ],
+    drawEvents: [
+      drawEvent(1, "오픈 기념 뽑기 (진행 중)", hours(-24), hours(24 * 7), "ACTIVE"),
+      drawEvent(2, "다음 주 뽑기 (시작 전)", hours(24), hours(24 * 8), "ACTIVE"),
+      drawEvent(3, "지난 뽑기 (종료)", hours(-24 * 8), hours(-24), "ACTIVE"),
+      drawEvent(4, "멈춘 뽑기 (중지)", hours(-24), hours(24 * 7), "PAUSED"),
+    ],
+    drawResults: {},
     badgePresets: {
       icons: ["shrimp", "fish", "dolphin", "shark", "whale"],
       colors: ["coral", "mint", "blue", "purple", "gold"],
@@ -264,10 +345,10 @@ export function seed(role) {
     banners: [
       {
         id: 1,
-        title: "ETH 방 오픈 안내",
+        title: "오픈 기념 뽑기",
         imageUrl: "/api/v1/media/mock-banner-1.png",
-        altText: "ETH 방이 열렸습니다",
-        linkUrl: "/subhodl/ETH",
+        altText: "오픈 기념 뽑기 이벤트 참여하기",
+        linkUrl: "/draw/1",
         visible: true,
         displayOrder: 0,
       },
@@ -279,6 +360,15 @@ export function seed(role) {
         linkUrl: "",
         visible: false,
         displayOrder: 1,
+      },
+      {
+        id: 3,
+        title: "ETH 방 안내 (링크 없음)",
+        imageUrl: "/api/v1/media/mock-banner-3.png",
+        altText: "ETH 방이 열렸습니다",
+        linkUrl: "",
+        visible: true,
+        displayOrder: 2,
       },
     ],
   };
