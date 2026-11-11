@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import RoomClosedNotice from "@/components/room-closed-notice";
 import { Button } from "@/components/ui/button";
+import { useTrackView } from "@/lib/analytics/track";
 import { UNSUPPORTED_LABEL } from "@/lib/holder-snapshot/label";
 import { ApiError } from "@/lib/http";
 import { isGeneralRoom } from "@/lib/room-status";
@@ -52,6 +53,11 @@ type Props = {
  */
 export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
   const room = useQuery({ queryKey: ["room", symbol], queryFn: () => loadRoom(symbol) });
+
+  // 운영 중인 방이 실제로 보였을 때만 센다. 닫힌 방은 안내 쪽이 따로 센다(HODL-89).
+  useTrackView(
+    room.data && !room.data.closed ? { name: "room_viewed", roomSymbol: room.data.symbol } : null,
+  );
 
   if (room.isError) {
     const missing = room.error instanceof ApiError && room.error.status === 404;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
+import { RouteTracker } from "@/lib/analytics/track";
 import { createQueryClient } from "@/lib/query";
 import { SessionProvider } from "@/lib/session";
 
@@ -17,6 +18,8 @@ import { SessionProvider } from "@/lib/session";
  *
  * SessionProvider 는 헤더와 페이지가 같은 로그인 상태를 봐야 해서 여기 있다.
  *
+ * RouteTracker 는 지나온 화면 종류를 적어 둔다. 이용 기록의 `source` 에만 쓴다(HODL-89).
+ *
  * Toaster 는 토스트가 뜨는 자리 하나다. 행동 실패(지갑 연결 · 투표 · 발행 등)를 알릴 때
  * `toast.error("…")` 로 부른다. 아래 가운데에 띄운다 — 오른쪽 아래는 좁은 화면의 글쓰기 FAB 자리다.
  */
@@ -27,6 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <SessionProvider>{children}</SessionProvider>
       <Toaster position="bottom-center" />
+      <RouteTracker />
     </QueryClientProvider>
   );
 }
