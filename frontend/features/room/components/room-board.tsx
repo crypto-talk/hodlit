@@ -13,6 +13,7 @@ import type { RoomInfo } from "../types";
 import RoomChart from "./room-chart";
 import RoomPosts, { type RoomTab } from "./room-posts";
 import RoomPrice from "./room-price";
+import RoomStats from "./room-stats";
 
 type Props = {
   symbol: string;
@@ -39,8 +40,9 @@ type Props = {
  * 있는 방일 때만 시세 · 차트와 글을 받는다. 없는 방(404)에 요청을 두 번 더 보내지 않으려고
  * 왕복 한 번을 감수했다.
  *
+ * 머리 아래 참여 통계 칸(HODL-112)은 `room-stats.tsx` 가 따로 읽는다. 실패해도 방의 나머지는 보인다.
+ *
  * 아직 없는 것
- *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
  *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
  *
  * 기타 방(HODL-87, `OTHER`)은 방 코인이 없어 시세 · 차트 · 뉴스 · 투표 칸이 없다. 머리와 글 목록만.
@@ -94,6 +96,9 @@ export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
       }
     >
       <RoomHeader info={info} />
+
+      {/* 기타 방은 방 코인이 없어 보유 인증률이 없다. 참여자 수만 보인다. */}
+      <RoomStats symbol={info.symbol} verifiable={info.verifiable && !isGeneralRoom(info.symbol)} />
 
       {isGeneralRoom(info.symbol) ? null : (
         <>
