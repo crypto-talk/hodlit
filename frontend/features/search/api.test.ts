@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { searchHref } from "@/lib/routes";
-import { toSearchResult } from "./api";
+import { toSearchGroups, toSearchResult } from "./api";
+import { categoriesFor, parseCategory } from "./categories";
 import { highlightParts } from "./highlight";
 import { searchProblem } from "./limits";
 
@@ -102,5 +103,51 @@ describe("searchHref", () => {
     expect(searchHref("이더 & 비트")).toBe("/search?q=%EC%9D%B4%EB%8D%94+%26+%EB%B9%84%ED%8A%B8");
     expect(searchHref("eth", { room: "ETH", page: 1 })).toBe("/search?q=eth&room=ETH");
     expect(searchHref("eth", { page: 3 })).toBe("/search?q=eth&page=3");
+  });
+});
+
+describe("검색 분류", () => {
+  it("방 검색은 글 · 댓글만 고를 수 있다", () => {
+    expect(categoriesFor(null)).toEqual(["posts", "comments", "rooms", "users"]);
+    expect(categoriesFor("ETH")).toEqual(["posts", "comments"]);
+    expect(parseCategory("users", null)).toBe("users");
+    expect(parseCategory("users", "ETH")).toBeNull();
+    expect(parseCategory("POSTS", null)).toBeNull();
+    expect(parseCategory(undefined, null)).toBeNull();
+  });
+
+  it("주소에 분류와 쪽을 적는다", () => {
+    expect(searchHref("eth", { type: "comments", page: 2 })).toBe(
+      "/search?q=eth&type=comments&page=2",
+    );
+    expect(searchHref("eth", { room: "ETH", type: "posts" })).toBe(
+      "/search?q=eth&room=ETH&type=posts",
+    );
+  });
+
+  it("분류별 미리보기는 화면 순서대로, 없는 분류는 0건으로 채운다", () => {
+    const groups = toSearchGroups(
+      {
+        users: {
+          items: [{ type: "USER", id: 1, label: "호들러" }],
+          totalElements: 7,
+          totalPages: 2,
+        },
+        posts: { items: [], totalElements: 0, totalPages: 0 },
+      },
+      null,
+    );
+    expect(groups.map((group) => [group.category, group.totalElements])).toEqual([
+      ["posts", 0],
+      ["comments", 0],
+      ["rooms", 0],
+      ["users", 7],
+    ]);
+    expect(groups[3].results).toHaveLength(1);
+  });
+
+  it("방 검색 미리보기는 방 · 사용자 묶음을 버린다", () => {
+    const groups = toSearchGroups({ users: { totalElements: 3 } }, "ETH");
+    expect(groups.map((group) => group.category)).toEqual(["posts", "comments"]);
   });
 });

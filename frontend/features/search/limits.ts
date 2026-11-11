@@ -7,6 +7,9 @@ export const SEARCH_MAX = 100;
 /** 한 쪽에 보일 결과 수. 방 게시판과 같다. */
 export const SEARCH_PAGE_SIZE = 20;
 
+/** 분류별 미리보기(전체 화면)에서 분류마다 보일 결과 수. 백엔드 기본값과 같다. */
+export const SEARCH_PREVIEW_SIZE = 5;
+
 /** 보낼 수 없는 검색어면 그 이유, 괜찮으면 null. */
 export function searchProblem(q: string): string | null {
   const trimmed = q.trim();
