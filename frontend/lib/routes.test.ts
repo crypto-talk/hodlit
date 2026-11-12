@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMemberId, profileHref } from "./routes";
+import { adminDrawsHref, parseMemberId, profileHref } from "./routes";
 
 describe("profileHref", () => {
   it("회원 id 만으로 주소를 만든다", () => {
@@ -31,5 +31,16 @@ describe("parseMemberId", () => {
 
   it("값이 없으면 null", () => {
     expect(parseMemberId(undefined)).toBeNull();
+  });
+});
+
+describe("adminDrawsHref", () => {
+  it("1쪽은 주소에 적지 않는다", () => {
+    expect(adminDrawsHref()).toBe("/admin/draws");
+    expect(adminDrawsHref(1)).toBe("/admin/draws");
+  });
+
+  it("2쪽부터 쪽 번호를 싣는다", () => {
+    expect(adminDrawsHref(3)).toBe("/admin/draws?page=3");
   });
 });

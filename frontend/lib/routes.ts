@@ -212,6 +212,14 @@ export function adminPollsHref(room?: string | null): string {
 /** 관리자 배너 관리(HODL-92). */
 export const ADMIN_BANNERS_HREF = "/admin/banners";
 
+/**
+ * 관리자 뽑기 이벤트 관리. 쪽은 쿼리스트링이다(구조 규칙 8). 쪽은 1부터, 1쪽은 적지 않는다.
+ * 만든 이벤트의 참여 화면은 `drawHref()` 다.
+ */
+export function adminDrawsHref(page?: number): string {
+  return page && page > 1 ? `/admin/draws?page=${page}` : "/admin/draws";
+}
+
 /** 방의 지난 투표 결과(HODL-109). 방 게시판 투표 칸의 "지난 결과". 쪽은 1부터, 1쪽은 적지 않는다. */
 export function pollResultsHref(symbol: string, page?: number): string {
   const base = `/subhodl/${encodeURIComponent(symbol)}/polls`;

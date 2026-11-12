@@ -3,12 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
 import { useSession } from "@/lib/session";
+import { useNow } from "@/lib/use-now";
 import { draw, drawEventQueryKey, drawResultQueryKey, loadDrawEvent, loadDrawResult } from "../api";
 import { drawPhase } from "../phase";
 import type { DrawEvent, DrawPhase, DrawResult } from "../types";
@@ -210,19 +211,6 @@ export default function DrawView({ eventId }: { eventId: number }) {
       </section>
     </div>
   );
-}
-
-/**
- * 지금 시각. 30초마다 다시 본다 — 화면을 켜 둔 채 시작 시각이 지나면 "시작 전" 안내가 풀려야 한다.
- * 정확한 판정은 서버가 한다. 기간이 지난 뒤 버튼을 눌러도 409 로 막힌다.
- */
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  return now;
 }
 
 const CLOSED_COPY: Record<Exclude<DrawPhase, "done" | "open">, { title: string; body: string }> = {

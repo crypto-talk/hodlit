@@ -4,9 +4,14 @@ import type { RoomOperationStatus } from "@/lib/room-status";
 import type { AdminRoomFilter } from "@/lib/routes";
 import { ApiError, http } from "@/lib/http";
 import { imageSrc } from "@/lib/media";
+import { kstInputToUtc, parseWeight, toDrawStatus } from "./draw-events";
 import type {
   ActivePoll,
   AdminBanner,
+  AdminDrawEvent,
+  AdminDrawPrize,
+  DrawEventInput,
+  DrawPrizeInput,
   AdminNews,
   AdminRoom,
   AdminRoomPage,
@@ -317,10 +322,11 @@ export const reorderBanners = (ids: number[]) =>
   http<BannerResponse[]>(`${BANNERS}/order`, { method: "PATCH", body: JSON.stringify({ ids }) });
 
 /**
- * 배너 이미지를 올린다. 글 이미지와 같은 `POST /media` 다. 올린 사람(지금 관리자)의 파일이어야
- * 배너에 쓸 수 있고, 글 · 임시저장에 붙은 파일은 쓸 수 없다 — 그래서 배너마다 새로 올린다.
+ * 관리자 화면의 이미지(배너 · 뽑기 상품)를 올린다. 글 이미지와 같은 `POST /media` 다. 올린 사람
+ * (지금 관리자)의 파일이어야 배너 · 상품에 쓸 수 있고, 글 · 임시저장에 붙은 파일은 쓸 수 없다 —
+ * 그래서 쓸 곳마다 새로 올린다.
  */
-export async function uploadBannerImage(file: File): Promise<{ url: string; src: string }> {
+export async function uploadAdminImage(file: File): Promise<{ url: string; src: string }> {
   const form = new FormData();
   form.append("file", file);
   const stored = await http<{ url?: string }>("/api/v1/media", { method: "POST", body: form });
@@ -341,6 +347,155 @@ function toBanner(raw: BannerResponse): AdminBanner[] {
       altText: raw.altText ?? "",
       linkUrl: raw.linkUrl ?? "",
       visible: raw.visible ?? false,
+      displayOrder: raw.displayOrder ?? 0,
+    },
+  ];
+}
+
+// ── 뽑기 이벤트 (HODL-94 · 96, `docs/ASSIGNED_FEATURES_API.md` "Draw events") ──────
+
+type AdminEventResponse = Schemas["AdminEvent"];
+type AdminPrizeResponse = Schemas["AdminPrize"];
+type AdminEventPageResponse = Schemas["PageResponseAdminEvent"];
+type EventRequest = Schemas["EventRequest"];
+type PrizesRequest = Schemas["PrizesRequest"];
+type StatusRequest = Schemas["StatusRequest"];
+
+const DRAW_EVENTS = `${ROOT}/draw-events`;
+export const ADMIN_DRAW_PAGE_SIZE = 20;
+
+/** 뽑기 이벤트 목록. 최근에 만든 것부터. `page` 는 1부터 받는다(백엔드는 0부터). */
+export async function loadAdminDrawEvents(page: number): Promise<Page<AdminDrawEvent>> {
+  const query = new URLSearchParams({
+    page: String(Math.max(1, page) - 1),
+    size: String(ADMIN_DRAW_PAGE_SIZE),
+  });
+  const result = await http<AdminEventPageResponse>(`${DRAW_EVENTS}?${query.toString()}`);
+  return {
+    items: (result.items ?? []).flatMap(toDrawEventList),
+    page: (result.page ?? 0) + 1,
+    totalPages: result.totalPages ?? 0,
+    totalElements: result.totalElements ?? 0,
+  };
+}
+
+/** 이벤트 하나의 전체 설정. 가중치가 들어 있다. */
+export async function loadAdminDrawEvent(id: number): Promise<AdminDrawEvent> {
+  return requireDrawEvent(await http<AdminEventResponse>(`${DRAW_EVENTS}/${id}`));
+}
+
+/**
+ * 기본 정보 요청 본문. 입력칸의 한국 시간을 UTC 로 바꿔 보낸다. 폼이 먼저 검사하므로 여기서
+ * 바뀌지 않는 값은 폼을 거치지 않은 호출이다 — 보내지 않고 멈춘다.
+ */
+function eventBody(input: DrawEventInput): string {
+  const startsAt = kstInputToUtc(input.startsAt);
+  const endsAt = kstInputToUtc(input.endsAt);
+  if (!startsAt || !endsAt) throw new Error("시작 · 종료 시각을 읽을 수 없습니다.");
+  return JSON.stringify({
+    title: input.title.trim(),
+    description: input.description,
+    startsAt,
+    endsAt,
+  } satisfies EventRequest);
+}
+
+/** 새 이벤트. 초안(`DRAFT`)으로 만들어진다. 상품은 따로 넣는다. */
+export async function createDrawEvent(input: DrawEventInput): Promise<AdminDrawEvent> {
+  return requireDrawEvent(
+    await http<AdminEventResponse>(DRAW_EVENTS, { method: "POST", body: eventBody(input) }),
+  );
+}
+
+/** 기본 정보 수정. 시작 전 초안만 된다(아니면 409). */
+export async function updateDrawEvent(id: number, input: DrawEventInput): Promise<AdminDrawEvent> {
+  return requireDrawEvent(
+    await http<AdminEventResponse>(`${DRAW_EVENTS}/${id}`, {
+      method: "PATCH",
+      body: eventBody(input),
+    }),
+  );
+}
+
+/** 상품 전체 교체. 지금 보이는 순서가 곧 `displayOrder` 다. 시작 전 초안만 된다. */
+export async function saveDrawPrizes(
+  id: number,
+  prizes: DrawPrizeInput[],
+): Promise<AdminDrawEvent> {
+  const body: PrizesRequest = {
+    prizes: prizes.map((prize, index) => {
+      const weight = parseWeight(prize.weight);
+      if (weight === null) throw new Error("가중치가 잘못된 상품이 있습니다.");
+      return {
+        name: prize.name.trim(),
+        imageUrl: prize.imageUrl.trim(),
+        description: prize.description,
+        weight,
+        displayOrder: index,
+      };
+    }),
+  };
+  return requireDrawEvent(
+    await http<AdminEventResponse>(`${DRAW_EVENTS}/${id}/prizes`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+/**
+ * 열기 · 중지 · 다시 열기. 처음 여는 것은 시작 전 · 상품이 있을 때만, 한 번 열면 설정이 잠긴다.
+ * 다시 열어도 참여 기록은 그대로다.
+ */
+export async function setDrawEventStatus(
+  id: number,
+  status: "ACTIVE" | "PAUSED",
+): Promise<AdminDrawEvent> {
+  return requireDrawEvent(
+    await http<AdminEventResponse>(`${DRAW_EVENTS}/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status } satisfies StatusRequest),
+    }),
+  );
+}
+
+function requireDrawEvent(raw: AdminEventResponse): AdminDrawEvent {
+  const event = toDrawEvent(raw);
+  if (!event) throw new Error("이벤트 응답에 필요한 값이 없습니다.");
+  return event;
+}
+
+function toDrawEventList(raw: AdminEventResponse): AdminDrawEvent[] {
+  const event = toDrawEvent(raw);
+  return event ? [event] : [];
+}
+
+/** 생성 타입은 전부 선택이라 여기서 좁힌다. id 가 없는 이벤트는 다룰 수 없어 버린다. */
+function toDrawEvent(raw: AdminEventResponse): AdminDrawEvent | null {
+  if (typeof raw.id !== "number") return null;
+  return {
+    id: raw.id,
+    title: raw.title ?? "",
+    description: raw.description ?? "",
+    startsAt: raw.startsAt ?? "",
+    endsAt: raw.endsAt ?? "",
+    status: toDrawStatus(raw.status),
+    prizes: [...(raw.prizes ?? [])]
+      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+      .flatMap(toDrawPrize),
+  };
+}
+
+function toDrawPrize(raw: AdminPrizeResponse): AdminDrawPrize[] {
+  if (typeof raw.id !== "number") return [];
+  return [
+    {
+      id: raw.id,
+      name: raw.name ?? "",
+      imageUrl: raw.imageUrl ?? "",
+      imageSrc: imageSrc(raw.imageUrl) ?? "",
+      description: raw.description ?? "",
+      weight: raw.weight ?? 0,
       displayOrder: raw.displayOrder ?? 0,
     },
   ];
