@@ -59,3 +59,5 @@ databaseChangeLog:
       file: db/changelog/024-post-coin-snapshots.sql
   - include:
       file: db/changelog/025-other-room.sql
+  - include:
+      file: db/changelog/026-solana-wallet-link.sql

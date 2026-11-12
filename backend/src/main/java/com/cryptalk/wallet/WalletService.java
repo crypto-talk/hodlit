@@ -42,7 +42,7 @@ public class WalletService {
         wallets.delete(wallet);
         // Even with other wallets connected, the cached aggregate still contains the removed wallet.
         // Publication snapshots are independent immutable records and are deliberately untouched.
-        snapshots.deleteByMemberId(memberId);
+        if (WalletChain.EVM.name().equals(wallet.getChainType())) snapshots.deleteByMemberId(memberId);
     }
 
     private WalletResponse response(Wallet wallet) {

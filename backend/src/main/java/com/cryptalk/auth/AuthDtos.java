@@ -2,6 +2,7 @@ package com.cryptalk.auth;
 
 import com.cryptalk.member.Nickname;
 import com.cryptalk.member.MemberRole;
+import com.cryptalk.wallet.WalletChain;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,13 +12,27 @@ import java.util.UUID;
 
 public final class AuthDtos {
     private AuthDtos() {}
-    public record NonceRequest(@NotBlank @Pattern(regexp = "^0x[0-9a-fA-F]{40}$") String walletAddress) {}
+    public record NonceRequest(
+        @NotBlank @Size(max = 44) String walletAddress,
+        @Schema(defaultValue = "EVM") WalletChain chainType
+    ) {
+        public NonceRequest {
+            if (chainType == null) chainType = WalletChain.EVM;
+        }
+    }
     public record NonceResponse(UUID nonceId, String message, long expiresInSeconds) {}
     public record WalletLoginRequest(
-        @NotBlank @Pattern(regexp = "^0x[0-9a-fA-F]{40}$") String walletAddress,
+        @NotBlank @Size(max = 44) String walletAddress,
         @NotNull UUID nonceId,
-        @NotBlank String signature
-    ) {}
+        @NotBlank @Size(max = 132)
+        @Schema(description = "EVM personal_sign의 16진수 서명 또는 Solana Ed25519의 Base58 서명")
+        String signature,
+        @Schema(defaultValue = "EVM") WalletChain chainType
+    ) {
+        public WalletLoginRequest {
+            if (chainType == null) chainType = WalletChain.EVM;
+        }
+    }
     public record SignupRequest(
         @NotBlank
         @Size(min = 4, max = 40)

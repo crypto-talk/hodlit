@@ -15,6 +15,7 @@ import com.cryptalk.member.MemberRepository;
 import com.cryptalk.post.Post;
 import com.cryptalk.post.PostHolderSnapshot;
 import com.cryptalk.wallet.Wallet;
+import com.cryptalk.wallet.WalletChain;
 import com.cryptalk.wallet.WalletRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -78,7 +79,7 @@ class ExchangeHolderProofTest {
     @Test
     void exchangeOnlyBitcoinCanBeVerifiedWithoutEvmWallets() {
         var f = new Fixture();
-        when(f.wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of());
+        when(f.wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(7L, WalletChain.EVM.name())).thenReturn(List.of());
         f.exchange("BTC",new BigDecimal("3"));
         when(f.snapshots.findByMemberIdOrderByCoinDisplayOrder(7L)).thenReturn(List.of(f.btcSnapshot,f.ethSnapshot));
         var asset = f.service.refreshAndList(7L).getFirst();
@@ -92,7 +93,7 @@ class ExchangeHolderProofTest {
     @Test
     void noConnectionsDeletePrivateCache() {
         var f = new Fixture();
-        when(f.wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of());
+        when(f.wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(7L, WalletChain.EVM.name())).thenReturn(List.of());
         assertTrue(f.service.refreshAndList(7L).isEmpty());
         verify(f.snapshots).deleteByMemberId(7L);
     }
@@ -115,7 +116,7 @@ class ExchangeHolderProofTest {
             when(members.lockById(7L)).thenReturn(Optional.of(member));
             Wallet wallet = mock(Wallet.class);
             when(wallet.getAddress()).thenReturn("wallet");
-            when(wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of(wallet));
+            when(wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(7L, WalletChain.EVM.name())).thenReturn(List.of(wallet));
             when(alchemy.isConfigured()).thenReturn(true);
             walletEth("0", true);
             when(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH")).thenReturn(Optional.of(eth));

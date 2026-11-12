@@ -7,6 +7,7 @@ import com.cryptalk.common.ApiException;
 import com.cryptalk.exchange.ExchangeConnectionService;
 import com.cryptalk.market.MarketPriceService;
 import com.cryptalk.member.MemberRepository;
+import com.cryptalk.wallet.WalletChain;
 import com.cryptalk.wallet.WalletRepository;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
@@ -57,7 +58,7 @@ public class AssetService {
         long deadline = System.nanoTime() + publicationRefreshBudget.toNanos();
         var member = members.lockById(memberId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"회원을 찾을 수 없습니다."));
-        var connectedWallets = wallets.findByMemberIdOrderByCreatedAtAsc(memberId);
+        var connectedWallets = wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(memberId, WalletChain.EVM.name());
         var connections = exchanges.list(memberId);
         if (connectedWallets.isEmpty() && connections.isEmpty()) {
             snapshots.deleteByMemberId(memberId);
@@ -193,7 +194,7 @@ public class AssetService {
     @Transactional(readOnly = true)
     public WalletAssetPortfolioResponse walletPortfolio(Long memberId) {
         if (!members.existsById(memberId)) throw new ApiException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다.");
-        var addresses = wallets.findByMemberIdOrderByCreatedAtAsc(memberId).stream()
+        var addresses = wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(memberId, WalletChain.EVM.name()).stream()
             .map(wallet -> wallet.getAddress()).toList();
         if (addresses.isEmpty()) return WalletAssetPortfolioResponse.from(emptyWalletPortfolio());
         if (!alchemy.isConfigured()) throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Alchemy API 키를 설정해 주세요.");
