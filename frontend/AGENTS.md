@@ -365,6 +365,15 @@ onto a single line to save space.
 - Draw events (`features/draw/`, `/draw/[eventId]`, HODL-95): the POST is sent only on an explicit click,
   the prize is whatever the server returns, and a lost response is recovered by re-reading
   `/draw-events/{id}/me` — never assume "not drawn". The result is a record, not a delivery.
+- Admin draw events (`/admin/draws`, `features/admin/components/draw-*.tsx`, pure rules in
+  `features/admin/draw-events.ts`, HODL-94 · 96): create a draft → replace prizes → open. Opening locks the
+  title, description, period and prizes for good; afterwards only pause ↔ resume until `endsAt`. The server
+  status is `DRAFT` | `ACTIVE` | `PAUSED`; "ended" and "expired draft" are derived from the period, so the
+  phase is computed with `useNow()` (`lib/use-now.ts`, moved down from `features/draw`). Times are entered
+  in **KST** and sent as UTC (`kstInputToUtc`) regardless of the browser time zone. The odds shown next to
+  each weight are weight / sum, the server's formula. Weights are capped at `Number.MAX_SAFE_INTEGER` here
+  although the server takes 64-bit values — a larger value would come back rounded. There is no winner list
+  or delivery screen: no such API exists.
 - Poll history (`features/vote/history.ts`, HODL-109): `/subhodl/[symbol]/polls` shows past daily
   results with the holder group next to the total, `/mypage/votes` shows the member's own choices.
   Today's running result is not there — it stays behind today's participation.
