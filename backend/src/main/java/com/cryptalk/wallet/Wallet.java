@@ -3,6 +3,7 @@ package com.cryptalk.wallet;
 import com.cryptalk.member.Member;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.Locale;
 
 @Entity
 @Table(name = "wallets", uniqueConstraints = @UniqueConstraint(columnNames = {"chain_type", "address"}))
@@ -21,7 +22,13 @@ public class Wallet {
 
     protected Wallet() {}
     public Wallet(Member member, String address) {
-        this.member = member; this.address = address.toLowerCase(); this.chainType = "EVM"; this.createdAt = Instant.now();
+        this(member, WalletChain.EVM, address);
+    }
+    public Wallet(Member member, WalletChain chain, String address) {
+        this.member = member;
+        this.address = chain == WalletChain.EVM ? address.toLowerCase(Locale.ROOT) : address;
+        this.chainType = chain.name();
+        this.createdAt = Instant.now();
     }
     public Long getId() { return id; }
     public Member getMember() { return member; }
