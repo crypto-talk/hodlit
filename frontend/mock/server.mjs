@@ -365,30 +365,62 @@ on("GET", "/me/votes", ({ query }) => {
 });
 
 // ── 뽑기 이벤트 ──────────────────────────────────────────────────────────────
+// 응답 모양은 백엔드 `DrawService.java` 의 PublicEvent · AdminEvent 를 따른다. 공개 조회에는
+// 가중치가 없고, 한 번도 연 적 없는 초안은 404 다.
 const drawEvent = (id) => {
   const event = state.drawEvents.find((item) => item.id === Number(id));
   if (!event) throw new HttpError(404, "이벤트를 찾을 수 없습니다.");
   return event;
 };
+const publishedEvent = (id) => {
+  const event = drawEvent(id);
+  if (!event.published) throw new HttpError(404, "이벤트를 찾을 수 없습니다.");
+  return event;
+};
 const canDraw = (event) =>
+  event.published &&
   event.status === "ACTIVE" &&
   Date.now() >= Date.parse(event.startsAt) &&
   Date.now() < Date.parse(event.endsAt);
+const sortedPrizes = (event) =>
+  [...event.prizes].sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id);
 on("GET", "/draw-events/:id", ({ params }) => {
-  const event = drawEvent(params.id);
-  return { ...event, canParticipate: canDraw(event) };
+  const event = publishedEvent(params.id);
+  return {
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt,
+    status: event.status,
+    canParticipate: canDraw(event),
+    prizes: sortedPrizes(event).map(({ id, name, imageUrl, description, displayOrder }) => ({
+      id,
+      name,
+      imageUrl,
+      description,
+      displayOrder,
+    })),
+  };
 });
 on("GET", "/draw-events/:id/me", ({ params }) => {
-  const result = state.drawResults[`${drawEvent(params.id).id}:${member().id}`];
+  const user = member();
+  const result = state.drawResults[`${publishedEvent(params.id).id}:${user.id}`];
   return result ? { result: { ...result, existing: true } } : {};
 });
 on("POST", "/draw-events/:id/draw", ({ params }) => {
+  const user = member();
   const event = drawEvent(params.id);
-  const key = `${event.id}:${member().id}`;
+  const key = `${event.id}:${user.id}`;
   // 이미 뽑았으면 처음 결과를 그대로 돌려준다(실제 서버와 같다).
   if (state.drawResults[key]) return { ...state.drawResults[key], existing: true };
   if (!canDraw(event)) throw new HttpError(409, "현재 참여할 수 없는 이벤트입니다.");
-  const prize = event.prizes[Math.floor(Math.random() * event.prizes.length)];
+  const prizes = sortedPrizes(event);
+  const total = prizes.reduce((sum, item) => sum + item.weight, 0);
+  if (total <= 0) throw new HttpError(409, "상품 설정이 준비되지 않았습니다.");
+  // 가중치대로 고른다. 확률 = 가중치 / 가중치 합.
+  let ticket = Math.floor(Math.random() * total);
+  const prize = prizes.find((item) => (ticket -= item.weight) < 0) ?? prizes[0];
   state.drawResults[key] = {
     id: state.nextId++,
     eventId: event.id,
@@ -398,6 +430,125 @@ on("POST", "/draw-events/:id/draw", ({ params }) => {
     capturedAt: new Date().toISOString(),
   };
   return { ...state.drawResults[key], existing: false };
+});
+
+// ── 관리자: 뽑기 이벤트 ──────────────────────────────────────────────────────
+// 백엔드의 400 · 409 규칙 중 화면이 보여 줘야 하는 것만 옮겼다. 문구도 백엔드와 같다.
+const adminDrawEvent = (event) => ({
+  id: event.id,
+  title: event.title,
+  description: event.description,
+  startsAt: event.startsAt,
+  endsAt: event.endsAt,
+  status: event.status,
+  prizes: sortedPrizes(event).map(({ id, name, imageUrl, description, weight, displayOrder }) => ({
+    id,
+    name,
+    imageUrl,
+    description,
+    weight,
+    displayOrder,
+  })),
+});
+const hasResults = (event) =>
+  Object.values(state.drawResults).some((result) => result.eventId === event.id);
+const requireEditable = (event) => {
+  if (event.status !== "DRAFT" || Date.now() >= Date.parse(event.startsAt) || hasResults(event))
+    throw new HttpError(409, "시작 전 초안만 변경할 수 있습니다.");
+};
+const eventFields = (body) => {
+  const title = String(body.title ?? "").trim();
+  if (!title || title.length > 100) throw new HttpError(400, "제목은 1~100자여야 합니다.");
+  if (typeof body.description !== "string" || body.description.length > 2000)
+    throw new HttpError(400, "설명은 2000자 이하여야 합니다.");
+  const startsAt = Date.parse(body.startsAt);
+  const endsAt = Date.parse(body.endsAt);
+  if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt))
+    throw new HttpError(400, "시각 형식이 올바르지 않습니다.");
+  if (Date.now() >= startsAt) throw new HttpError(400, "시작 시각은 현재보다 이후여야 합니다.");
+  if (startsAt >= endsAt) throw new HttpError(400, "시작 시각은 종료 시각보다 빨라야 합니다.");
+  return {
+    title,
+    description: body.description,
+    startsAt: new Date(startsAt).toISOString(),
+    endsAt: new Date(endsAt).toISOString(),
+  };
+};
+on("GET", "/admin/draw-events", ({ query }) => {
+  admin();
+  return page([...state.drawEvents].sort((a, b) => b.id - a.id).map(adminDrawEvent), query);
+});
+on("GET", "/admin/draw-events/:id", ({ params }) => {
+  admin();
+  return adminDrawEvent(drawEvent(params.id));
+});
+on("POST", "/admin/draw-events", ({ body }) => {
+  admin();
+  const event = {
+    id: state.nextId++,
+    ...eventFields(body),
+    status: "DRAFT",
+    published: false,
+    prizes: [],
+  };
+  state.drawEvents.push(event);
+  return [201, adminDrawEvent(event)];
+});
+on("PATCH", "/admin/draw-events/:id", ({ params, body }) => {
+  admin();
+  const fields = eventFields(body);
+  const event = drawEvent(params.id);
+  requireEditable(event);
+  Object.assign(event, fields);
+  return adminDrawEvent(event);
+});
+on("PUT", "/admin/draw-events/:id/prizes", ({ params, body }) => {
+  admin();
+  const event = drawEvent(params.id);
+  requireEditable(event);
+  const prizes = Array.isArray(body.prizes) ? body.prizes : [];
+  if (prizes.length < 1 || prizes.length > 100)
+    throw new HttpError(400, "상품은 1~100개여야 합니다.");
+  const names = new Set();
+  for (const item of prizes) {
+    const name = String(item.name ?? "").trim();
+    if (!name) throw new HttpError(400, "상품명을 입력해 주세요.");
+    if (names.has(name)) throw new HttpError(400, "상품명이 중복되었습니다.");
+    names.add(name);
+    const url = String(item.imageUrl ?? "");
+    if (!url.startsWith("/api/v1/media/") && !url.startsWith("https://"))
+      throw new HttpError(400, "상품 이미지는 HTTPS 또는 업로드 이미지 URL이어야 합니다.");
+    if (!Number.isSafeInteger(item.weight) || item.weight < 1)
+      throw new HttpError(400, "가중치는 1 이상의 정수여야 합니다.");
+  }
+  event.prizes = prizes.map((item) => ({
+    id: state.nextId++,
+    name: String(item.name).trim(),
+    imageUrl: item.imageUrl,
+    description: item.description ?? "",
+    weight: item.weight,
+    displayOrder: item.displayOrder ?? 0,
+  }));
+  return adminDrawEvent(event);
+});
+on("PATCH", "/admin/draw-events/:id/status", ({ params, body }) => {
+  admin();
+  const event = drawEvent(params.id);
+  const now = Date.now();
+  if (body.status === "ACTIVE") {
+    if (now >= Date.parse(event.endsAt))
+      throw new HttpError(400, "종료된 이벤트는 활성화할 수 없습니다.");
+    if (!event.published && now >= Date.parse(event.startsAt))
+      throw new HttpError(400, "최초 활성화는 시작 시각 전에 완료해 주세요.");
+    if (event.prizes.length === 0) throw new HttpError(400, "상품을 먼저 설정해 주세요.");
+    event.published = true;
+  } else if (body.status === "PAUSED") {
+    if (!event.published) throw new HttpError(400, "활성화된 이벤트만 중지할 수 있습니다.");
+  } else {
+    throw new HttpError(400, "상태는 ACTIVE 또는 PAUSED여야 합니다.");
+  }
+  event.status = body.status;
+  return adminDrawEvent(event);
 });
 
 // ── 관리자: 방 · 카테고리 · 등급 ──────────────────────────────────────────────

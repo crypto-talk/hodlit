@@ -116,18 +116,22 @@ const dailyResult = (offset, total, holder) => ({
     : [],
 });
 
-const prize = (id, name, description) => ({
+// 가중치는 관리자 화면에만 나간다(공개 조회 · 참여 화면에는 없다). 합 100 이라 그대로 % 다.
+const prize = (id, name, description, weight) => ({
   id,
   name,
   description,
   imageUrl: `/api/v1/media/mock-prize-${id}.png`,
+  weight,
   displayOrder: id,
 });
 const PRIZES = [
-  prize(1, "Hodlit 스티커", "가짜 서버의 상품입니다."),
-  prize(2, "커피 쿠폰", "실제로 지급되지 않습니다."),
-  prize(3, "다음 기회에", "꽝"),
+  prize(1, "Hodlit 스티커", "가짜 서버의 상품입니다.", 30),
+  prize(2, "커피 쿠폰", "실제로 지급되지 않습니다.", 10),
+  prize(3, "다음 기회에", "꽝", 60),
 ];
+// `published` 는 한 번이라도 열었는지다(백엔드 `DrawEvent.published`). 응답에는 싣지 않는다.
+// 초안은 공개 조회에서 404 다.
 const drawEvent = (id, title, startsAt, endsAt, status) => ({
   id,
   title,
@@ -135,6 +139,7 @@ const drawEvent = (id, title, startsAt, endsAt, status) => ({
   startsAt,
   endsAt,
   status,
+  published: status !== "DRAFT",
   prizes: PRIZES,
 });
 
@@ -322,6 +327,9 @@ export function seed(role) {
       drawEvent(2, "다음 주 뽑기 (시작 전)", hours(24), hours(24 * 8), "ACTIVE"),
       drawEvent(3, "지난 뽑기 (종료)", hours(-24 * 8), hours(-24), "ACTIVE"),
       drawEvent(4, "멈춘 뽑기 (중지)", hours(-24), hours(24 * 7), "PAUSED"),
+      drawEvent(5, "새해 뽑기 (초안)", hours(24 * 3), hours(24 * 10), "DRAFT"),
+      // 시작 시각이 지난 초안. 서버가 수정도 첫 열기도 막는다.
+      { ...drawEvent(6, "지난 초안 (기한 지남)", hours(-2), hours(24 * 5), "DRAFT"), prizes: [] },
     ],
     drawResults: {},
     badgePresets: {
