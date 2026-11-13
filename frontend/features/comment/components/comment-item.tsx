@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import AnimalBadge from "@/components/holder/animal-badge";
 import Link from "next/link";
-import TierBadge from "@/components/holder/tier-badge";
+import HolderBadge from "@/components/holder/holder-badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format/time";
 import { isHolderTier } from "@/lib/holder-snapshot/label";
@@ -115,11 +114,17 @@ export default function CommentItem({
           <span className="font-semibold text-text-primary">{comment.nickname}</span>
         )}
         {byPostAuthor ? <span className="text-xs font-bold text-text-primary">작성자</span> : null}
-        {holder && <AnimalBadge badge={holder.badge} position="comment" />}
-        {holder?.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}
         {holder ? (
-          <TierBadge tier={holder.tier} symbol={symbol} holderStatus={holder.holderStatus} />
+          <HolderBadge
+            badge={holder.badge}
+            tier={holder.tier}
+            symbol={symbol}
+            holderStatus={holder.holderStatus}
+            partial={holder.partial}
+            position="comment"
+          />
         ) : null}
+        {holder?.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}
         {holder && isHolderTier(holder.tier) ? (
           <span className="text-xs text-text-muted">{holder.holding}</span>
         ) : null}

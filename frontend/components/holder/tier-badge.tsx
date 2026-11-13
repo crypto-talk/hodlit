@@ -1,4 +1,4 @@
-import { tierLabel, holderStateLabel } from "@/lib/holder-snapshot/label";
+import { holderBadgeLabel } from "@/lib/holder-snapshot/label";
 import type { Tier } from "@/lib/holder-snapshot/types";
 
 type BadgeStyle = {
@@ -8,7 +8,9 @@ type BadgeStyle = {
 };
 
 /**
- * 보유 표기 배지. 지갑연결 / 거래소연동 / 미보유 / 미인증.
+ * 보유 표기 배지. 지갑연결 / 거래소연동 / 미보유 / 미인증 / 조회 실패.
+ *
+ * 동물 등급 배지가 붙은 기록에는 쓰지 않는다 — `holder-badge.tsx` 가 둘 중 하나만 고른다.
  *
  * 미보유와 미인증은 같은 모양이다. 연결하지 않은 사람보다 연결한 정직한 사람이 더
  * 눈에 띄면 지갑을 연결할 이유가 없어진다. 사실만 같은 무게로 보여준다.
@@ -44,6 +46,7 @@ const BADGE: Record<Tier, BadgeStyle> = {
 
 type Props = {
   tier: Tier;
+  /** `UNKNOWN` 이면 "조회 실패" 로 적는다. */
   holderStatus?: string | null;
   /** 미보유일 때 `ETH 미보유` 처럼 붙일 코인. */
   symbol?: string;
@@ -56,7 +59,7 @@ export default function TierBadge({ tier, symbol, holderStatus }: Props) {
       className="flex-none rounded-sm border border-transparent px-2 py-0.5 text-xs font-semibold"
       style={{ background: style.bg, color: style.color, borderColor: style.border }}
     >
-      {holderStateLabel(holderStatus) ?? tierLabel(tier, symbol)}
+      {holderBadgeLabel(tier, symbol, holderStatus)}
     </span>
   );
 }

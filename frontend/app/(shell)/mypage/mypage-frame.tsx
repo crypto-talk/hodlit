@@ -12,6 +12,7 @@ import {
   MYPAGE_WALLET_HREF,
   profileHref,
 } from "@/lib/routes";
+import { isAdminMember } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
 /** 마이페이지 탭. 탭이 늘면 여기에 줄을 더한다. */
@@ -64,9 +65,12 @@ export default function MypageFrame({ children }: { children: React.ReactNode })
             내 공개 프로필
           </Link>
           <NicknameEditor />
-          <Link href={ADMIN_HREF} className="text-sm text-brand hover:underline">
-            서비스 관리
-          </Link>
+          {/* 관리자에게만(HODL-108). 좁은 화면에서는 헤더의 관리자 링크가 숨어 여기가 입구다. */}
+          {isAdminMember(member) ? (
+            <Link href={ADMIN_HREF} className="text-sm text-brand hover:underline">
+              서비스 관리
+            </Link>
+          ) : null}
         </div>
       </div>
 

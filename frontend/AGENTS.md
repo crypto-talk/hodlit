@@ -84,12 +84,18 @@ lib/market-price/       coin prices fetched by the browser straight from Upbit, 
                         CoinGecko id / TradingView symbol table, the fetches, and
                         `useMarketQuote()` / `useSourceMarketQuotes()`; shared by the room price
                         box and the shell price ticker
-components/holder/      tier-badge.tsx — the shape of the 인증 badge; wording from lib
+lib/safe-url.ts         `safeExternalUrl()` / `safeSitePath()` / `safeLink()` — the check every server-supplied
+                        href goes through (news source links, banner links)
+components/holder/      holder-badge.tsx — the one badge slot next to an author. It draws the animal tier
+                        badge when the snapshot carries one and the old tier badge otherwise, never both
+                        (2026-11-11). tier-badge.tsx / animal-badge.tsx are the two shapes; wording from lib
 components/post/        post-card.tsx — the list card used by the landing feed and the room board
 styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
 styles/fonts/           Pretendard subset woff2, 400/600/700/800/900
 components.json         shadcn/ui config; `shadcn add` writes into components/ui/
 vitest.config.ts        unit test scope: features/**/*.test.ts, lib/**/*.test.ts
+mock/                   dependency-free fake API for clicking through screens locally: `pnpm dev:mock`
+                        (see mock/README.md). It does not replace a check against the real API
 tests/e2e/              Playwright: login.spec.ts, publish-post.spec.ts (run locally)
 .storybook/             Storybook config; stories only for components/ui and components/holder
 ```
@@ -347,6 +353,12 @@ onto a single line to save space.
   not emit `required` on response schemas, so springdoc marks all of them `?`. Request bodies
   are correct. Until the backend fixes this, a feature that needs a non-optional field
   narrows it in its own `types.ts` and says why — do not spread `?` through the components.
+- Badge wording (`holderBadgeLabel()`): `NOT_CONNECTED` is `미인증`, never `미보유` — a member who
+  connected nothing was never checked. `EMPTY` is `ETH 미보유`, `UNKNOWN` is `조회 실패`.
+- Admin screens (`/admin/news`, `/admin/polls`, `/admin/banners`, HODL-110 · 111 · 92) live in
+  `features/admin/`. The header and mypage show the admin link only when `member.role === "ADMIN"`
+  (HODL-108); access itself is still decided by the admin API's 403, not by the role. The poll admin
+  screen never shows vote counts — the "no results before today's participation" rule has no admin bypass.
 - `holdingMonths` is always `null` until an EVM indexer populates `holdingSince`. Render the
   fixed label `보유 기간 미확인`; do not build UI that assumes a value.
 - Public post and comment responses do not carry wallet addresses. Do not reintroduce them.

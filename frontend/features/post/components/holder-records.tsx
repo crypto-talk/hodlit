@@ -1,5 +1,4 @@
-import AnimalBadge from "@/components/holder/animal-badge";
-import TierBadge from "@/components/holder/tier-badge";
+import HolderBadge from "@/components/holder/holder-badge";
 import type { AttachedHolder } from "@/lib/holder-snapshot/attachments";
 import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
 
@@ -10,7 +9,7 @@ import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
  * 빈 목록이면 "공개된 기록이 없다" 고만 말한다 — 비공개인지, 붙인 게 없는지 화면이 구별할 수
  * 없고, 구별해 보이면 그것 자체가 정보가 된다.
  *
- * 상태 문구는 다른 화면과 같은 `TierBadge` 다. 일부 조회 실패로 찍힌 기록에는 "일부 조회 기준"을
+ * 상태 문구는 다른 화면과 같은 `HolderBadge` 다. 일부 조회 실패로 찍힌 기록에는 "일부 조회 기준"을
  * 붙인다 — 실제 보유보다 구간이 작게 나왔을 수 있다.
  */
 export default function HolderRecords({
@@ -42,13 +41,16 @@ export default function HolderRecords({
                 </span>
                 {record.verifiable ? (
                   <>
-                    <AnimalBadge badge={record.badge} position={roomCoin ? "detail" : "list"} />
-                    <TierBadge
+                    <HolderBadge
+                      badge={record.badge}
                       tier={record.tier}
                       symbol={record.symbol}
                       holderStatus={record.holderStatus}
+                      partial={record.partial}
+                      position={roomCoin ? "detail" : "list"}
                     />
-                    {record.amount ? (
+                    {/* 방 코인의 동물 배지는 구간을 같이 적는다. 같은 구간을 한 번 더 그리지 않는다. */}
+                    {record.amount && !(roomCoin && record.badge?.name) ? (
                       <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
                         {record.amount}
                       </span>

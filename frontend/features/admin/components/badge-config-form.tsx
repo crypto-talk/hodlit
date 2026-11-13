@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { saveBadgeConfig } from "../api";
+import {
+  TIER_MAX,
+  TIER_NAME_MAX,
+  bandPreview,
+  configProblem,
+  rangeText,
+  sameTiers,
+  tierProblems,
+} from "../badge-tiers";
 import type { BadgeConfig, BadgePresets, BadgeTier } from "../types";
 
 /** 프리셋 값 → 화면 이름. 서버가 새 값을 주면 값 그대로 보인다. */
@@ -39,6 +48,14 @@ const FIELDS = [
 
 const ICON_BUTTON = "size-9 px-0 py-0";
 
+/**
+ * 방별 보유 등급 설정 폼 (HODL-83).
+ *
+ * - 등급마다 구간을 말로 보여 준다(`0.1 이상 1 미만`). 위쪽 끝은 다음 등급의 최소 수량이라 따로 적지 않는다
+ * - 겹치거나 거꾸로 된 구간은 그 등급 아래에 바로 안내하고 저장을 막는다. 서버도 같은 검사를 한다
+ * - 저장한 설정과 달라지면 "저장하지 않은 변경" 을 보이고, 그대로 창을 닫으려 하면 브라우저가 묻는다
+ * - 저장은 새 글 · 댓글부터 적용된다. 이미 붙은 배지는 바뀌지 않는다
+ */
 export default function BadgeConfigForm({
   initial,
   presets,
@@ -48,6 +65,19 @@ export default function BadgeConfigForm({
 }) {
   const [tiers, setTiers] = useState(initial.tiers);
   const client = useQueryClient();
+  const problems = tierProblems(tiers);
+  const blocked = configProblem(tiers);
+  const dirty = !sameTiers(tiers, initial.tiers);
+
+  // 저장하지 않고 창을 닫거나 새로고침하면 브라우저가 한 번 묻는다. 화면 안에서 이동하는 것까지는
+  // 막지 않는다 — 관리자 화면이라 실수해도 다시 고치면 된다.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
   const mutation = useMutation({
     mutationFn: () => saveBadgeConfig(initial.symbol, { ...initial, tiers }),
     onSuccess: () => {
@@ -76,6 +106,7 @@ export default function BadgeConfigForm({
       className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
+        if (blocked || !dirty) return;
         mutation.mutate();
       }}
     >
@@ -85,7 +116,7 @@ export default function BadgeConfigForm({
           const preview = {
             ...tier,
             version: initial.version,
-            quantityBand: `${tier.minimumQuantity} 이상 ${initial.symbol}`,
+            quantityBand: bandPreview(tiers, index, initial.symbol),
           };
           return (
             <li key={index} className="rounded-lg border border-border-subtle bg-surface p-4">
@@ -137,7 +168,7 @@ export default function BadgeConfigForm({
                     <Input
                       value={tier.name}
                       required
-                      maxLength={40}
+                      maxLength={TIER_NAME_MAX}
                       onChange={(e) => update(index, { name: e.target.value })}
                     />
                   </label>
@@ -149,7 +180,8 @@ export default function BadgeConfigForm({
                       value={tier.minimumQuantity}
                       inputMode="decimal"
                       required
-                      pattern="[0-9]+(\.[0-9]{1,18})?"
+                      aria-invalid={problems[index] ? true : undefined}
+                      aria-describedby={`badge-tier-${index}-range`}
                       onChange={(e) => update(index, { minimumQuantity: e.target.value })}
                       className="tabular-nums"
                     />
@@ -170,6 +202,19 @@ export default function BadgeConfigForm({
                     </label>
                   ))}
                 </div>
+
+                <p id={`badge-tier-${index}-range`} className="text-xs text-text-muted">
+                  구간{" "}
+                  <b className="font-semibold text-text-primary tabular-nums">
+                    {rangeText(tiers, index)}
+                  </b>{" "}
+                  {initial.symbol}
+                </p>
+                {problems[index] ? (
+                  <p role="alert" className="text-xs text-danger">
+                    {problems[index]}
+                  </p>
+                ) : null}
 
                 <div
                   className="flex flex-wrap items-start gap-x-6 gap-y-3 rounded-sm bg-surface-muted px-4 py-3"
@@ -194,7 +239,7 @@ export default function BadgeConfigForm({
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
         <Button
           type="button"
-          disabled={tiers.length >= 20}
+          disabled={tiers.length >= TIER_MAX}
           onClick={() =>
             setTiers((values) => [
               ...values,
@@ -211,10 +256,33 @@ export default function BadgeConfigForm({
           <Plus />
           등급 추가
         </Button>
-        <Button variant="primary" disabled={mutation.isPending || tiers.length === 0}>
-          {mutation.isPending ? "저장 중…" : "등급 설정 저장"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {dirty ? (
+            <>
+              <span className="text-xs font-semibold text-text-primary" role="status">
+                저장하지 않은 변경이 있습니다
+              </span>
+              <Button
+                type="button"
+                disabled={mutation.isPending}
+                onClick={() => setTiers(initial.tiers)}
+              >
+                되돌리기
+              </Button>
+            </>
+          ) : (
+            <span className="text-xs text-text-muted">저장된 설정과 같습니다</span>
+          )}
+          <Button variant="primary" disabled={mutation.isPending || !dirty || blocked !== null}>
+            {mutation.isPending ? "저장 중…" : "등급 설정 저장"}
+          </Button>
+        </div>
       </div>
+      {blocked ? (
+        <p role="alert" className="text-right text-xs text-danger">
+          {blocked}
+        </p>
+      ) : null}
     </form>
   );
 }

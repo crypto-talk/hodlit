@@ -1,6 +1,6 @@
-import { DoorOpen, Megaphone, Vote, FileText, Users, History } from "lucide-react";
+import { DoorOpen, FileText, History, Image, Megaphone, Users, Vote } from "lucide-react";
 import Link from "next/link";
-import { adminRoomsHref } from "@/lib/routes";
+import { ADMIN_BANNERS_HREF, adminNewsHref, adminPollsHref, adminRoomsHref } from "@/lib/routes";
 
 /**
  * 통계 자리. 관리자용 통계 API 가 아직 없어서 칸만 잡아 둔다. 어떤 숫자를 둘지는 정해지면
@@ -36,8 +36,24 @@ const MENUS: Menu[] = [
     href: "/admin/members",
   },
   { label: "관리 이력", description: "서비스 관리 조치 기록", icon: History, href: "/admin/logs" },
-  { label: "뉴스 관리", description: "방 뉴스 등록 · 수정", icon: Megaphone },
-  { label: "투표 관리", description: "방 일일 투표 준비", icon: Vote },
+  {
+    label: "뉴스 관리",
+    description: "방 뉴스 등록 · 수정 · 삭제",
+    icon: Megaphone,
+    href: adminNewsHref(),
+  },
+  {
+    label: "투표 관리",
+    description: "방 일일 투표 만들기 · 닫기",
+    icon: Vote,
+    href: adminPollsHref(),
+  },
+  {
+    label: "배너 관리",
+    description: "홈 배너 등록 · 노출 · 순서",
+    icon: Image,
+    href: ADMIN_BANNERS_HREF,
+  },
 ];
 
 /** 관리자 메인. 위에 통계, 아래에 관리 메뉴. */

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import AnimalBadge from "@/components/holder/animal-badge";
-import TierBadge from "@/components/holder/tier-badge";
+import HolderBadge from "@/components/holder/holder-badge";
 import type { PostSummary } from "@/lib/post-summary";
 import { profileHref, roomHref } from "@/lib/routes";
 
@@ -54,9 +53,14 @@ export default function PostCard({ post, showRoom = true }: Props) {
         ) : (
           <span className="text-xs text-text-muted">{post.nick}</span>
         )}
-        <AnimalBadge badge={post.badge} position="list" />
         {post.verifiable ? (
-          <TierBadge tier={post.tier} symbol={post.symbol} holderStatus={post.holderStatus} />
+          <HolderBadge
+            badge={post.badge}
+            tier={post.tier}
+            symbol={post.symbol}
+            holderStatus={post.holderStatus}
+            position="list"
+          />
         ) : null}
         {post.range ? (
           <span className="flex-none rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">

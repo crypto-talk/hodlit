@@ -17,7 +17,17 @@ export type Member = {
   avatarColor: string;
   walletAddress: string | null;
   assetVisibility: string;
+  /**
+   * 본인 응답에만 오는 역할(HODL-88). 관리자 메뉴를 보일지 정하는 데만 쓴다 — 관리자 화면에
+   * 들어갈 수 있는지는 관리자 API 의 403 이 정한다. 값이 없는 옛 응답은 일반 회원으로 본다.
+   */
+  role?: "USER" | "ADMIN";
 };
+
+/** 관리자 메뉴를 보여도 되는 회원인지. 로그인 전 · 세션 복원 중(null)이면 false 다. */
+export function isAdminMember(member: Member | null): boolean {
+  return member?.role === "ADMIN";
+}
 
 type AuthResult = { accessToken: string; member: Member };
 

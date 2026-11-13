@@ -49,6 +49,16 @@ type SessionValue = {
 
 const SessionContext = createContext<SessionValue | null>(null);
 
+/**
+ * 같은 회원의 정보를 새 응답으로 바꿀 때, 새 응답에 role 이 빠져 있으면 알던 값을 잇는다.
+ * 지갑 연결 · 닉네임 변경 응답이 role 을 안 줘도 관리자 메뉴가 사라지지 않게 하려는 것이다.
+ * 다른 회원이면 잇지 않는다 — 이전 계정의 권한 표시가 남으면 안 된다(HODL-108).
+ */
+function keepRole(previous: Member | null, next: Member): Member {
+  if (next.role || !previous || previous.id !== next.id) return next;
+  return { ...next, role: previous.role };
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
   const [restored, setRestored] = useState(false);
@@ -88,10 +98,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       connectWallet: async () => {
         const next = await linkWallet();
-        setMember(next);
+        setMember((previous) => keepRole(previous, next));
         return next;
       },
-      replaceMember: (next) => setMember(next),
+      replaceMember: (next) => setMember((previous) => keepRole(previous, next)),
     }),
     [member, restored],
   );
