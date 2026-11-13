@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { uploadBannerImage } from "../api";
+import { uploadAdminImage } from "../api";
 import { adminErrorMessage } from "../error-message";
 import { BANNER_MAX, bannerImageProblem, bannerProblems } from "../limits";
 import type { AdminBanner, BannerInput } from "../types";
@@ -51,7 +51,7 @@ export default function BannerForm({ initial, submitLabel, busy, onSubmit, onCan
   const set = (patch: Partial<BannerInput>) => setInput((now) => ({ ...now, ...patch }));
 
   const upload = useMutation({
-    mutationFn: uploadBannerImage,
+    mutationFn: uploadAdminImage,
     onSuccess: (stored) => {
       set({ imageUrl: stored.url });
       setPreview(stored.src);

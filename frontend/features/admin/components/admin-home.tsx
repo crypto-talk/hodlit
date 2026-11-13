@@ -1,6 +1,12 @@
-import { DoorOpen, FileText, History, Image, Megaphone, Users, Vote } from "lucide-react";
+import { DoorOpen, FileText, Gift, History, Image, Megaphone, Users, Vote } from "lucide-react";
 import Link from "next/link";
-import { ADMIN_BANNERS_HREF, adminNewsHref, adminPollsHref, adminRoomsHref } from "@/lib/routes";
+import {
+  ADMIN_BANNERS_HREF,
+  adminDrawsHref,
+  adminNewsHref,
+  adminPollsHref,
+  adminRoomsHref,
+} from "@/lib/routes";
 
 /**
  * 통계 자리. 관리자용 통계 API 가 아직 없어서 칸만 잡아 둔다. 어떤 숫자를 둘지는 정해지면
@@ -53,6 +59,12 @@ const MENUS: Menu[] = [
     description: "홈 배너 등록 · 노출 · 순서",
     icon: Image,
     href: ADMIN_BANNERS_HREF,
+  },
+  {
+    label: "뽑기 관리",
+    description: "뽑기 이벤트 만들기 · 상품 · 열기 · 중지",
+    icon: Gift,
+    href: adminDrawsHref(),
   },
 ];
 
