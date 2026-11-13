@@ -25,11 +25,32 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
  */
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "";
 
+/**
+ * 이용 기록 수집(PostHog, HODL-89). 셋 다 공개해도 되는 값이다 — 키는 이벤트를 보내는 데만 쓰는
+ * 프로젝트 토큰이고, 개인 API 키 · 관리용 비밀키는 여기 넣지 않는다.
+ *
+ * `NEXT_PUBLIC_ANALYTICS_ENABLED=true` 이고 키가 있을 때만 켜진다. 그 밖에는 꺼진 채로 동작하고
+ * 빌드도 깨지 않는다. 환경 이름은 대시보드에서 개발 · 운영 이벤트를 가르는 데 쓴다.
+ */
+const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "";
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
+const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true" && posthogKey !== "";
+const analyticsEnvironment =
+  process.env.NEXT_PUBLIC_ANALYTICS_ENV ||
+  (process.env.NODE_ENV === "production" ? "production" : "development");
+
 export const config = {
   /** Spring Boot 백엔드 주소. 개발 기본값은 로컬 8080. */
   apiUrl,
   /** 없으면 빈 문자열. `lib/wallet-link.ts` 가 쓴다. */
   walletConnectProjectId,
+  /** `lib/analytics/client.ts` 만 쓴다. */
+  analytics: {
+    enabled: analyticsEnabled,
+    key: posthogKey,
+    host: posthogHost,
+    environment: analyticsEnvironment,
+  },
 } as const;
 
 /**

@@ -113,11 +113,35 @@ on("GET", "/drafts", () => (member(), []));
 on("GET", "/coins", () => state.coins.filter((coin) => coin.active).map(publicCoin));
 on("GET", "/room-categories", () => state.categories);
 on("GET", "/communities/stats", () => ({ window: "24h", rooms: state.stats }));
+// 방 통계(HODL-112). 누적은 24시간 값을 부풀린 것이고, 활동이 없는 방은 0 으로 채운 한 줄이다.
+on("GET", "/communities/:symbol/stats", ({ params, query }) => {
+  const coin = room(params.symbol);
+  const window = query.get("window") ?? "24h";
+  if (window !== "24h" && window !== "all") throw new HttpError(400, "지원하지 않는 기간입니다.");
+  const recent = state.stats.find((item) => item.symbol === coin.symbol);
+  const count = (recent?.participantCount ?? 0) * (window === "all" ? 9 : 1);
+  const verified = (recent?.verifiedParticipantCount ?? 0) * (window === "all" ? 7 : 1);
+  return {
+    window,
+    until: new Date().toISOString(),
+    rooms: [
+      {
+        ...recent,
+        symbol: coin.symbol,
+        participantCount: count,
+        verifiedParticipantCount: verified,
+        verifiedParticipantRate: count ? Math.round((verified / count) * 1000) / 10 : 0,
+      },
+    ],
+  };
+});
+// 닫힌 방도 200 이다(글 수는 0). 화면은 coin.operationStatus 로 닫힌 방 안내를 그린다.
 on("GET", "/communities/:symbol", ({ params }) => {
-  const coin = openRoom(params.symbol);
+  const coin = room(params.symbol);
+  const closed = coin.operationStatus === "CLOSE";
   return {
     coin: publicCoin(coin),
-    postCount: state.posts.filter((post) => post.coinSymbol === coin.symbol).length,
+    postCount: closed ? 0 : state.posts.filter((post) => post.coinSymbol === coin.symbol).length,
   };
 });
 on("GET", "/communities/:symbol/posts/page", ({ params, query }) => {
@@ -140,6 +164,96 @@ on("GET", "/posts/:id", ({ params }) => {
   return post;
 });
 on("GET", "/posts/:id/comments", ({ params }) => state.comments[params.id] ?? []);
+
+// ── 검색 (HODL-99) ───────────────────────────────────────────────────────────
+// 검색어가 들어 있는지만 본다(대소문자 무시). 닫힌 방의 글 · 댓글은 뺀다. 관련도 정렬은 흉내 내지 않는다.
+const SEARCH_TYPES = { posts: "POST", comments: "COMMENT", rooms: "ROOM", users: "USER" };
+const searchItems = (q, symbol) => {
+  const needle = String(q ?? "")
+    .trim()
+    .toLowerCase();
+  if (!needle || needle.length > 100) throw new HttpError(400, "검색어는 1~100자여야 합니다.");
+  const has = (...texts) =>
+    texts.some((text) =>
+      String(text ?? "")
+        .toLowerCase()
+        .includes(needle),
+    );
+  const open = (coinSymbol) =>
+    state.coins.some(
+      (coin) => coin.symbol === coinSymbol && coin.active && coin.operationStatus !== "CLOSE",
+    ) &&
+    (!symbol || coinSymbol === symbol);
+
+  const posts = state.posts.filter((post) => open(post.coinSymbol));
+  const items = [];
+  for (const post of posts) {
+    if (has(post.title, post.content, post.author.nickname))
+      items.push({
+        type: "POST",
+        id: post.id,
+        label: post.title,
+        excerpt: post.content.slice(0, 200),
+        authorNickname: post.author.nickname,
+        roomSymbol: post.coinSymbol,
+        postId: post.id,
+        createdAt: post.createdAt,
+      });
+    for (const comment of state.comments[post.id] ?? []) {
+      if (has(comment.content, comment.nickname))
+        items.push({
+          type: "COMMENT",
+          id: comment.id,
+          label: post.title,
+          excerpt: comment.content.slice(0, 200),
+          authorNickname: comment.nickname,
+          roomSymbol: post.coinSymbol,
+          postId: post.id,
+          createdAt: comment.createdAt,
+        });
+    }
+  }
+  if (symbol) return items;
+
+  for (const coin of state.coins) {
+    if (coin.active && coin.operationStatus !== "CLOSE" && has(coin.symbol, coin.name))
+      items.push({ type: "ROOM", id: coin.id, label: coin.name, roomSymbol: coin.symbol });
+  }
+  const users = new Map(posts.map((post) => [post.author.id, post.author.nickname]));
+  for (const [id, nickname] of users) {
+    if (has(nickname)) items.push({ type: "USER", id, label: nickname });
+  }
+  return items;
+};
+const searchList = (query, symbol) => {
+  const type = query.get("type");
+  const allowed = symbol ? ["posts", "comments"] : Object.keys(SEARCH_TYPES);
+  if (type && !allowed.includes(type)) throw new HttpError(400, "지원하지 않는 분류입니다.");
+  const items = searchItems(query.get("q"), symbol);
+  return page(type ? items.filter((item) => item.type === SEARCH_TYPES[type]) : items, query);
+};
+const searchGroups = (query, symbol) => {
+  const items = searchItems(query.get("q"), symbol);
+  const preview = new URLSearchParams({ size: query.get("previewSize") ?? "5" });
+  const kinds = symbol ? ["posts", "comments"] : Object.keys(SEARCH_TYPES);
+  return Object.fromEntries(
+    kinds.map((kind) => [
+      kind,
+      page(
+        items.filter((item) => item.type === SEARCH_TYPES[kind]),
+        preview,
+      ),
+    ]),
+  );
+};
+on("GET", "/search", ({ query }) => searchList(query, null));
+on("GET", "/search/groups", ({ query }) => searchGroups(query, null));
+on("GET", "/communities/:symbol/search", ({ params, query }) =>
+  searchList(query, openRoom(params.symbol).symbol),
+);
+on("GET", "/communities/:symbol/search/groups", ({ params, query }) =>
+  searchGroups(query, openRoom(params.symbol).symbol),
+);
 
 // ── 방 뉴스 ──────────────────────────────────────────────────────────────────
 on("GET", "/communities/:symbol/news", ({ params, query }) => {

@@ -368,6 +368,19 @@ onto a single line to save space.
 - Poll history (`features/vote/history.ts`, HODL-109): `/subhodl/[symbol]/polls` shows past daily
   results with the holder group next to the total, `/mypage/votes` shows the member's own choices.
   Today's running result is not there — it stays behind today's participation.
+- Search (`features/search/`, HODL-100): `/search?q=…&room=ETH&type=posts&page=2`. No `type` shows a
+  per-category preview (`GET /search/groups`), a `type` shows that category with numbered pages.
+  Room search only has posts and comments — `parseCategory` drops `rooms` · `users` there, the server
+  would answer 400.
+- Room stats (`features/room/components/room-stats.tsx`, HODL-112): participants and verified rate
+  for the last 24 hours and cumulative. Participants are active logged-in members, never call them
+  signups. The rate is hidden for rooms without holder verification and when there are no participants.
+- Usage analytics (`lib/analytics/`, HODL-89, `docs/FRONTEND_ANALYTICS.md`): screens never import
+  `posthog-js`; they call `useTrackView` / `<TrackView>`. Off unless
+  `NEXT_PUBLIC_ANALYTICS_ENABLED=true` and `NEXT_PUBLIC_POSTHOG_KEY` are set. Only the three view
+  events in `events.ts` are sent, with allow-listed properties; success events (signup, wallet, post,
+  comment) belong to the server and must not be sent from here. `identify` waits for a server-issued
+  analytics id (`Member.analyticsId`, not provided yet) — do not substitute the member id or nickname.
 - `holdingMonths` is always `null` until an EVM indexer populates `holdingSince`. Render the
   fixed label `보유 기간 미확인`; do not build UI that assumes a value.
 - Public post and comment responses do not carry wallet addresses. Do not reintroduce them.

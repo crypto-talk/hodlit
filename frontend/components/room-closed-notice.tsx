@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TrackView } from "@/lib/analytics/track";
 import { roomHref } from "@/lib/routes";
 
 type Props = {
@@ -21,6 +22,8 @@ export default function RoomClosedNotice({ symbol, subject, openRooms = [] }: Pr
 
   return (
     <div className="rounded-lg border border-border-subtle bg-surface p-6 text-center">
+      {/* 어느 방인지 알 때만 센다(HODL-89). */}
+      {symbol ? <TrackView event={{ name: "room_closed_shown", roomSymbol: symbol }} /> : null}
       <p className="text-body font-semibold">
         {subject ? `${room}이 공사 중이라 ${subject}` : `${room}은 지금 공사 중입니다.`}
       </p>

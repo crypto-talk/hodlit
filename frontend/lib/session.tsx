@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { identify, resetIdentity } from "@/lib/analytics/client";
 import { api, refreshSession, type Member } from "@/lib/api";
 import { linkWallet } from "@/lib/wallet-link";
 
@@ -78,6 +79,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // 분석용 식별(HODL-89). 서버가 분석 전용 식별자를 줄 때만 잇는다. 없으면 아무 일도 없다.
+  const analyticsId = member?.analyticsId ?? null;
+  useEffect(() => {
+    identify(analyticsId);
+  }, [analyticsId]);
+
   const value = useMemo<SessionValue>(
     () => ({
       member,
@@ -95,6 +102,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       logout: async () => {
         await api.logout().catch(() => undefined);
         setMember(null);
+        // 공용 브라우저에서 다음 사람의 행동이 이 계정에 붙지 않게 한다.
+        resetIdentity();
       },
       connectWallet: async () => {
         const next = await linkWallet();

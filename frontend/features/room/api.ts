@@ -5,7 +5,7 @@ import { http } from "@/lib/http";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { hasPostId, toPostSummary } from "@/lib/post-summary";
 import { isOpenRoom } from "@/lib/room-status";
-import type { RoomInfo, RoomPostPage } from "./types";
+import type { RoomInfo, RoomPostPage, RoomStats, StatsWindow } from "./types";
 
 /**
  * 방 목록과 방 게시판 (구조 규칙 2: 데이터 진입점은 여기 하나).
@@ -25,6 +25,7 @@ type Schemas = components["schemas"];
 type CoinResponse = Schemas["CoinResponse"];
 type CommunityResponse = Schemas["CommunityResponse"];
 type PostPageResponse = Schemas["PageResponsePostResponse"];
+type StatisticsResponse = Schemas["StatisticsResponse"];
 
 const ROOM_LIMIT = 10;
 
@@ -106,4 +107,36 @@ export async function loadRoomPostPage(
 
 function hasSymbol<T extends { symbol?: string }>(value: T): value is T & { symbol: string } {
   return typeof value.symbol === "string" && value.symbol.length > 0;
+}
+
+/**
+ * 방 참여 통계 (HODL-112, `docs/COMMUNITY_STATISTICS_API.md`). 공개 API 다.
+ * 없는 방 · 운영 중이 아닌 방은 404 다. 활동이 없는 방은 0 으로 채운 한 줄이 온다.
+ */
+export async function loadRoomStats(symbol: string, window: StatsWindow): Promise<RoomStats> {
+  const stats = await http<StatisticsResponse>(
+    `/api/v1/communities/${encodeURIComponent(symbol)}/stats?window=${window}`,
+  );
+  return toRoomStats(stats, symbol, window);
+}
+
+/** 테스트에서 쓰려고 내보낸다. 응답에 그 방 줄이 없으면 참여자 0 으로 본다. */
+export function toRoomStats(
+  stats: StatisticsResponse,
+  symbol: string,
+  window: StatsWindow,
+): RoomStats {
+  const rooms = stats.rooms ?? [];
+  const row = rooms.find((room) => room.symbol?.toUpperCase() === symbol.toUpperCase()) ?? rooms[0];
+  const participants = Math.max(0, Math.trunc(row?.participantCount ?? 0));
+  const rate = row?.verifiedParticipantRate;
+
+  return {
+    window,
+    participants,
+    verifiedRate:
+      participants > 0 && typeof rate === "number" && Number.isFinite(rate)
+        ? Math.min(100, Math.max(0, rate))
+        : null,
+  };
 }

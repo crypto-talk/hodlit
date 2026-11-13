@@ -1,5 +1,6 @@
 "use client";
 
+import { useTrackView } from "@/lib/analytics/track";
 import Link from "next/link";
 import HolderBadge from "@/components/holder/holder-badge";
 import RoomClosedNotice from "@/components/room-closed-notice";
@@ -43,6 +44,17 @@ type Props = {
 export default function PostDetailView({ postId, symbol }: Props) {
   const post = usePost(postId);
   const { member } = useSession();
+
+  // 글 내용이 실제로 보였을 때만 센다. 닫힌 방 · 없는 글 · 오류는 세지 않는다(HODL-89).
+  useTrackView(
+    post.data
+      ? {
+          name: "post_viewed",
+          postId: post.data.id,
+          roomSymbol: post.data.coinSymbol || symbol,
+        }
+      : null,
+  );
 
   if (post.isPending) {
     return <p className="text-sm text-text-muted">불러오는 중…</p>;

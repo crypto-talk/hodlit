@@ -70,9 +70,14 @@ export function commentAnchor(commentId: number): string {
  * 검색 결과 화면. `room` 이 있으면 그 방 안에서만(글 · 댓글) 찾는다.
  * `page` 는 1부터 세고 1쪽은 주소에 적지 않는다.
  */
-export function searchHref(q: string, options: { room?: string | null; page?: number } = {}) {
+export function searchHref(
+  q: string,
+  options: { room?: string | null; type?: string | null; page?: number } = {},
+) {
   const query = new URLSearchParams({ q });
   if (options.room) query.set("room", options.room);
+  // 분류(posts · comments · rooms · users). 없으면 분류별 미리보기 화면이다(HODL-100).
+  if (options.type) query.set("type", options.type);
   if (options.page && options.page > 1) query.set("page", String(options.page));
   return `/search?${query.toString()}`;
 }
