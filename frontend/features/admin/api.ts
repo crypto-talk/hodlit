@@ -2,8 +2,8 @@ import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import type { RoomOperationStatus } from "@/lib/room-status";
 import type { AdminRoomFilter } from "@/lib/routes";
-import { config } from "@/lib/config";
 import { ApiError, http } from "@/lib/http";
+import { imageSrc } from "@/lib/media";
 import type {
   ActivePoll,
   AdminBanner,
@@ -327,12 +327,7 @@ export async function uploadBannerImage(file: File): Promise<{ url: string; src:
   if (!stored?.url?.startsWith(MEDIA_PREFIX)) {
     throw new Error("업로드는 됐지만 응답에 파일 주소가 없습니다.");
   }
-  return { url: stored.url, src: mediaSrc(stored.url) };
-}
-
-/** 서버가 주는 상대 경로(`/api/v1/media/…`)를 화면에서 열 수 있는 주소로. */
-function mediaSrc(url: string): string {
-  return url.startsWith("/") ? `${config.apiUrl}${url}` : url;
+  return { url: stored.url, src: imageSrc(stored.url) ?? "" };
 }
 
 function toBanner(raw: BannerResponse): AdminBanner[] {
@@ -342,7 +337,7 @@ function toBanner(raw: BannerResponse): AdminBanner[] {
       id: raw.id,
       title: raw.title ?? "",
       imageUrl: raw.imageUrl,
-      imageSrc: mediaSrc(raw.imageUrl),
+      imageSrc: imageSrc(raw.imageUrl) ?? "",
       altText: raw.altText ?? "",
       linkUrl: raw.linkUrl ?? "",
       visible: raw.visible ?? false,

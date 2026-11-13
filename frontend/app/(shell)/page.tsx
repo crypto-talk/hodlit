@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import BannerStrip from "@/features/banner/components/banner-strip";
 import { loadFeed, loadTrendingRooms } from "@/features/landing/api";
 import PostFeed from "@/features/landing/components/post-feed";
 import TrendingRooms from "@/features/landing/components/trending-rooms";
@@ -16,7 +17,8 @@ import OpenPolls from "@/features/vote/components/open-polls";
  *
  * 백엔드에서 오는 것 — 전체 글 (`GET /feed`), 지금 뜨는 방 (`GET /communities/stats`),
  * 오늘의 투표 (방마다 `GET /communities/{symbol}/poll`, HODL-64. `features/vote`).
- * 핫글 섹션은 HODL-86 으로 뺐다. 목데이터는 이제 없다.
+ * 핫글 섹션은 HODL-86 으로 뺐다. 목데이터는 이제 없다. 맨 위 배너는 관리자가 노출로 둔 것이
+ * 있을 때만 보인다(`GET /banners`, HODL-92. `features/banner`).
  *
  * 뜨는 방은 피드와 따로 받고 따로 실패한다. 한쪽이 안 와도 다른 쪽은 보여야 한다.
  *
@@ -50,7 +52,8 @@ export default function Landing() {
         </p>
       ) : null}
 
-      {/* 인기 게시판 → 투표 → 전체 글. */}
+      {/* 배너(있을 때만) → 인기 게시판 → 투표 → 전체 글. */}
+      <BannerStrip />
       <TrendingRooms
         rooms={trending.data ?? null}
         failed={trending.isError}

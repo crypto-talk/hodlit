@@ -206,3 +206,34 @@ export function adminPollsHref(room?: string | null): string {
 
 /** 관리자 배너 관리(HODL-92). */
 export const ADMIN_BANNERS_HREF = "/admin/banners";
+
+/** 방의 지난 투표 결과(HODL-109). 방 게시판 투표 칸의 "지난 결과". 쪽은 1부터, 1쪽은 적지 않는다. */
+export function pollResultsHref(symbol: string, page?: number): string {
+  const base = `/subhodl/${encodeURIComponent(symbol)}/polls`;
+  return page && page > 1 ? `${base}?page=${page}` : base;
+}
+
+/** 마이페이지 내 투표 탭(HODL-109). 내가 고른 선택지와 그날 결과. */
+export const MYPAGE_VOTES_HREF = "/mypage/votes";
+
+export function myVotesHref(page?: number): string {
+  return page && page > 1 ? `${MYPAGE_VOTES_HREF}?page=${page}` : MYPAGE_VOTES_HREF;
+}
+
+/** 뽑기 이벤트 화면(HODL-95). 배너 링크로 들어오는 것이 보통이다. */
+export function drawHref(eventId: number): string {
+  return `/draw/${eventId}`;
+}
+
+/** 주소의 숫자 id(뽑기 이벤트 등). 양의 정수가 아니면 null. */
+export function parsePositiveId(value: string | undefined): number | null {
+  if (!value || !/^[1-9]\d{0,15}$/.test(value)) return null;
+  const id = Number(value);
+  return Number.isSafeInteger(id) ? id : null;
+}
+
+/** 주소의 `?page=`. 1부터 센다. 숫자가 아니면 1쪽. */
+export function parsePage(value: string | undefined): number {
+  const page = Number.parseInt(value ?? "", 10);
+  return Number.isSafeInteger(page) && page >= 1 ? page : 1;
+}

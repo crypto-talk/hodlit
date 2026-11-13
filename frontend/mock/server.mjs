@@ -237,6 +237,55 @@ on("POST", "/polls/:id/votes", ({ params, body }) => {
   return pollView(poll);
 });
 
+// ── 지난 투표 결과 · 내 투표 ──────────────────────────────────────────────────
+on("GET", "/communities/:symbol/polls/results", ({ params, query }) => {
+  const coin = openRoom(params.symbol);
+  return page(
+    state.pollResults.filter((item) => item.coinSymbol === coin.symbol),
+    query,
+  );
+});
+on("GET", "/me/votes", ({ query }) => {
+  member();
+  return page(state.myVotes, query);
+});
+
+// ── 뽑기 이벤트 ──────────────────────────────────────────────────────────────
+const drawEvent = (id) => {
+  const event = state.drawEvents.find((item) => item.id === Number(id));
+  if (!event) throw new HttpError(404, "이벤트를 찾을 수 없습니다.");
+  return event;
+};
+const canDraw = (event) =>
+  event.status === "ACTIVE" &&
+  Date.now() >= Date.parse(event.startsAt) &&
+  Date.now() < Date.parse(event.endsAt);
+on("GET", "/draw-events/:id", ({ params }) => {
+  const event = drawEvent(params.id);
+  return { ...event, canParticipate: canDraw(event) };
+});
+on("GET", "/draw-events/:id/me", ({ params }) => {
+  const result = state.drawResults[`${drawEvent(params.id).id}:${member().id}`];
+  return result ? { result: { ...result, existing: true } } : {};
+});
+on("POST", "/draw-events/:id/draw", ({ params }) => {
+  const event = drawEvent(params.id);
+  const key = `${event.id}:${member().id}`;
+  // 이미 뽑았으면 처음 결과를 그대로 돌려준다(실제 서버와 같다).
+  if (state.drawResults[key]) return { ...state.drawResults[key], existing: true };
+  if (!canDraw(event)) throw new HttpError(409, "현재 참여할 수 없는 이벤트입니다.");
+  const prize = event.prizes[Math.floor(Math.random() * event.prizes.length)];
+  state.drawResults[key] = {
+    id: state.nextId++,
+    eventId: event.id,
+    prizeId: prize.id,
+    prizeName: prize.name,
+    imageUrl: prize.imageUrl,
+    capturedAt: new Date().toISOString(),
+  };
+  return { ...state.drawResults[key], existing: false };
+});
+
 // ── 관리자: 방 · 카테고리 · 등급 ──────────────────────────────────────────────
 const adminRoom = (coin) => ({
   id: coin.id,

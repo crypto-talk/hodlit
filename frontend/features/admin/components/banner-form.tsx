@@ -129,7 +129,9 @@ export default function BannerForm({ initial, submitLabel, busy, onSubmit, onCan
           role={fileProblem || problems.imageUrl ? "alert" : undefined}
           className={`text-xs ${fileProblem || problems.imageUrl ? "text-danger" : "text-text-subtle"}`}
         >
-          {fileProblem || problems.imageUrl || "JPG · PNG · WEBP · GIF, 25MB 까지"}
+          {fileProblem ||
+            problems.imageUrl ||
+            "JPG · PNG · WEBP · GIF, 25MB 까지. 홈에서는 16:5 비율로 보이고 넘치는 부분은 잘립니다."}
         </p>
       </div>
 

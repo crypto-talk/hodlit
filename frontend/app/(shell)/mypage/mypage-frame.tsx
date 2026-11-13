@@ -9,6 +9,7 @@ import {
   MYPAGE_ASSETS_HREF,
   MYPAGE_BOOKMARKS_HREF,
   MYPAGE_DRAFTS_HREF,
+  MYPAGE_VOTES_HREF,
   MYPAGE_WALLET_HREF,
   profileHref,
 } from "@/lib/routes";
@@ -21,6 +22,7 @@ const TABS = [
   { href: MYPAGE_ASSETS_HREF, label: "내 자산" },
   { href: MYPAGE_BOOKMARKS_HREF, label: "북마크" },
   { href: MYPAGE_DRAFTS_HREF, label: "임시저장" },
+  { href: MYPAGE_VOTES_HREF, label: "내 투표" },
 ] as const;
 
 const TAB_CLASS =
@@ -74,7 +76,10 @@ export default function MypageFrame({ children }: { children: React.ReactNode })
         </div>
       </div>
 
-      <nav aria-label="마이페이지 탭" className="flex gap-6 border-b border-border-subtle">
+      <nav
+        aria-label="마이페이지 탭"
+        className="flex gap-6 overflow-x-auto border-b border-border-subtle whitespace-nowrap"
+      >
         {TABS.map((tab) => (
           <Link
             key={tab.href}
