@@ -43,7 +43,7 @@ type Props = {
  */
 export default function PostDetailView({ postId, symbol }: Props) {
   const post = usePost(postId);
-  const { member } = useSession();
+  const { member, restored } = useSession();
 
   // 글 내용이 실제로 보였을 때만 센다. 닫힌 방 · 없는 글 · 오류는 세지 않는다(HODL-89).
   useTrackView(
@@ -97,7 +97,10 @@ export default function PostDetailView({ postId, symbol }: Props) {
           {room} · {coinNameKo(room, room)}
         </Link>
         <span className="flex-1" />
-        <time dateTime={data.createdAt}>{formatRelativeTime(data.createdAt)}</time>
+        {/* 서버와 브라우저가 그리는 시각이 달라 "3분 전"이 "4분 전"으로 바뀔 수 있다 */}
+        <time dateTime={data.createdAt} suppressHydrationWarning>
+          {formatRelativeTime(data.createdAt)}
+        </time>
         {data.edited ? <span>· 수정됨</span> : null}
         {member && data.authorId === member.id ? (
           <PostOwnerActions postId={data.id} room={room} />
@@ -172,6 +175,7 @@ export default function PostDetailView({ postId, symbol }: Props) {
           postId={data.id}
           reactions={{ likes: data.likes, liked: data.liked, bookmarked: data.bookmarked }}
           comments={data.comments}
+          settling={!restored || post.isPlaceholderData}
         />
       </div>
     </article>

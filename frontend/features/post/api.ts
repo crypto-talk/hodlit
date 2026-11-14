@@ -135,10 +135,10 @@ function mediaSrc(url: string): string {
 /**
  * 글 상세. 공개 API 라 로그인 없이도 열린다.
  *
- * 404 는 `ApiError.status` 로 화면이 구분한다.
+ * 404 는 `ApiError.status` 로 화면이 구분한다. `init` 은 서버에서 부를 때 시간 제한을 걸려고 둔다.
  */
-export async function loadPost(postId: number): Promise<PostDetail> {
-  const post = await http<PostResponse>(`/api/v1/posts/${postId}`);
+export async function loadPost(postId: number, init?: RequestInit): Promise<PostDetail> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}`, init);
 
   const createdAt = post.createdAt ?? "";
   const price = post.priceSnapshot;
