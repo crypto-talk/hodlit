@@ -7,6 +7,7 @@ import type { ImageItem } from "../hooks/use-image-uploads";
 import { IMAGE_MAX, IMAGE_TYPES } from "../limits";
 
 type Props = {
+  compactCopy?: boolean;
   items: ImageItem[];
   notice: string;
   full: boolean;
@@ -25,6 +26,7 @@ type Props = {
  * 이미지가 아니다.
  */
 export default function ImageAttachments({
+  compactCopy = false,
   items,
   notice,
   full,
@@ -68,8 +70,9 @@ export default function ImageAttachments({
             이미지 추가
           </button>
           <p className="text-xs text-text-muted">
-            끌어다 놓아도 됩니다 · JPG·PNG·WEBP·GIF 25MB · 글당 {IMAGE_MAX}장 ({itemsCount(items)}/
-            {IMAGE_MAX})
+            {compactCopy
+              ? `글당 ${IMAGE_MAX}장`
+              : `끌어다 놓아도 됩니다 · JPG·PNG·WEBP·GIF 25MB · 글당 ${IMAGE_MAX}장 (${itemsCount(items)}/${IMAGE_MAX})`}
           </p>
           <input
             ref={input}
@@ -132,7 +135,7 @@ export default function ImageAttachments({
         </p>
       ) : null}
 
-      {items.length > 0 ? (
+      {!compactCopy && items.length > 0 ? (
         <div className="mt-3 rounded-sm border border-border-subtle bg-surface p-3">
           <p className="text-sm font-semibold text-text-primary">
             첨부한 이미지는 인증으로 인정되지 않습니다

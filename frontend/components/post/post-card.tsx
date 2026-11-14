@@ -70,7 +70,7 @@ export default function PostCard({ post, showRoom = true }: Props) {
         {/* 인덱서가 붙기 전까지 서버 holdingMonths 가 null 이라 항상 '보유 기간 미확인'이다. */}
         {post.hold ? <span className="text-xs text-text-muted">{post.hold}</span> : null}
         {post.attached.length > 0 ? (
-          <span className="text-xs text-text-muted" title="작성 시점 보유 기록이 붙은 코인">
+          <span className="text-xs text-text-muted" title="작성 시점 보유 코인">
             + {post.attached.join(" · ")}
           </span>
         ) : null}

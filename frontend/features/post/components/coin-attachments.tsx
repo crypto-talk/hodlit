@@ -73,11 +73,6 @@ export default function CoinAttachments({ roomSymbol, rooms, value, onChange, di
           추가 {value.length}/{ATTACH_MAX}
         </span>
       </div>
-      <p className="mt-1 text-xs text-text-muted">
-        {general
-          ? "기타 방은 방 코인이 없어 고른 코인의 기록만 붙습니다. 안 골라도 됩니다."
-          : "방 코인은 자동으로 붙고, 다른 코인을 3개까지 더 붙일 수 있습니다."}
-      </p>
 
       <ul className="mt-3 flex flex-wrap gap-2" aria-label="붙일 코인">
         {roomSymbol && !general ? (
@@ -187,19 +182,8 @@ export default function CoinAttachments({ roomSymbol, rooms, value, onChange, di
               })}
             </ul>
           )}
-          {full ? (
-            <p className="mt-2 text-xs text-text-muted">
-              {ATTACH_MAX}개를 모두 골랐습니다. 다른 코인을 붙이려면 하나를 빼 주세요.
-            </p>
-          ) : null}
         </div>
       ) : null}
-
-      <p className="mt-3 text-xs text-text-muted">
-        보유 수량은 발행할 때 서버가 지갑 · 거래소를 다시 확인해 코인마다 기록하고, 그 뒤로는 글을
-        고쳐도 바뀌지 않습니다. 보유가 없거나 확인에 실패한 코인도 붙일 수 있고 그 상태 그대로
-        표시됩니다. 수량은 구간으로만 공개됩니다.
-      </p>
     </section>
   );
 }
@@ -218,14 +202,13 @@ function HoldingsStatus({
   if (loading)
     return (
       <p className="text-xs text-text-muted" aria-live="polite">
-        지금 내 보유를 확인하는 중… 지갑 · 거래소를 다시 읽어 15초쯤 걸릴 수 있습니다. 기다리지 않고
-        골라도 됩니다.
+        내 보유 코인 확인중
       </p>
     );
   if (failed)
     return (
       <p className="text-xs text-text-muted">
-        지금 보유를 확인하지 못했습니다. 그래도 고를 수 있고, 발행할 때 서버가 다시 확인합니다.{" "}
+        보유 코인을 확인하지 못했습니다.{" "}
         <button type="button" onClick={onRetry} className="font-semibold text-brand">
           다시 확인
         </button>
@@ -235,8 +218,8 @@ function HoldingsStatus({
   return (
     <p className="text-xs text-text-muted">
       {reference.connected
-        ? "옆의 보유는 지금 기준 참고용입니다. 글에는 발행 시점 기록이 붙습니다. "
-        : "연결한 지갑 · 거래소가 없어 붙인 코인은 미연결로 기록됩니다. "}
+        ? "현재 시점 기준 코인 보유량입니다."
+        : "연결된 지갑, 거래소가 없습니다."}{" "}
       <button type="button" onClick={onRetry} className="font-semibold text-brand">
         다시 확인
       </button>
