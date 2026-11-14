@@ -10,7 +10,7 @@ import type { FeedPost } from "@/features/landing/types";
 import OpenPolls from "@/features/vote/components/open-polls";
 
 /**
- * 호들잇 랜딩.
+ * 호들릿 랜딩.
  *
  * 셸(헤더·전광판·사이드바·푸터·FAB)은 `app/(shell)/layout.tsx` 가 그린다.
  * 이 파일은 가운데 칼럼의 섹션만 들고 있다.
