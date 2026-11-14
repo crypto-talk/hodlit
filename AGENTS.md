@@ -10,10 +10,10 @@
 
 ## Working rules
 
-- Treat `main` as the integration and backend deployment branch.
+- Treat `main` as the integration branch, the default PR target, and the backend deployment branch.
 - Use the project-local `$feature` skill for backend feature implementation that must be committed and pushed.
-- New `$feature` and `$bugfix` task branches start from the latest `origin/main`. Keep CrypTalk backend work on `feature/...` branches; never implement feature work or fixes directly on `main` or `develop`.
-- Do not merge a feature branch into `main` or `develop` unless the user explicitly asks.
+- New `$feature` and `$bugfix` task branches start from the latest `origin/main`. Keep CrypTalk backend work on `feature/...` branches; never implement feature work or fixes directly on `main`.
+- Do not merge a feature branch into `main` unless the user explicitly asks.
 - Preserve unrelated user changes. Never stash, reset, or delete them to make a task easier.
 - Never commit `.env`, credentials, refresh tokens, private keys, database data, or uploaded media.
 - Keep frontend changes out of backend tasks unless the user explicitly expands the scope.

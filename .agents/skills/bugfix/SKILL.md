@@ -24,7 +24,7 @@ Turn a Jira bug report into a small, verified repository change. Follow the user
 - Follow repository branch naming conventions. Otherwise use `codex/bugfix-<ISSUE-KEY>-<short-summary>`. Unless the user explicitly requests a different base, create new branches from the latest `origin/main`. Refresh it with `git fetch origin refs/heads/main:refs/remotes/origin/main --prune` before starting new work, including when the remote has a narrow fetch configuration. Do not rebase an existing task branch automatically.
 - Resume an existing branch only when it clearly belongs to this issue. Resolve multiple plausible branches with the user before altering one.
 - For CrypTalk backend fixes, read `backend/AGENTS.md`, base new work on the latest `origin/main`, and use `feature/<ISSUE-KEY>-fix-<short-summary>` so authorized pushes receive the existing non-deploying `Backend feature check`. Keep backend tasks scoped to backend code and relevant docs or deployment configuration; frontend changes require the user to expand that scope. Read the local `$feature` skill if the user requests its commit-and-push workflow.
-- Never commit or push a fix directly on CrypTalk `main` or `develop`: backend changes pushed to `develop` trigger production deployment.
+- Never commit or push a fix directly on CrypTalk `main`. Backend changes pushed to `main` trigger production deployment.
 
 ## Reproduce and fix
 

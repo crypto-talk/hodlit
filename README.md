@@ -33,7 +33,7 @@ docker compose ps
 
 ## 이 서버에서 자동 배포
 
-`deploy-server.sh`는 `develop` 브랜치를 fast-forward로 갱신하고 백엔드 이미지를
+`deploy-server.sh`는 기본적으로 `main` 브랜치를 fast-forward로 갱신하고 백엔드 이미지를
 빌드한 뒤 백엔드와 MySQL만 실행하고 health 상태를 확인합니다. Docker 권한이 없으면 처음에
 `sudo` 비밀번호를 한 번만 요청하고 배포가 끝날 때까지 인증을 유지합니다. 비밀번호를
 파일이나 환경 변수에 저장하지 않습니다.

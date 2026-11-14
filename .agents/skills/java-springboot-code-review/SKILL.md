@@ -18,7 +18,7 @@ description: >
 ## CrypTalk review rules (take precedence over upstream guidance)
 
 - Read the repository `AGENTS.md` and the path-specific `AGENTS.md` files before reviewing. For backend work, read `backend/AGENTS.md`.
-- Establish the requested scope first: working-tree changes, commit range, branch, or specific files. For a feature branch, default to the merge-base diff against `origin/develop`; do not review against `main` or silently change branches.
+- Establish the requested scope first: working-tree changes, commit range, branch, or specific files. For a feature branch, default to the merge-base diff against `origin/main` and keep the current checkout unchanged.
 - Verify versions from `backend/build.gradle` and `backend/Dockerfile`. Read relevant `docs/AUTH_API.md`, `docs/SOCIAL_API.md`, and Liquibase changesets when those contracts are affected.
 - Review is read-only by default: do not edit, commit, push, merge, deploy, or mutate GitHub/Jira state unless explicitly requested. Preserve unrelated changes. Keep frontend out of scope unless requested.
 - Inspect complete changed files and relevant callers when available; do not ask the user to paste files already accessible in the repository. State actual context limitations, not an automatic diff-only disclaimer.
