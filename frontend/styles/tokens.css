@@ -18,9 +18,9 @@
 
 :root {
   /* 면 */
-  --canvas: #f6f6f8;
+  --canvas: #f6f6f9;
   --surface: #ffffff;
-  --surface-muted: #f6f6f8;
+  --surface-muted: #f6f6f9;
   /* 아트보드에 없다. 반투명 헤더가 필요해지면 쓴다. */
   --surface-raised: rgba(255, 255, 255, 0.96);
 
@@ -37,12 +37,12 @@
   --border-strong: #dfe3e8;
 
   /* 브랜드 강조. shadcn 의 --accent(은은한 hover 배경)와 구분해 brand 로 둔다. */
-  --brand: #6e56f0;
-  --brand-hover: #5c46d8;
+  --brand: #615ca3;
+  --brand-hover: #4f4b91;
   /* 연보라. 배지와 2위 카드가 쓴다. */
-  --brand-soft: #ccccff;
+  --brand-soft: #e2e0f5;
   /* rgb() 의 알파 표기에 넣으려고 채널만 따로 둔다. FAB 그림자가 쓴다. */
-  --brand-channels: 110 86 240;
+  --brand-channels: 97 92 163;
 
   /* 상태. 시세 등락에 쓴다. */
   --success: #15803d;
