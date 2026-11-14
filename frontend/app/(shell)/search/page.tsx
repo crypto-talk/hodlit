@@ -16,7 +16,7 @@ export async function generateMetadata({
   searchParams: SearchParams;
 }): Promise<Metadata> {
   const q = first((await searchParams).q).trim();
-  return { title: q ? `‘${q}’ 검색 — Hodlit` : "검색 — Hodlit" };
+  return { title: q ? `‘${q}’ 검색` : "검색" };
 }
 
 /**

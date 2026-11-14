@@ -9,7 +9,7 @@ type Params = Promise<{ symbol: string }>;
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { symbol } = await params;
   const room = safeSymbol(symbol);
-  return { title: room ? `${room} 지난 투표 — Hodlit` : "Hodlit" };
+  return room ? { title: `${room} 지난 투표` } : {};
 }
 
 /**

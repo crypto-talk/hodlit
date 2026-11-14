@@ -101,7 +101,7 @@ test("server-renders the Hodlit application", async (t) => {
     assert.equal(response.status, 200);
 
     const html = await response.text();
-    assert.match(html, /<title>ETH 방 — Hodlit<\/title>/);
+    assert.match(html, /<title>ETH 방 \| Hodlit<\/title>/);
     // 방 안의 헤더 글쓰기는 그 방을 미리 고른다. 내용은 클라이언트에서 그려진다.
     assert.match(html, /href="\/write\?symbol=ETH"/);
     assert.match(html, /전체 방/);

@@ -3,7 +3,7 @@ import AuthForm from "@/features/auth/components/auth-form";
 import { safeNext } from "@/features/auth/safe-next";
 
 export const metadata: Metadata = {
-  title: "로그인 — Hodlit",
+  title: "로그인",
 };
 
 /**
