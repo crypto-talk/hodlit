@@ -16,7 +16,7 @@ type Props = {
  *
  * 예전에는 따로 떨어진 지갑 카드가 넓은 화면에선 오른쪽 칸, 좁은 화면에선 사이드바 아래에
  * 있었다. 10-08 회의에서 "내 코인에 지갑 연결 버튼을 넣고 기존 지갑 연결 박스는 비운다"로
- * 정해 여기로 합쳤다. 지갑을 연결해야 내 코인 방이 고정되므로 버튼이 그 설명 바로 아래에 온다.
+ * 정해 여기로 합쳤다.
  *
  * 지갑이 없을 때 버튼을 누르면 AppKit 모달이 열린다(HODL-55). 브라우저 확장 지갑과 QR ·
  * 모바일 지갑이 한 목록에 나와서 여기서 따로 고르게 하지 않는다. 지갑이 있으면 버튼이
@@ -30,14 +30,8 @@ export default function MyCoins({ wallets, onConnectWallet, connecting }: Props)
 
   return (
     <div className="mt-2 rounded-lg border border-border-subtle bg-surface p-4">
-      <p className="text-sm text-text-muted">
-        {connected
-          ? "보유 중인 코인의 방이 여기 고정됩니다"
-          : "지갑을 연결하면 보유 중인 코인의 방이 여기 고정됩니다"}
-      </p>
-
       {connected ? (
-        <ul aria-label="연결된 지갑" className="mt-4 flex flex-col gap-2">
+        <ul aria-label="연결된 지갑" className="flex flex-col gap-2">
           {wallets.map((wallet) => (
             <li key={wallet.id} className="flex items-baseline gap-2">
               {/* 주소는 앞뒤만 나온다. 축약은 features/wallet 에서 한다. */}
@@ -62,16 +56,13 @@ export default function MyCoins({ wallets, onConnectWallet, connecting }: Props)
         <Button
           type="button"
           variant="primary"
-          className="mt-4 w-full"
+          className="w-full"
           disabled={connecting}
           onClick={onConnectWallet}
         >
           {connecting ? "지갑 확인 중…" : "지갑 연결"}
         </Button>
       )}
-      <p className="mt-2 text-center text-xs text-text-muted">
-        {connected ? "지갑 추가 · 해제는 마이페이지에서" : "연결 안 해도 읽고 쓸 수 있습니다"}
-      </p>
     </div>
   );
 }

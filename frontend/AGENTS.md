@@ -307,15 +307,14 @@ becomes the spec.
 
 ## Working rules
 
-- Base new work on the latest `origin/develop` and work on a `<type>/<what>` branch. `<type>` is
+- Base new work on the latest `origin/main` and work on a `<type>/<what>` branch. `<type>` is
   the Conventional Commit type the change mostly is — `feat/`, `fix/`, `refactor/`, `docs/`,
   `test/`, `chore/`; `<what>` is a few kebab-case words naming the area, not a ticket number
   (`refactor/screen-structure`, `feat/post-editor`). Mixed work takes the type of its largest part.
   ⚠️ This is a `frontend/` rule. The repository root still says `feature/...`, and two things
   actually depend on it: the `Backend feature check` workflow only runs on `feature/**`, and the
   `create-pr` skill refuses a head branch that does not start with `feature/`. Neither is a
-  frontend file — do not change them from a frontend task. Open frontend PRs yourself rather
-  than through `create-pr`.
+  frontend file — do not change them from a frontend task. Open frontend PRs directly with `main` as the base.
 - Keep backend changes out of frontend tasks unless the user explicitly expands the scope.
 - Preserve unrelated user changes. Never stash, reset, or delete them to make a task easier.
 - Never commit `.env*` files, tokens, or API credentials.
