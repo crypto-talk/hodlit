@@ -4,9 +4,10 @@
 
 - Public GET `/api/v1/communities/{symbol}/poll`: current active question in one active room; 404 when missing.
 - Public GET `/api/v1/polls/{pollId}`: metadata/history of a question. Results are still gated by **today's** participation, not by having voted on any prior day.
-- Admin POST `/api/v1/communities/{symbol}/polls`: `{question,choices:["Up","Down"]}`, 201. 2..10 nonblank distinct (case-insensitive trimmed) labels, max 100 characters, question max 200. Creates a new question and closes the previous active question in that room. No daily recreation/deletion.
+- Admin POST `/api/v1/communities/{symbol}/polls`: `{question,choices:["Up","Down"]}`, 201. 2..10 nonblank distinct (case-insensitive trimmed) labels, max 100 characters, question max 200. Creates a new question and closes the previous active question in that room.
 - Authenticated POST `/api/v1/polls/{pollId}/votes`: `{choiceId}`, positive choice ID belonging to that poll. One vote per member/poll/KST date; repeat/change returns 409, wrong poll choice 400, closed poll 409, missing poll 404.
 - Admin POST `/api/v1/polls/{pollId}/close`: 204, disables new participation without deleting history.
+- Admin DELETE `/api/v1/polls/{pollId}`: 204 for an active or closed poll. Returns 401 without authentication, 403 without administrator access, and 404 for a missing or previously deleted poll. The poll, choices, and votes are retained in the database. The deleted poll disappears from current polls, room results, and personal vote history. Direct detail, result, voting, and close requests for it return 404 for callers with access to those endpoints.
 
 Response `{id,coinSymbol,question,active,day,participatedToday,userChoiceId,totalVotes,choices:[{id,label,voteCount}]}`. `day` is YYYY-MM-DD in Asia/Seoul. Before today's participation `userChoiceId`, `totalVotes`, and every choice's `voteCount` are null/omitted under the existing NON_NULL JSON configuration; **no aggregate query is executed** for such a viewer. This applies to anonymous users, other authenticated users and nonparticipating administrators alike. After participation counts cover only that KST date, including zero for unselected choices. No votes or member identities are listed.
 
@@ -20,4 +21,4 @@ Service-wide administrators are persisted as `members.role = 'ADMIN'` and verifi
 
 Render the active question and single-choice controls before participation but no result totals/chart. Disable repeat/change after success; on 409 re-fetch, on other errors retain pending choice without claiming success. Only show chart/counts when participatedToday=true and response day equals the current KST day. At KST midnight clear prior result state and re-fetch before showing anything, retaining the same question if still active. Refresh again after voting; do not calculate/obtain other users' results through another endpoint. Administrator creation/close UI must handle server 403. `pnpm gen:api` after deployment.
 
-Migration `011-community-polls.sql`. Backend tests cover KST 23:59:59→00:00:00, same-poll next-day participation, result hiding (including admin), room/choice isolation, permissions, duplicate/concurrent submissions and replacement/close. Frontend integration, admin provisioning and live deployment remain separate.
+Migrations `011-community-polls.sql` and `027-poll-deletion.sql`. Backend tests cover KST 23:59:59→00:00:00, same-poll next-day participation, result hiding (including admin), room/choice isolation, permissions, duplicate/concurrent submissions, replacement, close, and deletion.

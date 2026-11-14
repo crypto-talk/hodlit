@@ -61,3 +61,5 @@ databaseChangeLog:
       file: db/changelog/025-other-room.sql
   - include:
       file: db/changelog/026-solana-wallet-link.sql
+  - include:
+      file: db/changelog/027-poll-deletion.sql

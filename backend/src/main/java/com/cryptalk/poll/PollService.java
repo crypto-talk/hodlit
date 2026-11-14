@@ -87,7 +87,7 @@ public class PollService {
     @Transactional(isolation=Isolation.READ_COMMITTED)
     public PollDtos.PollResponse vote(Long memberId,Long pollId,Long choiceId) {
         var member = members.lockById(memberId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"회원을 찾을 수 없습니다."));
-        var poll = polls.lockById(pollId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"투표를 찾을 수 없습니다."));
+        var poll = lockPoll(pollId);
         rooms.requireOpen(poll.getCoin());
         rooms.requireCoinFeatures(poll.getCoin());
         if (!poll.isActive() || !poll.getCoin().isActive()) throw new ApiException(HttpStatus.CONFLICT,"종료된 투표입니다.");
@@ -117,7 +117,8 @@ public class PollService {
             throw new ApiException(HttpStatus.CONFLICT,"오늘 이미 참여했습니다. 선택 변경은 불가능합니다.");
     }
 
-    @Transactional(readOnly=true)
+    // Keep the page query and its follow-up poll lookups on one snapshot during deletion.
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PageResponse<PollDtos.DailyResult> roomResults(String symbol,int page,int size) {
         var request = PageResponse.request(page,size,Sort.unsorted());
         var coin = rooms.requireOpen(symbol);
@@ -144,7 +145,7 @@ public class PollService {
         return PageResponse.of(votes.resultDays(pollId,start,end,request).map(day -> dailyResult(poll,day)));
     }
 
-    @Transactional(readOnly=true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PageResponse<PollDtos.VoteHistory> myVotes(Long memberId,int page,int size) {
         if (memberId == null) throw new ApiException(HttpStatus.UNAUTHORIZED,"로그인이 필요합니다.");
         var request = PageResponse.request(page,size,Sort.by(Sort.Direction.DESC,"voteDate","id"));
@@ -171,7 +172,18 @@ public class PollService {
     @Transactional
     public void close(Long memberId,Long pollId) {
         admins.requireAdmin(memberId);
-        polls.lockById(pollId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"투표를 찾을 수 없습니다.")).close();
+        lockPoll(pollId).close();
+    }
+
+    @Transactional
+    public void delete(Long memberId, Long pollId) {
+        admins.requireAdmin(memberId);
+        lockPoll(pollId).delete(clock.instant());
+    }
+
+    private CommunityPoll lockPoll(Long pollId) {
+        return polls.lockById(pollId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "투표를 찾을 수 없습니다."));
     }
 
     private LocalDate today() { return LocalDate.ofInstant(clock.instant(),SEOUL); }

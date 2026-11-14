@@ -13,18 +13,21 @@ public interface PollVoteRepository extends JpaRepository<PollVote,Long> {
     Optional<PollVote> findByPollIdAndMemberIdAndVoteDate(Long pollId, Long memberId, LocalDate day);
     @Query("select v.choice.id as choiceId, count(v) as votes from PollVote v where v.poll.id=:pollId and v.voteDate=:day group by v.choice.id")
     List<ChoiceCount> counts(@Param("pollId") Long pollId,@Param("day") LocalDate day);
-    Page<PollVote> findByMemberId(Long memberId, Pageable pageable);
+    @Query("select v from PollVote v join v.poll p where v.member.id = :memberId and p.deletedAt is null")
+    Page<PollVote> findByMemberId(@Param("memberId") Long memberId, Pageable pageable);
 
     // Count (poll, day) groups explicitly: counting only distinct dates loses same-day questions.
     @Query(value="""
         SELECT v.poll_id AS pollId, v.vote_date AS voteDay
         FROM poll_votes v JOIN community_polls p ON p.id=v.poll_id
-        WHERE p.coin_id=:coinId AND (v.vote_date<:today OR (p.active=false AND v.vote_date=:today))
+        WHERE p.coin_id=:coinId AND p.deleted_at IS NULL
+            AND (v.vote_date<:today OR (p.active=false AND v.vote_date=:today))
         GROUP BY v.poll_id, v.vote_date ORDER BY v.vote_date DESC, v.poll_id DESC
         """, countQuery="""
         SELECT COUNT(*) FROM (
             SELECT v.poll_id, v.vote_date FROM poll_votes v JOIN community_polls p ON p.id=v.poll_id
-            WHERE p.coin_id=:coinId AND (v.vote_date<:today OR (p.active=false AND v.vote_date=:today))
+            WHERE p.coin_id=:coinId AND p.deleted_at IS NULL
+                AND (v.vote_date<:today OR (p.active=false AND v.vote_date=:today))
             GROUP BY v.poll_id, v.vote_date
         ) result_days
         """, nativeQuery=true)
