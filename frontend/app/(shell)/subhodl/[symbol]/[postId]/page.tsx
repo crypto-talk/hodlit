@@ -8,10 +8,10 @@ import {
   postCanonicalPath,
   postDescription,
   postStructuredData,
-  toJsonLd,
 } from "@/features/post/structured-data";
 import type { PostDetail } from "@/features/post/types";
 import { ApiError } from "@/lib/http";
+import { toJsonLd } from "@/lib/json-ld";
 import { siteOrigin } from "@/lib/site-origin";
 import PostView from "./post-view";
 

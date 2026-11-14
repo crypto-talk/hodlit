@@ -5,6 +5,9 @@ Read the repository `AGENTS.md` first. This file adds the rules that apply under
 The product is **Hodlit**. The repository, the npm package name, the API domain and the Java
 package are still spelled `cryptalk`; renaming those is a separate job scheduled for just
 before launch. Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
+The Korean name is **호들릿** (not 호들잇). It sits next to Hodlit in the site title, description,
+OG site name and the `WebSite` JSON-LD (`alternateName`) in `app/layout.tsx`, so Korean searches
+land here. Keep one spelling everywhere; mixed spellings split what search engines learn.
 The `sessionStorage` key `cryptalk_access` is left alone; it disappears when `access` moves
 to a cookie (B-3).
 
