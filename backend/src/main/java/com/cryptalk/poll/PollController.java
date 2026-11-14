@@ -72,5 +72,12 @@ public class PollController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "운영자 투표 삭제", description = "진행 중이거나 종료된 투표를 조회와 참여 대상에서 제외합니다.")
+    @DeleteMapping("/polls/{pollId}")
+    ResponseEntity<Void> delete(@PathVariable Long pollId, @AuthenticationPrincipal Jwt jwt) {
+        polls.delete(member(jwt), pollId);
+        return ResponseEntity.noContent().build();
+    }
+
     private Long member(Jwt jwt) { return jwt == null ? null : Long.valueOf(jwt.getSubject()); }
 }

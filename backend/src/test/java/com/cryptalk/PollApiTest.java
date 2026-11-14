@@ -116,6 +116,61 @@ class PollApiTest {
     }
 
     @Test
+    void onlyAdministratorsCanDeleteAnActivePoll() throws Exception {
+        long id = create().path("id").asLong();
+
+        mvc.perform(delete("/api/v1/polls/{id}", id)).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/polls/{id}", id).with(jwt().jwt(t -> t.subject(Long.toString(user)))))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/communities/ETH/poll")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id));
+
+        mvc.perform(delete("/api/v1/polls/{id}", id).with(jwt().jwt(t -> t.subject("100000"))))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/communities/ETH/poll")).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/v1/polls/{id}", id).with(jwt().jwt(t -> t.subject("100000"))))
+            .andExpect(status().isNotFound());
+        mvc.perform(delete("/api/v1/polls/{id}", 999999).with(jwt().jwt(t -> t.subject("100000"))))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void removesADeletedPollFromResultsAndHistoryWhileKeepingItsRecords() throws Exception {
+        var deleted = create();
+        long deletedId = deleted.path("id").asLong();
+        long choiceId = deleted.path("choices").get(0).path("id").asLong();
+        polls.vote(user, deletedId, choiceId);
+        var retained = create();
+        long retainedId = retained.path("id").asLong();
+        polls.vote(user, retainedId, retained.path("choices").get(0).path("id").asLong());
+        polls.close(100000L, retainedId);
+
+        mvc.perform(delete("/api/v1/polls/{id}", deletedId).with(jwt().jwt(t -> t.subject("100000"))))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/polls/{id}", deletedId)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/polls/{id}/results", deletedId)).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/polls/{id}/close", deletedId).with(jwt().jwt(t -> t.subject("100000"))))
+            .andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/polls/{id}/votes", deletedId).with(jwt().jwt(t -> t.subject(Long.toString(user))))
+            .contentType(MediaType.APPLICATION_JSON).content("{\"choiceId\":" + choiceId + "}"))
+            .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/communities/ETH/polls/results").param("size", "1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.items[0].pollId").value(retainedId));
+        mvc.perform(get("/api/v1/me/votes").with(jwt().jwt(t -> t.subject(Long.toString(user)))).param("size", "1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.items[0].result.pollId").value(retainedId));
+
+        Instant deletedAt = jdbc.queryForObject("SELECT deleted_at FROM community_polls WHERE id = ?",
+            (row, index) -> row.getTimestamp(1).toInstant(), deletedId);
+        assertThat(deletedAt).isEqualTo(clock.instant());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM poll_choices WHERE poll_id = ?", Long.class, deletedId))
+            .isEqualTo(2L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM poll_votes WHERE poll_id = ?", Long.class, deletedId))
+            .isEqualTo(1L);
+    }
+
+    @Test
     void simultaneousSubmissionsCannotVoteTwice() throws Exception {
         var poll = create();
         long id = poll.path("id").asLong();
