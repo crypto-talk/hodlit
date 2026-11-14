@@ -186,7 +186,7 @@ function loadAppKit(): Promise<AppKitLike> {
         themeMode: "light",
         themeVariables: {
           // 우리 토큰 값을 그대로 넘긴다. 색을 바꾸려면 styles/tokens.css 를 고친다.
-          "--w3m-accent": tokens.getPropertyValue("--brand").trim() || "#6e56f0",
+          "--w3m-accent": tokens.getPropertyValue("--brand").trim() || "#615ca3",
           "--w3m-font-family": getComputedStyle(document.body).fontFamily,
         },
       });
