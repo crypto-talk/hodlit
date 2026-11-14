@@ -3,7 +3,7 @@ import RoomManager from "@/features/admin/components/room-manager";
 import type { AdminRoomFilter } from "@/lib/routes";
 
 export const metadata: Metadata = {
-  title: "방 관리 — Hodlit 관리자",
+  title: "방 관리",
 };
 
 /**

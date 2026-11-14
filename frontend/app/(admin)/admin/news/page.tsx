@@ -3,7 +3,7 @@ import NewsManager from "@/features/admin/components/news-manager";
 import { adminRoomParam } from "@/lib/routes";
 
 export const metadata: Metadata = {
-  title: "뉴스 관리 — Hodlit 관리자",
+  title: "뉴스 관리",
 };
 
 /**

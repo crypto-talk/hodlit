@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import PostView from "./post-view";
 
 export const metadata: Metadata = {
-  title: "글 — Hodlit",
+  title: "글",
 };
 
 /**

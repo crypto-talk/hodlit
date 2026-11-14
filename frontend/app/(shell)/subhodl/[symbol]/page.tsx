@@ -11,8 +11,8 @@ type Params = Promise<{ symbol: string }>;
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { symbol } = await params;
   const room = safeSymbol(symbol);
-  if (isGeneralRoom(room)) return { title: "기타 방 — Hodlit" };
-  return { title: room ? `${room} 방 — Hodlit` : "Hodlit" };
+  if (isGeneralRoom(room)) return { title: "기타 방" };
+  return room ? { title: `${room} 방` } : {};
 }
 
 /**

@@ -14,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ section: string }>;
 }): Promise<Metadata> {
   const { section } = await params;
-  return { title: `${TITLE[section] ?? "관리자"} — Hodlit 관리자` };
+  return { title: TITLE[section] ?? "관리자" };
 }
 
 export default async function AdminSectionPage({

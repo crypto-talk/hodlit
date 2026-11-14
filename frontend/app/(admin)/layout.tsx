@@ -11,7 +11,8 @@ import AdminFrame from "@/features/admin/components/admin-frame";
  * 검색엔진에는 올리지 않는다. 막는 것은 어디까지나 백엔드의 403 이다.
  */
 export const metadata: Metadata = {
-  title: "관리자 — Hodlit",
+  // 관리 화면은 " | Hodlit 관리자" 가 붙는다. 이 레이아웃 자신의 제목은 "관리자 | Hodlit".
+  title: { default: "관리자", template: "%s | Hodlit 관리자" },
   robots: { index: false, follow: false },
 };
 

@@ -7,10 +7,10 @@ import { parseMemberId } from "@/lib/routes";
 type Params = Promise<{ memberId: string }>;
 type SearchParams = Promise<{ tab?: string | string[]; page?: string | string[] }>;
 
-const FALLBACK_TITLE = "프로필 — Hodlit";
+const FALLBACK_TITLE = "프로필";
 
 /**
- * 탭 제목 "닉네임 — Hodlit". 공개 API 라 서버에서 바로 부른다(토큰 필요 없음).
+ * 탭 제목 "닉네임 | Hodlit". 공개 API 라 서버에서 바로 부른다(토큰 필요 없음).
  * 실패하거나 2초 안에 안 오면 기본 제목 — 제목 때문에 화면이 늦거나 깨지지 않게 한다.
  * 본문은 클라이언트가 따로 받는다(로그인 회원과 같은지 봐야 해서).
  */
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     if (!response.ok) return { title: FALLBACK_TITLE };
     const { nickname } = (await response.json()) as { nickname?: unknown };
     return {
-      title: typeof nickname === "string" && nickname ? `${nickname} — Hodlit` : FALLBACK_TITLE,
+      title: typeof nickname === "string" && nickname ? nickname : FALLBACK_TITLE,
     };
   } catch {
     return { title: FALLBACK_TITLE };

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import BannerManager from "@/features/admin/components/banner-manager";
 
 export const metadata: Metadata = {
-  title: "배너 관리 — Hodlit 관리자",
+  title: "배너 관리",
 };
 
 /** 관리자 배너 관리 (HODL-92). */

@@ -3,7 +3,7 @@ import AssetPrivacy from "@/features/profile/components/asset-privacy";
 import PortfolioView from "@/features/portfolio/components/portfolio-view";
 
 export const metadata: Metadata = {
-  title: "내 자산 — Hodlit",
+  title: "내 자산",
 };
 
 /** 마이페이지 내 자산 탭 (HODL-67). */
