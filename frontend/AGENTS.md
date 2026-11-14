@@ -243,9 +243,18 @@ had no posts, so every list screen could only be checked empty; writing first fi
    `lib/routes.ts` sends an edit draft to its edit page (the write page redirects there too).
 2. ✅ Post detail `/subhodl/[symbol]/[postId]`, first pass (`features/post/components/
 post-detail.tsx`): title, author, Markdown body, images, YouTube embed
-   (youtube-nocookie), the price captured at publish time. The body is rendered by Tiptap in
-   read-only mode (`post-body.tsx`) rather than a separate Markdown renderer — same schema and
-   same styles as the editor, and anything outside the schema (raw HTML) is not rendered.
+   (youtube-nocookie), the price captured at publish time. The body is rendered with the
+   editor's Tiptap schema through `@tiptap/static-renderer` (`post-body.tsx`) rather than a
+   separate Markdown renderer — same schema and same styles as the editor, anything outside the
+   schema (raw HTML) is not rendered, and it renders on the server too.
+   **SEO / GEO:** the page fetches the post once on the server, anonymously (public API, 3 s
+   timeout), and seeds `["post", id, null]` through `HydrationBoundary`, so the first HTML carries
+   the title and body for crawlers that do not run JavaScript. It also sets the title,
+   description, canonical (the post's own room), OG `article`, and a `DiscussionForumPosting`
+   JSON-LD (`features/post/structured-data.ts`). A missing post is a real 404. A closed room or
+   a failed/slow fetch falls back to the browser fetch. Logged-in viewers keep seeing that copy
+   (`keepPreviousData`) while their own `liked`/`bookmarked` load; the buttons stay locked until
+   then. Comments are still browser-only.
    Landing titles and the publish redirect now link here through `lib/routes.ts`.
    The holder snapshot block (tier badge, holding period, amount band) sits under the title.
    Comments, like/bookmark (`post-actions.tsx`) and the author's edit/delete
