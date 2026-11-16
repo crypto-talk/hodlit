@@ -9,8 +9,7 @@ import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
  * 빈 목록이면 "공개된 기록이 없다" 고만 말한다 — 비공개인지, 붙인 게 없는지 화면이 구별할 수
  * 없고, 구별해 보이면 그것 자체가 정보가 된다.
  *
- * 상태 문구는 다른 화면과 같은 `HolderBadge` 다. 일부 조회 실패로 찍힌 기록에는 "일부 조회 기준"을
- * 붙인다 — 실제 보유보다 구간이 작게 나왔을 수 있다.
+ * 상태 문구는 다른 화면과 같은 `HolderBadge` 를 쓴다.
  */
 export default function HolderRecords({
   records,
@@ -28,7 +27,7 @@ export default function HolderRecords({
       className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
     >
       {records.length === 0 ? (
-        <p className="text-sm text-text-muted">공개된 작성 시점 보유 기록이 없습니다.</p>
+        <p className="text-sm text-text-muted">보유 기록이 없습니다.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {records.map((record) => {
@@ -58,9 +57,6 @@ export default function HolderRecords({
                     {isHolderTier(record.tier) ? (
                       <span className="text-sm text-text-primary">{record.holding}</span>
                     ) : null}
-                    {record.partial ? (
-                      <span className="text-xs text-text-muted">일부 조회 기준</span>
-                    ) : null}
                   </>
                 ) : (
                   <span className="text-xs text-text-muted">{UNSUPPORTED_LABEL}</span>
@@ -70,9 +66,6 @@ export default function HolderRecords({
           })}
         </ul>
       )}
-      <p className="mt-3 text-xs text-text-muted">
-        작성 시점에 기록된 보유 정보입니다. 이후 잔액이 바뀌거나 글을 수정해도 그대로입니다.
-      </p>
     </section>
   );
 }

@@ -255,7 +255,6 @@ function WriteFields({
   };
 
   const selectedRoom = rooms.data?.find((room) => room.symbol === coinSymbol);
-  const selectedName = selectedRoom?.name;
   const errorMessage =
     problem ||
     (publish.error ? publishErrorMessage(publish.error) : "") ||
@@ -312,7 +311,7 @@ function WriteFields({
         />
       ) : null}
 
-      <div className="mt-6 flex flex-wrap items-center gap-4">
+      <div className="mt-6">
         <select
           className={`${FIELD} h-10 max-w-60 text-sm`}
           aria-label="방 선택"
@@ -327,19 +326,6 @@ function WriteFields({
             </option>
           ))}
         </select>
-        <p className="text-sm text-text-muted">
-          {/* 방 목록이 오기 전에는 select 가 비어 보이므로 안내도 고른 방을 말하지 않는다. */}
-          {isGeneralRoom(coinSymbol) ? (
-            "기타 방 — 아래에서 고른 코인의 보유 기록만 글에 붙습니다"
-          ) : coinSymbol && rooms.data ? (
-            <>
-              <b className="font-semibold text-text-primary">{coinSymbol}</b>
-              {selectedName ? ` (${selectedName})` : ""} 보유량이 발행 시점 기준으로 글에 붙습니다
-            </>
-          ) : (
-            "고른 방의 코인 보유량이 글에 붙습니다"
-          )}
-        </p>
       </div>
 
       {closedPick ? (
@@ -369,6 +355,7 @@ function WriteFields({
       <CharCounter length={content.length} max={CONTENT_MAX} />
 
       <ImageAttachments
+        compactCopy
         items={images.items}
         notice={images.notice}
         full={images.full}
@@ -377,7 +364,12 @@ function WriteFields({
         onRemove={images.remove}
       />
 
-      <YoutubeField value={youtubeUrl} onChange={setYoutubeUrl} disabled={pending} />
+      <YoutubeField
+        value={youtubeUrl}
+        onChange={setYoutubeUrl}
+        disabled={pending}
+        hidePreviewCopy
+      />
 
       <CoinAttachments
         roomSymbol={coinSymbol}
@@ -393,11 +385,7 @@ function WriteFields({
         </p>
       ) : null}
 
-      <p className="mt-4 text-xs text-text-subtle">
-        게시물은 투자 권유가 아니며, 투자 판단의 책임은 이용자에게 있습니다.
-        <br />
-        리딩방·유료방 홍보는 예고 없이 삭제됩니다.
-      </p>
+      <p className="mt-4 text-xs text-text-subtle">리딩방 유료방 홍보는 예외없이 삭제됩니다.</p>
     </form>
   );
 }
