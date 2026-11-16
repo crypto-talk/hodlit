@@ -62,7 +62,6 @@ export function parseBithumbTickers(body: unknown): MarketQuotes {
     if (!isFiniteNumber(price) || price <= 0) continue;
 
     const rate = ticker.signed_change_rate;
-    const tradedAt = ticker.trade_timestamp;
 
     quotes[symbol] = {
       source: "bithumb",
@@ -70,9 +69,33 @@ export function parseBithumbTickers(body: unknown): MarketQuotes {
       // 빗썸은 비율(0.0078)로 준다. 화면은 퍼센트(0.78)를 받는다.
       changeRate: isFiniteNumber(rate) ? rate * 100 : null,
       changeBasis: "prev-close",
-      updatedAt: isFiniteNumber(tradedAt) ? tradedAt : null,
+      updatedAt: tradedAtOf(ticker),
     };
   }
 
   return quotes;
+}
+
+/**
+ * 마지막 체결 시각(ms). `trade_date` · `trade_time` (UTC, `yyyyMMdd` · `HHmmss`)으로 만든다.
+ *
+ * ⚠️ 빗썸의 `trade_timestamp` 는 쓰지 않는다. 한국 시간 벽시계를 UTC 처럼 적은 값이라 9시간
+ * 앞서 있다(2026-11-16 확인: 한국 22:09 체결이 `2026-11-16T22:09Z` 로 옴 → 화면에 "07:09 기준").
+ * 업비트는 이 값이 맞았다.
+ */
+function tradedAtOf(ticker: Record<string, unknown>): number | null {
+  const date = ticker.trade_date;
+  const time = ticker.trade_time;
+  if (typeof date !== "string" || !/^\d{8}$/.test(date)) return null;
+  if (typeof time !== "string" || !/^\d{6}$/.test(time)) return null;
+
+  const at = Date.UTC(
+    Number(date.slice(0, 4)),
+    Number(date.slice(4, 6)) - 1,
+    Number(date.slice(6, 8)),
+    Number(time.slice(0, 2)),
+    Number(time.slice(2, 4)),
+    Number(time.slice(4, 6)),
+  );
+  return Number.isFinite(at) ? at : null;
 }
