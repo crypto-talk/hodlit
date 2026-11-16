@@ -11,12 +11,12 @@ type Props = {
 const WIDGET_SRC = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
 
 const EXCHANGE_NAME: Record<string, string> = {
-  UPBIT: "업비트",
+  BITHUMB: "빗썸",
   BINANCE: "바이낸스",
   OKX: "OKX",
 };
 
-/** `UPBIT:BTCKRW` → `업비트 BTC/KRW` */
+/** `BITHUMB:BTCKRW` → `빗썸 BTC/KRW` */
 function marketLabel(tradingView: string): string {
   const [exchange, market] = tradingView.split(":");
   const quote = ["KRW", "USDT"].find((suffix) => market.endsWith(suffix));
@@ -31,14 +31,14 @@ function marketLabel(tradingView: string): string {
  * 위젯 스크립트가 자기 내용(JSON 설정)을 읽고 같은 상자 안에 iframe 을 만든다.
  *
  * 기본값: 1시간봉 캔들, 서울 시간, 한국어. 기간 · 간격은 위젯 안에서 바꿀 수 있다.
- * 심볼은 `lib/market-price/coins.ts` 의 표를 따른다(업비트 원화 마켓 우선).
+ * 심볼은 `lib/market-price/coins.ts` 의 표를 따른다(빗썸 원화 마켓 우선).
  *
  * 로딩: "불러오는 중" 문구를 위젯 아래에 깔아 둔다. iframe 은 차트를 그리기 전까지 투명이라
  * 그동안 문구가 보이고, 차트가 그려지면 가려진다. 스크립트가 안 오면(차단 · 네트워크)
  * "다시 시도"를 보여 준다. iframe 안쪽 오류(심볼 없음 등)는 위젯이 자기 화면에 알린다.
  *
- * 위 시세 칸도 업비트 원화 현재가라 두 숫자가 맞는다(시세 칸은 30초마다라 잠깐 어긋날 수 있다).
- * 업비트에 없는 BNB · LTC · TON 은 차트가 해외 USDT 마켓, 시세 칸은 CoinGecko 원화 환산이라
+ * 위 시세 칸도 빗썸 원화 현재가라 두 숫자가 맞는다(시세 칸은 30초마다라 잠깐 어긋날 수 있다).
+ * 빗썸에 없는 LTC · TON 은 차트가 해외 USDT 마켓, 시세 칸은 CoinGecko 원화 환산이라
  * 값이 다르다. 그래서 아래에 어느 마켓인지 적는다.
  */
 export default function RoomChart({ symbol, name }: Props) {

@@ -1,25 +1,25 @@
 import { MARKET_COINS } from "./coins";
 
 /**
- * 시세 한 건의 모양과 공통 에러. 업비트 · CoinGecko 두 출처가 같은 모양으로 돌려준다.
+ * 시세 한 건의 모양과 공통 에러. 빗썸 · CoinGecko 두 출처가 같은 모양으로 돌려준다.
  */
 
 /** 시세를 어디서 받았나. 화면이 출처와 등락률 기준을 적는 데 쓴다. */
-export type QuoteSource = "upbit" | "coingecko";
+export type QuoteSource = "bithumb" | "coingecko";
 
 /** 원화 시세 한 건. */
 export type MarketQuote = {
   source: QuoteSource;
-  /** 원화 가격. 업비트는 마지막 체결가, CoinGecko 는 해외 시세의 원화 환산값. */
+  /** 원화 가격. 빗썸은 마지막 체결가, CoinGecko 는 해외 시세의 원화 환산값. */
   price: number;
   /** 등락률(%). 출처가 안 주면 null. */
   changeRate: number | null;
   /**
-   * 등락률 기준. 업비트는 전일 종가 대비(`prev-close`), CoinGecko 는 24시간(`24h`).
+   * 등락률 기준. 빗썸은 전일 종가 대비(`prev-close`), CoinGecko 는 24시간(`24h`).
    * 둘이 다르므로 화면 문구도 다르게 적는다.
    */
   changeBasis: "prev-close" | "24h";
-  /** 출처가 이 값을 만든 시각(ms). 업비트는 마지막 체결 시각. 없으면 null. */
+  /** 출처가 이 값을 만든 시각(ms). 빗썸은 마지막 체결 시각. 없으면 null. */
   updatedAt: number | null;
 };
 
@@ -41,7 +41,7 @@ export function orderQuotes(quotes: MarketQuotes): SymbolQuote[] {
 }
 
 /**
- * 호출 제한(429) · 일시 차단(418, 업비트). 다른 실패와 달리 바로 다시 부르면 안 된다.
+ * 호출 제한(429) · 일시 차단(418). 다른 실패와 달리 바로 다시 부르면 안 된다.
  */
 export class PriceRateLimited extends Error {
   constructor(source: QuoteSource) {

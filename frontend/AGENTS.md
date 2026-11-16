@@ -82,8 +82,8 @@ lib/room-status.ts      open/closed room checks (HODL-77) + `isGeneralRoom()` fo
 lib/nickname.ts         nickname rule copied from the backend (2–40 chars after trim, Hangul /
                         A–Z / a–z / 0–9 / `_` / `-`), shared by signup and the mypage nickname editor
 lib/post-summary.ts     PostResponse -> list card view model, shared by landing and room board
-lib/market-price/       coin prices fetched by the browser straight from Upbit, or CoinGecko for
-                        coins Upbit does not list (HODL-61): the symbol -> Upbit market /
+lib/market-price/       coin prices fetched by the browser straight from Bithumb, or CoinGecko for
+                        coins Bithumb does not list (HODL-61): the symbol -> Bithumb market /
                         CoinGecko id / TradingView symbol table, the fetches, and
                         `useMarketQuote()` / `useSourceMarketQuotes()`; shared by the room price
                         box and the shell price ticker
@@ -276,26 +276,28 @@ post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    `docs/NUMBERED_PAGINATION_API.md`) and room news / poll APIs; none of them is wired yet.
    `postCount` is the room's real total (it used to stop at 100; the "100개 이상" label is gone).
    **Prices (HODL-61):** the browser fetches prices itself, not the backend `GET /market/prices`.
-   Coins with an Upbit KRW market use Upbit's public `/v1/ticker` (last trade price, change vs the
-   previous day's close) so the number matches the Upbit chart below it; BNB, LTC and TON, which
-   Upbit does not list, use CoinGecko's keyless `/simple/price` (KRW conversion, 24h change).
+   Coins with a Bithumb KRW market use Bithumb's public `/v1/ticker` (last trade price, change vs
+   the previous day's close — KST midnight, as far as Bithumb's docs show) so the number matches the
+   Bithumb chart below it; LTC and TON, which Bithumb does not list, use CoinGecko's keyless
+   `/simple/price` (KRW conversion, 24h change). It was Upbit until 2026-11-16: Upbit allows a
+   browser — a request with an Origin header — one call per 10 seconds, so a second tab or a shared
+   IP got refused and the browser logged it as a CORS error. Bithumb answered repeated browser calls.
    The price box names the source and the change basis. No API key — there is nothing secret to
-   ship. One query per source (`["market-quotes", "upbit" | "coingecko"]`), each one request for
-   all of its coins, refetched every 30 seconds (Jira asked for 5; Upbit allows a browser — a
-   request with an Origin header — one call per 10 seconds and blocks repeat offenders with 418,
-   and the keyless CoinGecko values change about once a minute — reasoning on HODL-61), paused
+   ship. One query per source (`["market-quotes", "bithumb" | "coingecko"]`), each one request for
+   all of its coins, refetched every 30 seconds (Jira asked for 5; the keyless CoinGecko values
+   change about once a minute — reasoning on HODL-61), paused
    while the tab is hidden. On 429/418 it waits 60 seconds and does not retry. Only the price line
    dims while refetching; a failed refresh keeps the last value.
    **Chart (HODL-63):** the TradingView advanced-chart embed (chart and data both TradingView),
-   1-hour candles, Upbit KRW markets where Upbit lists the coin, otherwise a USDT market (BNB, LTC
+   1-hour candles, Bithumb KRW markets where Bithumb lists the coin, otherwise a USDT market (LTC
    on Binance, TON on OKX), named under the chart. No countdown.
    **Ticker (HODL-57):** the shell's top strip shows prices instead of the mock service copy.
-   Upbit KRW markets only, for now — the service targets Korean users, so every change in the
-   strip is vs the previous day's close (UTC 0:00 on Upbit) and needs no per-cell basis label;
-   BNB, LTC and TON are not in the strip. It reads the same `["market-quotes", "upbit"]` query as
-   the price box, so a room screen still makes one Upbit request per 30 seconds. For foreign
+   Bithumb KRW markets only, for now — the service targets Korean users, so every change in the
+   strip is vs the previous day's close and needs no per-cell basis label;
+   LTC and TON are not in the strip. It reads the same `["market-quotes", "bithumb"]` query as
+   the price box, so a room screen still makes one Bithumb request per 30 seconds. For foreign
    users the plan is to switch the strip to CoinGecko (`TICKER_SOURCE`); `coingecko.ts` would
-   then have to fetch every coin, not only the three. Square board, brand frame and a static
+   then have to fetch every coin, not only the two. Square board, brand frame and a static
    LIVE badge; values change without flashing (성지's call). The strip pauses on hover; loading,
    failure and empty responses are one still line inside the strip.
    The landing's post card and its mapper moved down to `components/post/post-card.tsx` and
