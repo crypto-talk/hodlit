@@ -110,10 +110,13 @@ describe("http", () => {
     expect(getAccessToken()).toBe("token-2");
   });
 
-  it("갱신이 실패하면 토큰을 지우고 원래 오류를 던진다", async () => {
+  it("갱신이 실패하면 토큰을 지우고, 토큰 없이 다시 보낸 요청의 오류를 던진다", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(401, { code: "TOKEN_EXPIRED", message: "만료됐습니다." }))
-      .mockResolvedValueOnce(emptyResponse(401));
+      .mockResolvedValueOnce(emptyResponse(401))
+      .mockResolvedValueOnce(
+        jsonResponse(401, { code: "LOGIN_REQUIRED", message: "로그인하세요." }),
+      );
 
     const { http, ApiError, setAccessToken, getAccessToken } = await load();
     setAccessToken("token-old");
@@ -123,11 +126,40 @@ describe("http", () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({
       status: 401,
-      code: "TOKEN_EXPIRED",
-      message: "만료됐습니다.",
+      code: "LOGIN_REQUIRED",
+      message: "로그인하세요.",
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(getAccessToken()).toBeNull();
+  });
+
+  it("만료된 토큰 때문에 401 이 난 공개 API 는 토큰 없이 다시 받아진다", async () => {
+    fetchMock
+      .mockResolvedValueOnce(emptyResponse(401))
+      .mockResolvedValueOnce(emptyResponse(401))
+      .mockResolvedValueOnce(jsonResponse(200, [{ id: 1 }]));
+
+    const { http, setAccessToken } = await load();
+    setAccessToken("token-old");
+
+    await expect(http("/api/v1/banners")).resolves.toEqual([{ id: 1 }]);
+
+    const first = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    const retry = new Headers(fetchMock.mock.calls[2]?.[1]?.headers);
+    expect(first.get("Authorization")).toBe("Bearer token-old");
+    expect(retry.get("Authorization")).toBeNull();
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(`${API_URL}/api/v1/banners`);
+  });
+
+  it("토큰 없이 보낸 요청이 401 이면 갱신 실패 뒤 다시 보내지 않는다", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(401, { message: "로그인하세요." }))
+      .mockResolvedValueOnce(emptyResponse(401));
+
+    const { http } = await load();
+
+    await expect(http("/api/v1/me")).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("인증 엔드포인트의 401 은 갱신하지 않는다", async () => {
