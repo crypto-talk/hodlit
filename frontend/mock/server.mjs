@@ -663,7 +663,10 @@ on("POST", "/media", () => {
   return [201, { url: `/api/v1/media/mock-${state.nextId++}.png` }];
 });
 on("DELETE", "/media/:file", () => undefined);
-on("GET", "/media/:file", () => PIXEL);
+on("GET", "/media/:file", ({ params }) => {
+  if (params.file.includes("missing")) throw new HttpError(404, "없는 파일입니다.");
+  return PIXEL;
+});
 
 // ── 서버 ─────────────────────────────────────────────────────────────────────
 const readBody = (request) =>

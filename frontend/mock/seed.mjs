@@ -43,7 +43,7 @@ const DOLPHIN = badge("돌고래", "1~10 ETH", "dolphin", "blue", "shine");
 const SHRIMP = badge("새우", "0~0.1 ETH", "shrimp", "coral", "none");
 
 /** 글 한 건. `holder` 는 방 코인의 작성 시점 보유 기록이다. */
-const post = (id, coinSymbol, nickname, title, holder, minutesAgo) => ({
+const post = (id, coinSymbol, nickname, title, holder, minutesAgo, extra = {}) => ({
   id,
   coinSymbol,
   title,
@@ -73,6 +73,23 @@ const post = (id, coinSymbol, nickname, title, holder, minutesAgo) => ({
       capturedAt: holder.capturedAt,
     },
   ],
+  ...extra,
+});
+
+/** 첨부 사진. `missing` 이 들어간 파일은 가짜 서버가 404 로 답한다(못 불러온 사진 확인용). */
+const photo = (id, order, file = `mock-photo-${id}.png`) => ({
+  id,
+  type: "IMAGE",
+  url: `/api/v1/media/${file}`,
+  order,
+});
+const photos = (from, count) =>
+  Array.from({ length: count }, (_, index) => photo(from + index, index));
+/** 유튜브 칸으로 붙인 영상. */
+const youtube = (videoId) => ({
+  url: `https://youtu.be/${videoId}`,
+  videoId,
+  thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
 });
 
 const comment = (id, nickname, content, holder, minutesAgo, reply = {}) => ({
@@ -206,6 +223,13 @@ export function seed(role) {
         "동물 배지 · 고래 (오로라 효과)",
         snapshot("HOLDER", { quantityBand: "100+ ETH", badge: WHALE }),
         5,
+        {
+          // 사진 2장 + 유튜브 칸 영상 + 본문 속 유튜브 링크(HODL-123 · 127)
+          content:
+            "동물 배지 · 고래 (오로라 효과)\n\n본문 속 유튜브 링크: [https://youtu.be/aqz-KE-bpKQ](https://youtu.be/aqz-KE-bpKQ) 와 쇼츠 youtube.com/shorts/jNQXAC9IVRw\n\n유튜브가 아닌 링크: [예시](https://example.com)",
+          media: photos(11, 2),
+          youtube: youtube("dQw4w9WgXcQ"),
+        },
       ),
       post(
         2,
@@ -214,6 +238,7 @@ export function seed(role) {
         "동물 배지 · 상어 (흐르는 테두리)",
         snapshot("HOLDER", { quantityBand: "10~100 ETH", badge: SHARK }),
         20,
+        { media: [photo(21, 0)] },
       ),
       post(
         3,
@@ -227,6 +252,7 @@ export function seed(role) {
           syncStatus: "PARTIAL",
         }),
         45,
+        { youtube: youtube("dQw4w9WgXcQ") },
       ),
       post(
         4,
@@ -235,8 +261,15 @@ export function seed(role) {
         "동물 배지 · 새우 (효과 없음)",
         snapshot("HOLDER", { quantityBand: "0~0.1 ETH", badge: SHRIMP }),
         70,
+        { media: photos(41, 7), youtube: youtube("dQw4w9WgXcQ") },
       ),
-      post(5, "ETH", "빈지갑", "모두 확인했고 0개 → ETH 미보유", snapshot("EMPTY"), 90),
+      post(5, "ETH", "빈지갑", "모두 확인했고 0개 → ETH 미보유", snapshot("EMPTY"), 90, {
+        media: [
+          photo(51, 0, "mock-missing-51.png"),
+          photo(52, 1),
+          photo(53, 2, "mock-missing-53.png"),
+        ],
+      }),
       post(6, "ETH", "지갑없음", "지갑을 연결하지 않음 → 미인증", snapshot("NOT_CONNECTED"), 120),
       post(
         7,
