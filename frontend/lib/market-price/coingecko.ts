@@ -4,7 +4,7 @@ import { isFiniteNumber, isRecord, type MarketQuotes, PriceRateLimited } from ".
 /**
  * CoinGecko 시세 직접 호출 (HODL-61).
  *
- * 업비트에 원화 마켓이 없는 코인(BNB · LTC · TON)만 여기서 받는다. 나머지는 `upbit.ts`.
+ * 빗썸에 원화 마켓이 없는 코인(LTC · TON)만 여기서 받는다. 나머지는 `bithumb.ts`.
  * 백엔드 `MarketPriceService` 와 같은 `/simple/price`, 키 없음, 원화 · 24시간 등락률 · 갱신 시각.
  *
  * 비밀 키를 쓰지 않는다. 키 없는 공개 API 라 프론트 번들에 넣을 값이 없다.
@@ -15,9 +15,9 @@ import { isFiniteNumber, isRecord, type MarketQuotes, PriceRateLimited } from ".
 
 const ENDPOINT = "https://api.coingecko.com/api/v3/simple/price";
 
-/** 업비트에 없어서 CoinGecko 로 받는 코인의 기호. */
+/** 빗썸에 없어서 CoinGecko 로 받는 코인의 기호. */
 export const GECKO_SYMBOLS = Object.entries(MARKET_COINS)
-  .filter(([, coin]) => coin.upbitMarket === null)
+  .filter(([, coin]) => coin.bithumbMarket === null)
   .map(([symbol]) => symbol);
 
 export async function fetchGeckoQuotes(signal?: AbortSignal): Promise<MarketQuotes> {
