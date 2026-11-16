@@ -8,7 +8,9 @@ import { config } from "@/lib/config";
  * 하는 일
  *   1. baseURL 을 붙이고, 문자열 본문에는 JSON Content-Type 을 세운다
  *   2. 액세스 토큰을 싣고, refresh 쿠키를 위해 `credentials: "include"` 를 건다
- *   3. 401 이면 토큰을 한 번 갱신하고 원래 요청을 딱 한 번 다시 보낸다
+ *   3. 401 이면 토큰을 한 번 갱신하고 원래 요청을 딱 한 번 다시 보낸다.
+ *      갱신이 실패하면 토큰을 지우고, 토큰을 실어 보냈었다면 토큰 없이 한 번 더 보낸다
+ *      (만료된 토큰이 남은 탭에서 공개 API 가 실패하지 않게)
  *   4. 실패 응답을 `{ code, message }` 로 정규화한다
  *
  * 아직 하지 않는 것과 그 이유
@@ -48,10 +50,19 @@ export class ApiError extends Error {
 }
 
 export async function http<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const sentToken = getAccessToken() !== null;
   const response = await send(path, init);
 
-  if (response.status === 401 && canRefresh(path) && (await refreshAccessToken())) {
-    return unwrap<T>(await send(path, init));
+  if (response.status === 401 && canRefresh(path)) {
+    if (await refreshAccessToken()) {
+      return unwrap<T>(await send(path, init));
+    }
+    // 갱신이 실패해 토큰은 지워졌다. 백엔드는 공개 API 라도 만료된 토큰이 실리면 401 을
+    // 준다. 그래서 토큰을 실어 보냈었다면 토큰 없이 딱 한 번 더 보낸다. 공개 API 는 이걸로
+    // 받아지고, 로그인이 필요한 API 는 다시 401 이라 지금처럼 그 오류가 화면으로 간다.
+    if (sentToken) {
+      return unwrap<T>(await send(path, init));
+    }
   }
 
   return unwrap<T>(response);
