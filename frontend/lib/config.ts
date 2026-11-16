@@ -17,7 +17,11 @@ function required(name: string, value: string | undefined): string {
  * Next 는 빌드 시점에 `process.env.NEXT_PUBLIC_*` 를 문자열로 치환한다.
  * 그래서 동적 접근(`process.env[name]`)이 아니라 리터럴로 적어야 한다.
  */
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").replace(
+  // 기존 배포 환경변수로 빌드해도 운영 API는 새 도메인을 사용한다(HODL-135).
+  /^https?:\/\/cryptalk-api\.hojun\.xyz\/?$/i,
+  "https://api.hodlit.xyz",
+);
 
 /**
  * WalletConnect(Reown) projectId. 공개해도 되는 값이다(브라우저가 relay 에 붙을 때 쓴다).
@@ -40,7 +44,7 @@ const analyticsEnvironment =
   (process.env.NODE_ENV === "production" ? "production" : "development");
 
 export const config = {
-  /** Spring Boot 백엔드 주소. 개발 기본값은 로컬 8080. */
+  /** 백엔드 주소. 개발 기본값은 로컬 8080. */
   apiUrl,
   /** 없으면 빈 문자열. `lib/wallet-link.ts` 가 쓴다. */
   walletConnectProjectId,

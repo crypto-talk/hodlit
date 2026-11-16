@@ -2,9 +2,8 @@
 
 Read the repository `AGENTS.md` first. This file adds the rules that apply under `frontend/`.
 
-The product is **Hodlit**. The repository, the npm package name, the API domain and the Java
-package are still spelled `cryptalk`; renaming those is a separate job scheduled for just
-before launch. Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
+The product is **Hodlit**. The npm package name and the Java package still use `cryptalk`.
+Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
 The Korean name is **호들릿** (not 호들잇). It sits next to Hodlit in the site title, description,
 OG site name and the `WebSite` JSON-LD (`alternateName`) in `app/layout.tsx`, so Korean searches
 land here. Keep one spelling everywhere; mixed spellings split what search engines learn.
@@ -23,8 +22,8 @@ to a cookie (B-3).
 - pnpm is the package manager, pinned by `packageManager` in `package.json`. Never run
   `npm install` here; it would create a competing `package-lock.json`.
 - Deployed on Vercel. `next build` is the build; there is no Cloudflare Worker runtime.
-- The API client talks to the Spring Boot backend at `NEXT_PUBLIC_API_URL`. There is no
-  database, ORM or server-side data layer in this project.
+- The API client reads `NEXT_PUBLIC_API_URL`. Production uses `https://api.hodlit.xyz`.
+  There is no database, ORM or server-side data layer in this project.
 
 ## Where the other documents are
 
@@ -358,7 +357,7 @@ onto a single line to save space.
   comments have none), `holdingMonths` is an already-floored integer or null.
 - The server refreshes holdings itself when a post or comment is saved (HODL-45). The client
   does not call `/me/assets` before publishing.
-- OpenAPI spec: https://cryptalk-api.hojun.xyz/v3/api-docs — the accurate endpoint list.
+- OpenAPI spec: https://api.hodlit.xyz/v3/api-docs — the accurate endpoint list.
   `pnpm gen:api` writes it to `lib/api-schema.ts`; run it after any backend change and commit
   the result. `GET /feed` (cursor + size, returns `{items, nextCursor, hasMore}`) already
   exists; the older documents claiming there is no global feed are out of date.
