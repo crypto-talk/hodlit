@@ -1,3 +1,5 @@
+import { youtubeVideoId } from "@/lib/youtube";
+
 /**
  * 글 길이 제한.
  *
@@ -27,17 +29,6 @@ export function imageProblem(file: { type: string; size: number }): string | nul
   }
   if (file.size > IMAGE_BYTES_MAX) return "이미지는 25MB 이하여야 합니다.";
   return null;
-}
-
-/**
- * 백엔드 `PostService.YOUTUBE` 와 같은 패턴. 영상 id(11자)를 꺼낸다.
- * 서버가 다시 검사하지만, 화면에서 먼저 걸러야 미리보기를 보여줄 수 있다.
- */
-const YOUTUBE_PATTERN =
-  /^(?:https:\/\/)?(?:www\.)?(?:youtube\.com\/(?:shorts\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&].*)?$/;
-
-export function youtubeVideoId(url: string): string | null {
-  return YOUTUBE_PATTERN.exec(url.trim())?.[1] ?? null;
 }
 
 /**
