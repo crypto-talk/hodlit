@@ -47,9 +47,8 @@ test("server-renders the Hodlit application", async (t) => {
     assert.match(html, /지갑 연결/);
     assert.match(html, /투자 권유가 아니며/);
 
-    // 로그인은 모달이 아니라 /login 페이지다. 헤더의 버튼이 링크여야 한다.
-    assert.match(html, /href="\/login\?next=[^"]*"/);
-    assert.match(html, /href="\/signup"/);
+    // Cookie session restoration is pending on public SSR. Do not flash logged-out controls.
+    assert.match(html, /로그인 확인 중/);
 
     // 폰트는 셀프호스팅이다(D-5). CDN 링크가 다시 들어오면 여기서 걸린다.
     assert.doesNotMatch(html, /cdn\.jsdelivr\.net/);
