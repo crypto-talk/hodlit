@@ -46,7 +46,7 @@ async function load() {
 
 beforeEach(() => {
   vi.resetModules();
-  vi.stubGlobal("window", { sessionStorage: fakeSessionStorage() });
+  vi.stubGlobal("window", { sessionStorage: fakeSessionStorage(), dispatchEvent: vi.fn() });
   fetchMock = vi.fn<(input: unknown, init?: RequestInit) => Promise<Response>>();
   vi.stubGlobal("fetch", fetchMock);
 });

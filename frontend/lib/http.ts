@@ -1,5 +1,10 @@
 import type { components } from "@/lib/api-schema";
-import { clearAccessToken, getAccessToken, setAccessToken } from "@/lib/auth-token";
+import {
+  clearAccessToken,
+  getAccessToken,
+  getTokenRevision,
+  setAccessToken,
+} from "@/lib/auth-token";
 import { config } from "@/lib/config";
 
 /**
@@ -48,9 +53,14 @@ export class ApiError extends Error {
 }
 
 export async function http<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const revision = getTokenRevision();
   const response = await send(path, init);
 
-  if (response.status === 401 && canRefresh(path) && (await refreshAccessToken())) {
+  if (
+    response.status === 401 &&
+    canRefresh(path) &&
+    (revision !== getTokenRevision() ? !!getAccessToken() : await refreshAccessToken())
+  ) {
     return unwrap<T>(await send(path, init));
   }
 
@@ -98,30 +108,27 @@ function refreshAccessToken(): Promise<boolean> {
 }
 
 async function runRefresh(): Promise<boolean> {
-  try {
-    // 갱신 자체는 http() 를 타지 않는다. 재시도 규칙이 자기 자신에게 걸린다.
-    const response = await fetch(`${config.apiUrl}${REFRESH_PATH}`, {
-      method: "POST",
-      credentials: "include",
-    });
+  const revision = getTokenRevision();
+  // 세션 복원과 일반 API의 401은 같은 갱신을 공유한다.
+  const response = await fetch(`${config.apiUrl}${REFRESH_PATH}`, {
+    method: "POST",
+    credentials: "include",
+  });
 
-    if (!response.ok) {
-      clearAccessToken();
-      return false;
-    }
-
-    const body = (await readBody(response)) as AuthResponse | undefined;
-    if (!body?.accessToken) {
-      clearAccessToken();
-      return false;
-    }
-
-    setAccessToken(body.accessToken);
-    return true;
-  } catch {
+  // 갱신 도중 로그인·로그아웃한 경우 오래된 결과로 덮어쓰지 않는다.
+  if (revision !== getTokenRevision()) return !!getAccessToken();
+  if (response.status === 401) {
     clearAccessToken();
+    window.dispatchEvent(new Event("hodlit-session-expired"));
     return false;
   }
+
+  // 네트워크·403·5xx 오류는 세션 만료가 아니다. 토큰을 보존하고 재시도를 허용한다.
+  const body = await unwrap<AuthResponse>(response);
+  if (revision !== getTokenRevision()) return !!getAccessToken();
+  if (!body?.accessToken) throw new Error("인증 갱신 응답에 access token이 없습니다.");
+  setAccessToken(body.accessToken);
+  return true;
 }
 
 async function unwrap<T>(response: Response): Promise<T> {

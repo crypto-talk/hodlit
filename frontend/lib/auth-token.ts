@@ -23,6 +23,11 @@ const STORAGE_KEY = "cryptalk_access";
  */
 let cached: string | null = null;
 let loaded = false;
+let revision = 0;
+
+export function getTokenRevision(): number {
+  return revision;
+}
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -42,6 +47,7 @@ export function getAccessToken(): string | null {
 }
 
 export function setAccessToken(token: string): void {
+  revision += 1;
   cached = token;
   loaded = true;
   if (!isBrowser()) return;
@@ -53,6 +59,7 @@ export function setAccessToken(token: string): void {
 }
 
 export function clearAccessToken(): void {
+  revision += 1;
   cached = null;
   loaded = true;
   if (!isBrowser()) return;

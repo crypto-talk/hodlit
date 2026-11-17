@@ -23,7 +23,7 @@ import Logo from "./logo";
  * 화면까지 클라이언트 렌더로 바뀌어서 쓰지 않는다)
  */
 export default function Header() {
-  const { member, logout } = useSession();
+  const { member, restored, logout } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -73,7 +73,14 @@ export default function Header() {
       </form>
 
       <div className="flex flex-none items-center gap-2">
-        {member ? (
+        {!restored ? (
+          <>
+            <span role="status" className="text-sm text-text-muted">
+              로그인 확인 중…
+            </span>
+            <WriteButton href={write} />
+          </>
+        ) : member ? (
           <>
             {/* 마이페이지 입구. 좁은 화면에서는 사이드바가 숨어서 여기가 유일한 길이다. */}
             <Link

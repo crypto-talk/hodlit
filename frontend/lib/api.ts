@@ -1,5 +1,5 @@
 import { clearAccessToken, setAccessToken } from "@/lib/auth-token";
-import { http } from "@/lib/http";
+import { ApiError, http } from "@/lib/http";
 
 /**
  * 구조 개편 전부터 남은 마지막 API 모음. `lib/session.tsx` 만 쓴다 —
@@ -27,16 +27,13 @@ async function authenticate(path: string, body: unknown): Promise<Member> {
   return result.member;
 }
 
-/**
- * refresh 쿠키로 세션을 복원한다. 실패는 "로그인 안 된 상태"라 오류가 아니므로
- * null 을 돌려준다.
- */
+/** 저장된 access로 회원을 조회하고, 만료된 경우 http의 공유 갱신을 이용한다. */
 export async function refreshSession(): Promise<Member | null> {
   try {
-    return await authenticate("/api/v1/auth/refresh", undefined);
-  } catch {
-    clearAccessToken();
-    return null;
+    return await http<Member>("/api/v1/me");
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
   }
 }
 
