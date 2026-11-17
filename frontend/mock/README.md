@@ -35,6 +35,7 @@ pnpm dev:mock
 | 내 투표     | `/mypage/votes`                                    | 두 건                                                                                                |
 | 검색        | `/search?q=배지` · `/search?q=배지&room=ETH`       | 분류별 미리보기. 글이 5건을 넘어 "모두 보기" 로 분류 화면에 간다. `/search?q=zzz` 는 결과 없음       |
 | 방 통계     | `/subhodl/ETH` · `/subhodl/SOL` · `/subhodl/OTHER` | 참여자 · 보유 인증률(24시간 · 누적) · 참여자 없음 · 인증률 숨김                                      |
+| sitemap     | `/sitemap.xml` · `/robots.txt`                     | 홈 · 열린 방 · 열린 방의 글. 닫힌 방(DOGE)과 그 글은 빠진다                                          |
 
 ## 알아둘 것
 

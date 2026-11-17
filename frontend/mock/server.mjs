@@ -154,6 +154,18 @@ on("GET", "/communities/:symbol/posts/page", ({ params, query }) => {
     query,
   );
 });
+// 전체 글 번호 페이지. 실제 API 처럼 닫힌 방 · 비활성 방의 글은 뺀다. sitemap 이 쓴다.
+on("GET", "/posts/page", ({ query }) =>
+  page(
+    state.posts.filter((post) =>
+      state.coins.some(
+        (coin) =>
+          coin.symbol === post.coinSymbol && coin.active && coin.operationStatus !== "CLOSE",
+      ),
+    ),
+    query,
+  ),
+);
 on("GET", "/feed", () => ({
   items: state.posts.map((post) => ({ eventType: "POST", post })),
   hasMore: false,
