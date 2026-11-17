@@ -341,6 +341,21 @@ on("POST", "/polls/:id/close", ({ params }) => {
   if (!poll) throw new HttpError(404, "투표를 찾을 수 없습니다.");
   poll.active = false;
 });
+on("GET", "/polls/:id", ({ params }) => {
+  const poll = state.polls.find((item) => item.id === Number(params.id));
+  if (!poll) throw new HttpError(404, "투표를 찾을 수 없습니다.");
+  openRoom(poll.coinSymbol);
+  return pollView(poll);
+});
+on("DELETE", "/polls/:id", ({ params }) => {
+  admin();
+  const id = Number(params.id);
+  if (!state.polls.some((item) => item.id === id))
+    throw new HttpError(404, "투표를 찾을 수 없습니다.");
+  state.polls = state.polls.filter((item) => item.id !== id);
+  state.pollResults = state.pollResults.filter((item) => item.pollId !== id);
+  state.myVotes = state.myVotes.filter((item) => item.result?.pollId !== id);
+});
 on("POST", "/polls/:id/votes", ({ params, body }) => {
   const poll = state.polls.find((item) => item.id === Number(params.id));
   if (!poll) throw new HttpError(404, "투표를 찾을 수 없습니다.");
