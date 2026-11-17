@@ -6,7 +6,7 @@ The product is **Hodlit**. The repository, the npm package name, the API domain 
 package are still spelled `cryptalk`; renaming those is a separate job scheduled for just
 before launch. Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
 Legacy `cryptalk_access` storage is removed on session startup (HODL-129). Tokens live only
-in HttpOnly cookies managed by the same-origin Next.js BFF. See `AUTH_COOKIES.md`.
+in HttpOnly cookies issued and validated by Rust through a same-origin Next.js transport proxy. See `AUTH_COOKIES.md`.
 
 ## Stack
 
@@ -61,7 +61,7 @@ components/layout/      header sidebar footer fab price-ticker (+ types.ts: the 
 lib/http.ts             fetch wrapper: same-origin cookies, single-flight 401
                         refresh, {code,message} normalisation. Every backend request goes
                         through it
-lib/api-proxy.ts        server-side BFF: HttpOnly cookies, upstream Bearer, CSRF validation
+lib/api-proxy.ts        transport proxy: Rust Cookie/Set-Cookie and Origin/CSRF forwarding
 lib/api-schema.ts       generated from the backend OpenAPI spec by `pnpm gen:api`. Never
                         hand-edited, excluded from ESLint and Prettier
 lib/query.ts  lib/format/  lib/utils.ts (cn)  lib/config.ts (env, single read point)
@@ -180,8 +180,8 @@ C-1 (who owns the API types) is settled: the backend's OpenAPI spec generates th
 
 Known rough edges left by step 2, deliberately:
 
-- `app/(shell)/layout.tsx` remains a client component. Session restoration uses the BFF's
-  HttpOnly cookies. Moving the room list to the server is a separate layout change.
+- `app/(shell)/layout.tsx` remains a client component. Session restoration uses Rust's
+  HttpOnly cookies through the same-origin proxy. Moving the room list to the server is a separate layout change.
 - ~~The 글쓰기 buttons in the header and the fab are disabled~~ — they link to `/write` since
   step 3 ①. The search box is still disabled with a title.
 - The top strip is rendered by the shell layout, not the landing, because it is a strip across
@@ -332,17 +332,17 @@ onto a single line to save space.
   `pnpm gen:api` writes it to `lib/api-schema.ts`; run it after any backend change and commit
   the result. `GET /feed` (cursor + size, returns `{items, nextCursor, hasMore}`) already
   exists; the older documents claiming there is no global feed are out of date.
-- **Every field of every response type is optional in `lib/api-schema.ts`.** The backend does
-  not emit `required` on response schemas, so springdoc marks all of them `?`. Request bodies
-  are correct. Until the backend fixes this, a feature that needs a non-optional field
-  narrows it in its own `types.ts` and says why — do not spread `?` through the components.
+- Imported Spring response schemas mostly omit `required`, so many generated response fields
+  remain optional. Rust's `AuthResponse.member` is required. A feature that needs a non-optional
+  field narrows it in its own `types.ts` and says why — do not spread `?` through components.
 - `holdingMonths` is always `null` until an EVM indexer populates `holdingSince`. Render the
   fixed label `보유 기간 미확인`; do not build UI that assumes a value.
 - Public post and comment responses do not carry wallet addresses. Do not reintroduce them.
 - `POST /posts` ignores a client-supplied `assetPrice`; the server captures the price itself.
 - Auth uses `loginId`, not email: `{ loginId, password }` to log in, plus `nickname` to sign
-  up. Both tokens are HttpOnly host cookies at the frontend BFF. The upstream API keeps
-  its Bearer/cryptalk_refresh contract; tokens never reach browser JSON. Server components
+  up. Rust owns HttpOnly cryptalk_access/cryptalk_refresh cookies and returns only member
+  information. Next forwards Cookie/Set-Cookie and CSRF metadata; it does not mint cookies
+  or translate access cookies into Bearer headers. Server components
   currently fetch public data only. See `AUTH_COOKIES.md` for rollout and CSRF rules.
 - `lib/api-schema.ts` is the accurate list of endpoints. Do not copy it into a document; the
   copy goes stale and someone writes against it.

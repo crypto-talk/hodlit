@@ -28,8 +28,6 @@ const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID 
 export const config = {
   /** Spring Boot 백엔드 주소. 개발 기본값은 로컬 8080. */
   apiUrl,
-  /** BFF cookies are Secure on production HTTPS, including preview deployments. */
-  secureCookies: process.env.NODE_ENV === "production",
   /** 없으면 빈 문자열. `lib/wallet-link.ts` 가 쓴다. */
   walletConnectProjectId,
 } as const;

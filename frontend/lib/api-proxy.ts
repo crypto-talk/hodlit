@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ACCESS = "hodlit_access";
-const REFRESH = "hodlit_refresh";
+const AUTH_COOKIES = ["cryptalk_access", "cryptalk_refresh"] as const;
 const AUTH = new Set(["login", "signup", "refresh", "logout"]);
 
-/** Server-only BFF: only the configured API receives credentials. Never follow redirects. */
-export async function proxyApi(request: NextRequest, apiUrl: string, secure: boolean) {
+/** Transport proxy only. Rust owns cookie issuance, validation, rotation and deletion. */
+export async function proxyApi(request: NextRequest, apiUrl: string) {
   let path: string;
   try {
     path = decodeURIComponent(request.nextUrl.pathname);
@@ -38,22 +37,18 @@ export async function proxyApi(request: NextRequest, apiUrl: string, secure: boo
   }
 
   const headers = new Headers();
-  for (const name of ["content-type", "accept"]) {
+  for (const name of ["content-type", "accept", "origin", "x-hodlit-request", "sec-fetch-site"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
-  const access = request.cookies.get(ACCESS)?.value;
-  if (access && !auth) headers.set("Authorization", `Bearer ${access}`);
-  const refresh = request.cookies.get(REFRESH)?.value;
-  if (refresh && (auth === "refresh" || auth === "logout")) {
-    headers.set("Cookie", `cryptalk_refresh=${encodeURIComponent(refresh)}`);
-  }
+  const cookies = AUTH_COOKIES.filter(
+    (name) => name === "cryptalk_access" || auth === "refresh" || auth === "logout",
+  ).flatMap((name) => {
+    const value = request.cookies.get(name)?.value;
+    return value ? [`${name}=${encodeURIComponent(value)}`] : [];
+  });
+  if (cookies.length) headers.set("Cookie", cookies.join("; "));
 
-  const cookieOptions = { httpOnly: true, secure, sameSite: "lax" as const, path: "/" };
-  const clear = (response: NextResponse) => {
-    response.cookies.set(ACCESS, "", { ...cookieOptions, maxAge: 0 });
-    response.cookies.set(REFRESH, "", { ...cookieOptions, maxAge: 0 });
-  };
   let response: NextResponse;
   try {
     const target = new URL(apiUrl);
@@ -71,35 +66,23 @@ export async function proxyApi(request: NextRequest, apiUrl: string, secure: boo
       throw new Error("API redirect rejected");
     }
     if (auth && upstream.ok && auth !== "logout") {
-      const body = await upstream.json();
-      const refreshCookie = upstream.headers
-        .getSetCookie()
-        .find((value) => value.startsWith("cryptalk_refresh="));
-      const token = refreshCookie?.split(";", 1)[0].slice("cryptalk_refresh=".length);
-      if (typeof body.accessToken !== "string" || !token || !body.member) {
-        throw new Error("Invalid upstream authentication response");
+      const body = await upstream.clone().json();
+      // Fail closed if the proxy is accidentally deployed against the old token-body API.
+      if ("accessToken" in body || "refreshToken" in body) {
+        throw new Error("Cookie authentication API is required");
       }
-      // Whitelist response fields: neither token nor future credential fields may reach JS.
-      response = NextResponse.json({ member: body.member });
-      response.cookies.set(ACCESS, body.accessToken, { ...cookieOptions, maxAge: 15 * 60 });
-      response.cookies.set(REFRESH, decodeURIComponent(token), {
-        ...cookieOptions,
-        maxAge: 14 * 86400,
-      });
-    } else {
-      response = new NextResponse(upstream.body, { status: upstream.status });
-      const contentType = upstream.headers.get("content-type");
-      if (contentType) response.headers.set("content-type", contentType);
-      if (auth === "refresh" && upstream.status === 401) clear(response);
+    }
+    response = new NextResponse(upstream.body, { status: upstream.status });
+    const contentType = upstream.headers.get("content-type");
+    if (contentType) response.headers.set("content-type", contentType);
+    for (const cookie of upstream.headers.getSetCookie()) {
+      if (AUTH_COOKIES.some((name) => cookie.startsWith(`${name}=`))) {
+        // Preserve Rust's Path, Secure, SameSite and expiry, including deletion on 401.
+        response.headers.append("set-cookie", cookie);
+      }
     }
   } catch {
     response = NextResponse.json({ message: "API에 연결하지 못했습니다." }, { status: 502 });
-  }
-  // Local logout always clears browser credentials, even when revocation is unavailable.
-  if (auth === "logout") {
-    // Report local logout success. Upstream refresh revocation is best effort on outages.
-    response = new NextResponse(null, { status: 204 });
-    clear(response);
   }
   response.headers.set("Cache-Control", "private, no-store");
   response.headers.set("Vary", "Cookie");

@@ -5,7 +5,7 @@ import { config } from "@/lib/config";
 export const dynamic = "force-dynamic";
 
 function handle(request: NextRequest) {
-  return proxyApi(request, config.apiUrl, config.secureCookies);
+  return proxyApi(request, config.apiUrl);
 }
 
 export {
