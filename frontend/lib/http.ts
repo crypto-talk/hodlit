@@ -27,14 +27,25 @@ export async function http<T>(path: string, init: RequestInit = {}): Promise<T> 
   const generation = refreshGeneration;
   const response = await send(path, init);
 
-  if (response.status === 401 && canRefresh(path) && (await refreshAccessToken(generation))) {
-    return unwrap<T>(await send(path, init));
+  if (response.status === 401 && canRefresh(path)) {
+    if (await refreshAccessToken(generation)) {
+      return unwrap<T>(await send(path, init));
+    }
+    // 갱신 만료 뒤에는 인증 쿠키 없이 공개 조회를 한 번 더 시도한다.
+    const method = init.method?.toUpperCase() ?? "GET";
+    if (method === "GET" || method === "HEAD") {
+      return unwrap<T>(await send(path, init, "omit"));
+    }
   }
 
   return unwrap<T>(response);
 }
 
-async function send(path: string, init: RequestInit): Promise<Response> {
+async function send(
+  path: string,
+  init: RequestInit,
+  credentials: RequestCredentials = "include",
+): Promise<Response> {
   const headers = new Headers(init.headers);
 
   // FormData 본문은 브라우저가 boundary 를 붙인 Content-Type 을 직접 세운다.
@@ -46,7 +57,7 @@ async function send(path: string, init: RequestInit): Promise<Response> {
   headers.delete("Authorization");
   if (typeof window !== "undefined") headers.set("X-Hodlit-Request", "1");
   const base = typeof window === "undefined" ? config.apiUrl : "";
-  return fetch(`${base}${path}`, { ...init, headers, credentials: "include", cache: "no-store" });
+  return fetch(`${base}${path}`, { ...init, headers, credentials, cache: "no-store" });
 }
 
 /**

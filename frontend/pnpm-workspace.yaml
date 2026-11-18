@@ -8,6 +8,7 @@
 # 설치 스크립트 실행이 실제로 필요한 의존성만 허용한다.
 allowBuilds:
   "@reown/appkit": false # postinstall 은 버전 확인 스크립트뿐이라 막아 둔다
+  core-js: false # posthog-js 하위 의존성. postinstall 은 후원 안내 출력뿐이라 막아 둔다
   sharp: true # next/image 최적화용 네이티브 바인딩
   unrs-resolver: true # eslint-config-next의 import 해석기
 

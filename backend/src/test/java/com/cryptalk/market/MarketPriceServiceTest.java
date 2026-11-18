@@ -43,9 +43,7 @@ class MarketPriceServiceTest {
 
     @Test
     void fetchesProviderPriceAndTimestamp() {
-        Coin coin = mock(Coin.class);
-        when(coin.getMarketPriceId()).thenReturn("ethereum");
-        when(coin.getSymbol()).thenReturn("ETH");
+        Coin coin = coin("ethereum", "ETH");
         MarketPriceService prices = new MarketPriceService("http://localhost:" + server.getAddress().getPort());
 
         MarketPriceService.PriceQuote quote = prices.currentPrice(coin, "krw");
@@ -75,6 +73,7 @@ class MarketPriceServiceTest {
 
     private Coin coin(String marketId, String symbol) {
         Coin coin = mock(Coin.class);
+        when(coin.hasMarketPrice()).thenReturn(true);
         when(coin.getMarketPriceId()).thenReturn(marketId);
         when(coin.getSymbol()).thenReturn(symbol);
         return coin;

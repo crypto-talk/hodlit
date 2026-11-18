@@ -4,6 +4,13 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {
+  NICKNAME_HINT,
+  NICKNAME_MAX,
+  NICKNAME_MIN,
+  nicknameAwareMessage,
+  nicknameProblem,
+} from "@/lib/nickname";
 import { useSession } from "@/lib/session";
 
 type AuthMode = "login" | "signup";
@@ -43,16 +50,25 @@ export default function AuthForm({ mode, next }: Props) {
     const loginId = String(form.get("loginId") ?? "");
     const password = String(form.get("password") ?? "");
 
+    const nickname = String(form.get("nickname") ?? "");
+    // 닉네임 규칙은 서버와 같다(HODL-103). 보내기 전에 먼저 알려 준다.
+    const problem = mode === "signup" ? nicknameProblem(nickname) : null;
+    if (problem) {
+      setError(problem);
+      setPending(false);
+      return;
+    }
+
     try {
       if (mode === "signup") {
-        await signup(loginId, password, String(form.get("nickname") ?? ""));
+        await signup(loginId, password, nickname);
       } else {
         await login(loginId, password);
       }
       // 뒤로가기로 로그인 화면에 되돌아오지 않도록 replace 를 쓴다.
       router.replace(next);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "인증에 실패했습니다.");
+      setError(nicknameAwareMessage(reason, "인증에 실패했습니다."));
       setPending(false);
     }
   };
@@ -71,16 +87,23 @@ export default function AuthForm({ mode, next }: Props) {
 
       <form className="mt-4 flex flex-col gap-2" onSubmit={submit}>
         {mode === "signup" ? (
-          <input
-            ref={firstFieldRef}
-            className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
-            name="nickname"
-            aria-label="닉네임"
-            placeholder="닉네임"
-            minLength={2}
-            maxLength={40}
-            required
-          />
+          <>
+            <input
+              ref={firstFieldRef}
+              className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
+              name="nickname"
+              aria-label="닉네임"
+              aria-describedby="signup-nickname-hint"
+              placeholder="닉네임"
+              minLength={NICKNAME_MIN}
+              maxLength={NICKNAME_MAX}
+              autoComplete="nickname"
+              required
+            />
+            <p id="signup-nickname-hint" className="-mt-1 mb-1 text-xs text-text-muted">
+              {NICKNAME_HINT}. 나중에 마이페이지에서 바꿀 수 있습니다.
+            </p>
+          </>
         ) : null}
         {/* 백엔드 계약이 email → loginId 로 바뀌었다. type 도 text 다. */}
         <input

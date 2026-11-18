@@ -74,16 +74,16 @@ public class CommunityStatisticsService {
     private static final String SQL = """
         WITH activity AS (
             SELECT p.coin_id, p.member_id, 'POST' AS kind, p.created_at AS occurred_at FROM posts p
-            WHERE p.created_at >= :from AND p.created_at < :until
+            WHERE p.hidden=FALSE AND p.created_at >= :from AND p.created_at < :until
             UNION ALL
             SELECT p.coin_id, c.member_id, 'COMMENT' AS kind, c.created_at AS occurred_at FROM comments c
-            JOIN posts p ON p.id = c.post_id WHERE c.created_at >= :from AND c.created_at < :until
+            JOIN posts p ON p.id = c.post_id WHERE p.hidden=FALSE AND c.created_at >= :from AND c.created_at < :until
             UNION ALL
             SELECT p.coin_id, l.member_id, 'LIKE' AS kind, l.created_at AS occurred_at FROM post_likes l
-            JOIN posts p ON p.id = l.post_id WHERE l.created_at >= :from AND l.created_at < :until
+            JOIN posts p ON p.id = l.post_id WHERE p.hidden=FALSE AND l.created_at >= :from AND l.created_at < :until
             UNION ALL
             SELECT p.coin_id, v.member_id, 'VIEW' AS kind, v.created_at AS occurred_at FROM post_view_events v
-            JOIN posts p ON p.id = v.post_id WHERE v.created_at >= :from AND v.created_at < :until
+            JOIN posts p ON p.id = v.post_id WHERE p.hidden=FALSE AND v.created_at >= :from AND v.created_at < :until
         ), active_members AS (
             SELECT coin_id, member_id, MAX(occurred_at) AS last_activity
             FROM activity
@@ -109,7 +109,7 @@ public class CommunityStatisticsService {
                       AND (ec.exchange = 'COINONE' OR ec.account_fingerprint IS NOT NULL))))
                 THEN a.member_id ELSE NULL END) AS verified_participants
         FROM coins c LEFT JOIN activity a ON a.coin_id = c.id
-        LEFT JOIN asset_snapshots s ON s.coin_id = c.id AND s.member_id = a.member_id
+        LEFT JOIN asset_snapshots s ON s.coin_id = c.id AND s.member_id = a.member_id AND UPPER(c.symbol) <> 'OTHER'
         WHERE c.active = TRUE AND c.operation_status = 'OPEN' AND (:symbol IS NULL OR c.symbol = :symbol)
         GROUP BY c.id, c.symbol, c.display_order
         )

@@ -7,7 +7,7 @@ import MypageFrame from "./mypage-frame";
  * (탭 상태는 URL 쿼리)은 같은 목록을 거르는 탭(방 게시판 전체 / 인증 같은 것)에 대한 것이다.
  *
  * 지갑(HODL-74) · 내 자산(HODL-67) · 북마크 · 임시저장 탭이 있다.
- * 남에게 보여 주는 공개 프로필은 `/@닉네임`(HODL-75)으로 따로 만든다.
+ * 남에게 보여 주는 공개 프로필은 `/user/{회원 id}`(HODL-104)로 따로 있다. 닉네임 변경은 이 화면 위쪽.
  */
 export default function MypageLayout({ children }: { children: React.ReactNode }) {
   return <MypageFrame>{children}</MypageFrame>;

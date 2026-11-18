@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { searchHref } from "@/lib/routes";
 import { SEARCH_MAX, searchProblem } from "../limits";
+import { roomCallName } from "@/lib/room-status";
 
 type Props = {
   /** 처음 채울 검색어(결과 화면의 지금 검색어). */
@@ -35,7 +36,7 @@ export default function SearchBox({ initial, room }: Props) {
       <div className="flex gap-2">
         <input
           type="search"
-          aria-label={room ? `${room} 방에서 검색` : "검색"}
+          aria-label={room ? `${roomCallName(room)} 방에서 검색` : "검색"}
           className="h-10 min-w-0 flex-1 rounded-sm border border-border-subtle bg-surface px-3 text-body text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
           placeholder={room ? `${room} 방의 글 · 댓글 검색` : "글 · 댓글 · 방 · 닉네임 검색"}
           value={q}

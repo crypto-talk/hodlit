@@ -66,7 +66,7 @@ class CommunityStatisticsTest {
         mvc.perform(get("/api/v1/communities/stats"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.rooms.length()").value(0));
         mvc.perform(get("/api/v1/communities/stats").param("window", "all"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.rooms.length()").value(20));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.rooms.length()").value(21));
         mvc.perform(get("/api/v1/communities/stats").param("window", "yesterday"))
             .andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/communities/NOT_A_COIN/stats")).andExpect(status().isNotFound());

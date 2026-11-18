@@ -22,10 +22,23 @@ public class RoomSearchService {
 
     @Transactional(readOnly = true)
     public PageResponse<SearchService.SearchItem> search(String symbol, String query, int page, int size) {
+        return search(symbol, query, page, size, null);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<SearchService.SearchItem> search(String symbol, String query, int page, int size, String type) {
         String q = SearchService.validate(query, page, size);
         var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
         rooms.requireOpen(coin);
-        return search.search(q, page, size, coin.getId());
+        return search.search(q, page, size, coin.getId(), type);
+    }
+    @Transactional(readOnly = true)
+    public SearchService.GroupedResults grouped(String symbol, String query, int previewSize) {
+        SearchService.validate(query, 0, previewSize);
+        var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
+        rooms.requireOpen(coin);
+        return search.grouped(query, previewSize, coin.getId());
     }
 }

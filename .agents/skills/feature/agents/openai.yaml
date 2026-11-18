@@ -1,4 +1,4 @@
 interface:
   display_name: "Backend Feature"
   short_description: "Implement and push verified backend features"
-  default_prompt: "Use $feature to implement this backend feature on a feature branch based on origin/develop and push the verified commit."
+  default_prompt: "Use $feature to implement this backend feature on a feature branch based on the latest origin/main and push the verified commit."

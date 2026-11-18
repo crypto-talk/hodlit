@@ -18,7 +18,13 @@ public class RoomSearchController {
     @Operation(summary="방 내 글·댓글 검색", description="현재 활성 방에만 한정한 제목/본문/작성자 포함 검색, 관련도순. page 0부터, size 기본 20.")
     @GetMapping
     com.cryptalk.common.PageResponse<SearchService.SearchItem> search(@PathVariable String symbol, @RequestParam String q,
-            @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size) {
-        return search.search(symbol, q, page, size);
+            @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size, @RequestParam(required=false) String type) {
+        return search.search(symbol, q, page, size, type);
+    }
+    @GetMapping("/groups")
+    @Operation(summary = "방 내 분류별 검색", description = "현재 방 글·댓글의 독립 미리보기 목록과 건수")
+    SearchService.GroupedResults groups(@PathVariable String symbol, @RequestParam String q,
+            @RequestParam(defaultValue = "5") int previewSize) {
+        return search.grouped(symbol, q, previewSize);
     }
 }

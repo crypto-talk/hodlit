@@ -12,10 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoomAdminService {
     private final CoinRepository coins;
     private final AdminAccess admins;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    public RoomAdminService(CoinRepository coins, AdminAccess admins) {
+    public RoomAdminService(CoinRepository coins, AdminAccess admins, org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.coins = coins;
         this.admins = admins;
+        this.jdbc = jdbc;
     }
 
     @Transactional(readOnly = true)
@@ -35,7 +37,10 @@ public class RoomAdminService {
         RoomOperationStatus target = parseStatus(status);
         Coin coin = coins.lockBySymbol(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
+        String previous = coin.getOperationStatus().name();
         coin.changeOperationStatus(target);
+        jdbc.update("INSERT INTO moderation_logs(actor_id,target_type,target_id,before_state,after_state,reason,created_at) VALUES(?,?,?,?,?,?,?)",
+            memberId, "rooms", coin.getId(), previous, target.name(), "방 운영 상태 변경", java.sql.Timestamp.from(java.time.Instant.now()));
         coins.flush();
         return response(coin);
     }
@@ -48,8 +53,8 @@ public class RoomAdminService {
     }
 
     private RoomResponse response(Coin coin) {
-        return new RoomResponse(coin.getId(), coin.getSymbol(), coin.getName(), coin.isActive(), coin.getOperationStatus());
+        return new RoomResponse(coin.getId(), coin.getSymbol(), coin.getName(), coin.isActive(), coin.getOperationStatus(), coin.getDisplayOrder(), coin.getCategoryId());
     }
 
-    public record RoomResponse(Long id, String symbol, String name, boolean active, RoomOperationStatus operationStatus) {}
+    public record RoomResponse(Long id, String symbol, String name, boolean active, RoomOperationStatus operationStatus, int displayOrder, Long categoryId) {}
 }

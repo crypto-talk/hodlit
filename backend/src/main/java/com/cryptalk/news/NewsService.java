@@ -5,7 +5,7 @@ import com.cryptalk.admin.AdminAccess;
 import com.cryptalk.coin.CoinRepository;
 import com.cryptalk.common.ApiException;
 import java.net.URI;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -13,11 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NewsService {
+    private final NewsPublisherAccess publisher;
     private final RoomAccess rooms;
     private final NewsRepository news;
     private final CoinRepository coins;
     private final AdminAccess admins;
-    public NewsService(NewsRepository news, CoinRepository coins, AdminAccess admins, RoomAccess rooms) {
+    public NewsService(NewsRepository news, CoinRepository coins, AdminAccess admins, RoomAccess rooms, NewsPublisherAccess publisher) {
+        this.publisher = publisher;
         this.rooms = rooms;
         this.news = news;
         this.coins = coins;
@@ -30,6 +32,7 @@ public class NewsService {
         var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 방을 찾을 수 없습니다."));
         rooms.requireOpen(coin);
+        if (coin.isGeneralRoom()) return com.cryptalk.common.PageResponse.of(Page.empty(request));
         var rows = news.findByCoinId(coin.getId(), request);
         return com.cryptalk.common.PageResponse.of(rows.map(this::response));
     }
@@ -40,6 +43,16 @@ public class NewsService {
         validateUrl(request.sourceUrl());
         var coin = coins.findBySymbolIgnoreCaseAndActiveTrue(symbol)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 방을 찾을 수 없습니다."));
+        rooms.requireCoinFeatures(coin);
+        return response(news.save(new CommunityNews(coin, request)));
+    }
+
+    @Transactional
+    public NewsDtos.NewsResponse createFromPublisher(String password, String symbol, NewsDtos.SaveNewsRequest request) {
+        publisher.requirePassword(password);
+        validateUrl(request.sourceUrl());
+        var coin = rooms.requireOpen(symbol);
+        rooms.requireCoinFeatures(coin);
         return response(news.save(new CommunityNews(coin, request)));
     }
 
@@ -48,6 +61,7 @@ public class NewsService {
         admins.requireAdmin(memberId);
         validateUrl(request.sourceUrl());
         var item = item(id);
+        rooms.requireCoinFeatures(item.getCoin());
         item.update(request);
         return response(item);
     }

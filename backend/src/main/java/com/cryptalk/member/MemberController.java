@@ -30,6 +30,15 @@ public class MemberController {
     @Operation(summary = "자산 공개 범위 변경")
     @PatchMapping("/asset-visibility") MemberResponse visibility(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody VisibilityRequest request) { return members.visibility(id(jwt), request.visibility()); }
     private Long id(Jwt jwt) { return Long.valueOf(jwt.getSubject()); }
-    public record UpdateMemberRequest(@Size(min=2,max=40) String nickname, @Pattern(regexp="^#[0-9a-fA-F]{6}$") String avatarColor) {}
+    public record UpdateMemberRequest(
+        @Size(min = 2, max = 40)
+        @Pattern(regexp = Nickname.PATTERN, message = Nickname.INVALID_CHARACTERS)
+        String nickname,
+        @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String avatarColor
+    ) {
+        public UpdateMemberRequest {
+            nickname = Nickname.normalize(nickname);
+        }
+    }
     public record VisibilityRequest(@NotNull AssetVisibility visibility) {}
 }

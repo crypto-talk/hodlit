@@ -32,6 +32,12 @@ export type SearchResult =
   | { kind: "room"; key: string; symbol: string; name: string }
   | { kind: "user"; key: string; memberId: number; nickname: string };
 
+/** 결과 분류. 값은 API 의 `type` 쿼리와 주소의 `type` 에 그대로 쓴다(HODL-99 · 100). */
+export type SearchCategory = "posts" | "comments" | "rooms" | "users";
+
+/** 분류별 미리보기 한 묶음. 건수는 그 분류 전체 건수이고 `results` 는 앞의 몇 건뿐이다. */
+export type SearchGroup = SearchPage & { category: SearchCategory };
+
 export type SearchPage = {
   results: SearchResult[];
   totalElements: number;

@@ -1,5 +1,6 @@
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { fetchBithumbQuotes } from "./bithumb";
 import { fetchGeckoQuotes } from "./coingecko";
 import { marketCoinOf } from "./coins";
 import {
@@ -10,14 +11,13 @@ import {
   type QuoteSource,
   type SymbolQuote,
 } from "./quote";
-import { fetchUpbitQuotes } from "./upbit";
 
 /**
  * 시세 갱신 주기. 30초.
  *
  * Jira 요구는 5초였다. 처음 출처였던 CoinGecko 키 없는 API 는 값이 약 60초마다 바뀌고 한도가
- * IP당 분당 약 10~30회라 30초로 했다(HODL-61 코멘트). 업비트로 바꾼 뒤에도 그대로 둔다 —
- * 업비트는 브라우저 요청(Origin 헤더)을 10초당 1회로 제한하고 넘기면 일시 차단한다.
+ * IP당 분당 약 10~30회라 30초로 했다(HODL-61 코멘트). 업비트 · 빗썸으로 바꾼 뒤에도 그대로 둔다
+ * (업비트는 브라우저 요청을 10초당 1회로 제한했다. 빗썸은 그런 제한이 보이지 않지만 줄일 이유도 없다).
  */
 export const MARKET_PRICE_REFRESH_MS = 30_000;
 
@@ -25,13 +25,13 @@ export const MARKET_PRICE_REFRESH_MS = 30_000;
 const RATE_LIMITED_WAIT_MS = 60_000;
 
 /**
- * 출처마다 쿼리 하나. 업비트에 원화 마켓이 있는 코인은 업비트, 없는 코인(BNB · LTC · TON)은
+ * 출처마다 쿼리 하나. 빗썸에 원화 마켓이 있는 코인은 빗썸, 없는 코인(LTC · TON)은
  * CoinGecko 다. 각 쿼리는 그 출처의 코인을 한 요청에 묶어 받고, 방 시세 칸과 랜딩 티커가
  * 같은 키를 나눠 쓴다 — 동시에 마운트돼도 TanStack Query 가 요청 하나로 합친다.
  * 출처를 나눠 두면 한쪽이 실패해도 다른 쪽 코인은 그대로 보인다.
  */
 const FETCHERS: Record<QuoteSource, (signal?: AbortSignal) => Promise<MarketQuotes>> = {
-  upbit: fetchUpbitQuotes,
+  bithumb: fetchBithumbQuotes,
   coingecko: fetchGeckoQuotes,
 };
 
@@ -108,7 +108,7 @@ const NO_QUOTE: MarketPriceState<null> = {
 export function useMarketQuote(symbol: string): MarketPriceState<MarketQuote | null> {
   const key = symbol.toUpperCase();
   const coin = marketCoinOf(key);
-  const source: QuoteSource = coin?.upbitMarket ? "upbit" : "coingecko";
+  const source: QuoteSource = coin?.bithumbMarket ? "bithumb" : "coingecko";
   const select = useCallback((quotes: MarketQuotes) => quotes[key] ?? null, [key]);
   const state = toState(useSourceQuotes(source, select, coin !== null));
 
@@ -119,7 +119,7 @@ export function useMarketQuote(symbol: string): MarketPriceState<MarketQuote | n
  * 한 출처의 시세 전부, `MARKET_COINS` 순서. 셸 전광판이 쓴다.
  *
  * 쿼리는 `useMarketQuote` 와 같은 것을 나눠 쓴다. 방 화면에서 전광판과 시세 칸이 함께 떠도
- * 업비트 요청은 30초마다 하나다.
+ * 빗썸 요청은 30초마다 하나다.
  */
 export function useSourceMarketQuotes(source: QuoteSource): MarketPriceState<SymbolQuote[]> {
   return toState(useSourceQuotes(source, orderQuotes));

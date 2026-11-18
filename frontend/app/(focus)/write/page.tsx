@@ -3,7 +3,7 @@ import WriteForm from "@/features/post/components/write-form";
 import { safeSymbol } from "@/lib/routes";
 
 export const metadata: Metadata = {
-  title: "글쓰기 — Hodlit",
+  title: "글쓰기",
 };
 
 /**

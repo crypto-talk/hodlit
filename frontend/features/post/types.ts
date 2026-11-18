@@ -1,3 +1,5 @@
+import type { AnimalBadgeData } from "@/components/holder/animal-badge";
+import type { AttachedHolder } from "@/lib/holder-snapshot/attachments";
 import type { Tier } from "@/lib/holder-snapshot/types";
 
 /**
@@ -14,6 +16,11 @@ export type WriteRoom = {
   verifiable: boolean;
   /** 한글명. 매핑표에 없으면 백엔드 영문명. */
   name: string;
+  /**
+   * 열린 방인지(HODL-77). 닫힌 방도 목록에 남겨 둔다 — 고를 수는 없지만, 임시저장이나
+   * `?symbol=` 의 방이 "없는 방" 인지 "닫힌 방" 인지 구별해서 안내해야 한다.
+   */
+  open: boolean;
 };
 
 /** 발행 직후 화면이 알아야 하는 것. 글 상세 화면이 생기면 이 id 로 이동한다. */
@@ -46,6 +53,11 @@ export type PostDraft = {
   images: UploadedImage[];
   /** 비어 있으면 보내지 않는다. */
   youtubeUrl: string;
+  /**
+   * 방 코인 말고 더 붙일 코인(HODL-106). 최대 3개, 고른 순서. 방 코인은 서버가 넣으니
+   * 여기 넣지 않는다. 기타 방은 이것만 붙는다(0개도 된다).
+   */
+  attachedCoins: string[];
 };
 
 /**
@@ -56,6 +68,9 @@ export type HolderView = {
   /** 이 코인이 보유 인증을 지원하는지. false 면 배지·기간·구간을 그리지 않는다. */
   verifiable: boolean;
   tier: Tier;
+  badge?: AnimalBadgeData | null;
+  partial?: boolean;
+  holderStatus?: string | null;
   /** 서버가 완성한 구간. 미인증이면 null. */
   amount: string | null;
   holding: string;
@@ -79,8 +94,13 @@ export type PostDetail = {
   /** 작성 시점 가격. 서버가 발행 순간 찍은 값이다. */
   price: { value: number; currency: string } | null;
   comments: number;
-  /** 발행 시점에 고정된 보유 정보. 응답에 없으면 null. */
+  /** 발행 시점에 고정된 방 코인 보유 정보. 응답에 없으면 null(기타 방은 항상 null). */
   holder: HolderView | null;
+  /**
+   * 코인별 작성 시점 기록(방 코인 + 고른 코인, HODL-106). 공개할 수 있는 것만 온다.
+   * 필드가 없는 옛 응답이면 null — 그때만 `holder` 로 그린다. 빈 배열은 "보여 줄 기록 없음".
+   */
+  attachments: AttachedHolder[] | null;
 } & PostReactions;
 
 /**
@@ -116,6 +136,8 @@ export type EditablePost = {
    * 받은 그대로 돌려보낸다.
    */
   tradingView: { symbol?: string; interval?: string; analysis?: string } | null;
+  /** 발행 때 붙은 코인(공개된 것만). 수정에서는 바꿀 수 없어 안내에만 쓴다. */
+  attachedSymbols: string[];
 };
 
 /** 수정해서 보낼 값. 방과 보유 정보 · 작성 시점 가격은 바꿀 수 없다. */
@@ -143,6 +165,8 @@ export type Draft = {
   content: string;
   images: { url: string; src: string }[];
   youtubeUrl: string;
+  /** 고른 코인(HODL-106). 고른 순서 그대로 저장 · 복원된다. 확인은 발행 때 서버가 한다. */
+  attachedCoins: string[];
   /** 수정 중인 원래 글 번호. 새 글 임시저장이면 null. 서버가 정하고 바꿀 수 없다. */
   sourcePostId: number | null;
 };
@@ -154,7 +178,10 @@ export type DraftSummary = Pick<
 >;
 
 /** 임시저장할 값. 글쓰기 화면에 있는 것만 보낸다. */
-export type DraftInput = Pick<Draft, "coinSymbol" | "title" | "content" | "youtubeUrl"> & {
+export type DraftInput = Pick<
+  Draft,
+  "coinSymbol" | "title" | "content" | "youtubeUrl" | "attachedCoins"
+> & {
   images: UploadedImage[];
 };
 
@@ -162,6 +189,6 @@ export type DraftInput = Pick<Draft, "coinSymbol" | "title" | "content" | "youtu
  * 글 수정 임시저장할 값. 서버는 통째로 덮어써서 빠진 값을 null 로 지우므로, 화면에 없는
  * TradingView 값도 원래 글에서 받은 그대로 싣는다.
  */
-export type EditDraftInput = DraftInput & {
+export type EditDraftInput = Omit<DraftInput, "attachedCoins"> & {
   tradingView: EditablePost["tradingView"];
 };

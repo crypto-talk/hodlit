@@ -1,6 +1,7 @@
 package com.cryptalk.draft;
 
 import com.cryptalk.post.PostDtos.MediaRequest;
+import com.cryptalk.post.PostCoinAttachments;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -22,11 +23,13 @@ public final class DraftDtos {
         @Size(max = 5000) String tradingViewAnalysis,
         @DecimalMin(value = "0.0", inclusive = false) BigDecimal assetPrice,
         @Pattern(regexp = "^$|^[A-Z0-9]{2,10}$") String assetPriceCurrency,
-        @Size(max = 500) String youtubeUrl
+        @Size(max = 500) String youtubeUrl,
+        @Size(max = PostCoinAttachments.MAX_SELECTIONS)
+        List<@NotNull @Pattern(regexp = PostCoinAttachments.COIN_SYMBOL_PATTERN) String> attachedCoins
     ) {}
 
     public record DraftResponse(Long id, Instant updatedAt, String coinSymbol, String title, String content,
                                 List<MediaRequest> media, String tradingViewSymbol, String tradingViewInterval,
                                 String tradingViewAnalysis, BigDecimal assetPrice, String assetPriceCurrency,
-                                String youtubeUrl, Long sourcePostId) {}
+                                String youtubeUrl, Long sourcePostId, List<String> attachedCoins) {}
 }

@@ -24,8 +24,8 @@ async function waitForServer(timeoutMs = 90_000) {
 
 test("server-renders the Hodlit application", async (t) => {
   const server = spawn(
-    process.platform === "win32" ? "npx.cmd" : "npx",
-    ["next", "start", "--port", String(port)],
+    process.execPath,
+    [resolve(projectRoot, "node_modules/next/dist/bin/next"), "start", "--port", String(port)],
     { cwd: projectRoot, stdio: "ignore", env: { ...process.env, PORT: String(port) } },
   );
   t.after(() => server.kill("SIGTERM"));
@@ -100,7 +100,7 @@ test("server-renders the Hodlit application", async (t) => {
     assert.equal(response.status, 200);
 
     const html = await response.text();
-    assert.match(html, /<title>ETH 방 — Hodlit<\/title>/);
+    assert.match(html, /<title>ETH 방 \| Hodlit<\/title>/);
     // 방 안의 헤더 글쓰기는 그 방을 미리 고른다. 내용은 클라이언트에서 그려진다.
     assert.match(html, /href="\/write\?symbol=ETH"/);
     assert.match(html, /전체 방/);
@@ -132,5 +132,39 @@ test("server-renders the Hodlit application", async (t) => {
     // 것은 그게 링크가 되지 않는 것이라, href 만 본다.
     assert.doesNotMatch(html, /href="[^"]*evil\.example/);
     assert.match(html, /href="\/signup\?next=%2F"/);
+  });
+  await t.test("공개 프로필 주소", async () => {
+    // 회원 id 주소(HODL-104). 본문은 클라이언트가 받는다.
+    const response = await fetch(`${origin}/user/7?tab=comments&page=2`, {
+      headers: { accept: "text/html" },
+    });
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /프로필 불러오는 중/);
+    // id 모양이 아니면 요청 없이 404.
+    for (const path of ["/user/abc", "/user/0", "/user/007", "/user/-1"]) {
+      const invalid = await fetch(`${origin}${path}`, { headers: { accept: "text/html" } });
+      assert.equal(invalid.status, 404, path);
+    }
+    // 예전 `/@닉네임` 주소는 넘겨 주지 않고 404.
+    for (const path of ["/@profile-smoke", `/%40${encodeURIComponent("고래")}`]) {
+      const old = await fetch(`${origin}${path}`, {
+        headers: { accept: "text/html" },
+        redirect: "manual",
+      });
+      assert.equal(old.status, 404, path);
+    }
+    const missing = await fetch(`${origin}/not-a-profile`, { headers: { accept: "text/html" } });
+    assert.equal(missing.status, 404);
+  });
+
+  await t.test("관리 화면은 서버에서 사용자 데이터를 미리 노출하지 않는다", async () => {
+    const response = await fetch(`${origin}/admin`, { headers: { accept: "text/html" } });
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /불러오는 중/);
+    for (const path of ["/admin/rooms", "/admin/posts", "/admin/members", "/admin/logs"]) {
+      const section = await fetch(`${origin}${path}`, { headers: { accept: "text/html" } });
+      assert.equal(section.status, 200);
+      assert.match(await section.text(), /불러오는 중/);
+    }
   });
 });

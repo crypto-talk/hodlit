@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatClock, formatDate, formatRelativeTime } from "@/lib/format/time";
+import { formatClock, formatDate, formatDateTime, formatRelativeTime } from "@/lib/format/time";
 
 const NOW = new Date("2026-09-19T12:00:00Z");
 
@@ -51,5 +51,18 @@ describe("formatDate", () => {
   it("없거나 깨진 값은 빈 문자열", () => {
     expect(formatDate(null)).toBe("");
     expect(formatDate("어제")).toBe("");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("날짜와 24시간제 시각", () => {
+    const text = formatDateTime("2026-09-19T12:05:00Z");
+    expect(text).toContain("2026");
+    expect(text).toMatch(/\d{2}:05/);
+  });
+
+  it("없거나 깨진 값은 빈 문자열", () => {
+    expect(formatDateTime(undefined)).toBe("");
+    expect(formatDateTime("어제")).toBe("");
   });
 });

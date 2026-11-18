@@ -6,13 +6,15 @@ import { useState } from "react";
 import { useRequireLogin, useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { setBookmarked, setLiked } from "../api";
-import { postQueryKey } from "../hooks/use-post";
+import { postQueryKey } from "../query-key";
 import type { PostDetail, PostReactions } from "../types";
 
 type Props = {
   postId: number;
   reactions: PostReactions;
   comments: number;
+  /** 보는 사람 기준 좋아요 · 북마크 여부를 아직 모를 때. 버튼을 잠근다. */
+  settling?: boolean;
 };
 
 type Kind = "like" | "bookmark";
@@ -40,7 +42,7 @@ const ON = "border-brand text-brand";
  *
  * 로그인 전에 누르면 `/login?next=` 로 보낸다. 재게시는 이번 범위에서 뺐다.
  */
-export default function PostActions({ postId, reactions, comments }: Props) {
+export default function PostActions({ postId, reactions, comments, settling = false }: Props) {
   const queryClient = useQueryClient();
   const { member } = useSession();
   const requireLogin = useRequireLogin();
@@ -80,7 +82,7 @@ export default function PostActions({ postId, reactions, comments }: Props) {
       <button
         type="button"
         aria-pressed={reactions.liked}
-        disabled={mutation.isPending}
+        disabled={mutation.isPending || settling}
         className={cn(BUTTON, reactions.liked ? ON : OFF)}
         onClick={() => press("like")}
       >
@@ -90,7 +92,7 @@ export default function PostActions({ postId, reactions, comments }: Props) {
       <button
         type="button"
         aria-pressed={reactions.bookmarked}
-        disabled={mutation.isPending}
+        disabled={mutation.isPending || settling}
         className={cn(BUTTON, reactions.bookmarked ? ON : OFF)}
         onClick={() => press("bookmark")}
       >

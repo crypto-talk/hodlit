@@ -1,9 +1,12 @@
 import type { components } from "@/lib/api-schema";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { config } from "@/lib/config";
+import { toAttachedHolders } from "@/lib/holder-snapshot/attachments";
 import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/label";
 import { ApiError, http } from "@/lib/http";
 import { hasPostId, toPostSummary, type PostSummary } from "@/lib/post-summary";
+import { isOpenRoom } from "@/lib/room-status";
+import { toHoldingsReference, type HoldingsReference } from "./holdings";
 import type {
   Draft,
   DraftInput,
@@ -43,6 +46,9 @@ const MEDIA_PREFIX = "/api/v1/media/";
  *
  * 사이드바의 방 목록(`features/room`)은 10개로 자르고 시세까지 붙인다. 여기는
  * 고를 수 있는 방이 전부 필요하고 시세는 필요 없어서 따로 부른다.
+ *
+ * 닫힌 방(HODL-77)도 `open: false` 로 남긴다. 고르는 칸에는 열린 방만 보이고, 닫힌 방은
+ * 안내 문구와 임시저장 목록의 "닫힌 방" 표시에 쓴다.
  */
 export async function loadWriteRooms(): Promise<WriteRoom[]> {
   const coins = await http<CoinResponse[]>("/api/v1/coins");
@@ -51,6 +57,7 @@ export async function loadWriteRooms(): Promise<WriteRoom[]> {
     symbol: coin.symbol,
     verifiable: isVerifiable(coin.verificationAvailability),
     name: coinNameKo(coin.symbol, coin.name ?? coin.symbol),
+    open: isOpenRoom(coin),
   }));
 }
 
@@ -60,7 +67,7 @@ export async function loadWriteRooms(): Promise<WriteRoom[]> {
  * 보내지 않는 것
  *   - `assetPrice` · `assetPriceCurrency`: 서버가 무시하고 직접 시세를 조회한다.
  *   - 보유 정보: 서버가 저장하면서 보유 기록을 새로 읽어 글에 붙인다(HODL-45).
- *     프론트가 보내는 값이 없어서 수량을 위조할 수 없다.
+ *     프론트는 붙일 코인 목록(`attachedCoins`)만 보내고 수량은 보내지 않아 위조할 수 없다.
  *
  * 제목·본문은 앞뒤 공백을 잘라 보낸다. 백엔드가 `@NotBlank` 로 거르는 기준과
  * 맞춘 것이다.
@@ -73,6 +80,8 @@ export async function publishPost(draft: PostDraft): Promise<PublishedPost> {
     content: draft.content.trim(),
     media: draft.images.map((image) => ({ type: "IMAGE", url: image.url })),
     ...(youtubeUrl ? { youtubeUrl } : {}),
+    // 방 코인은 서버가 넣는다. 고른 것만, 고른 순서로(HODL-106).
+    attachedCoins: draft.attachedCoins,
   };
 
   const post = await http<PostResponse>("/api/v1/posts", {
@@ -126,10 +135,10 @@ function mediaSrc(url: string): string {
 /**
  * 글 상세. 공개 API 라 로그인 없이도 열린다.
  *
- * 404 는 `ApiError.status` 로 화면이 구분한다.
+ * 404 는 `ApiError.status` 로 화면이 구분한다. `init` 은 서버에서 부를 때 시간 제한을 걸려고 둔다.
  */
-export async function loadPost(postId: number): Promise<PostDetail> {
-  const post = await http<PostResponse>(`/api/v1/posts/${postId}`);
+export async function loadPost(postId: number, init?: RequestInit): Promise<PostDetail> {
+  const post = await http<PostResponse>(`/api/v1/posts/${postId}`, init);
 
   const createdAt = post.createdAt ?? "";
   const price = post.priceSnapshot;
@@ -166,8 +175,12 @@ export async function loadPost(postId: number): Promise<PostDetail> {
           // 서버가 완성해서 주는 문자열이다. 여기서 다시 계산하지 않는다.
           amount: snapshot.quantityBand ?? null,
           holding: holdingPeriodLabel(snapshot.holdingMonths),
+          badge: snapshot.badge,
+          partial: snapshot.syncStatus === "PARTIAL",
+          holderStatus: snapshot.holderStatus,
         }
       : null,
+    attachments: toAttachedHolders(post.attachedCoinSnapshots),
   };
 }
 
@@ -198,6 +211,9 @@ export async function loadEditablePost(postId: number): Promise<EditablePost> {
           analysis: tradingView.analysis,
         }
       : null,
+    attachedSymbols: (post.attachedCoinSnapshots ?? [])
+      .map((snapshot) => snapshot.coinSymbol)
+      .filter((symbol): symbol is string => !!symbol),
   };
 }
 
@@ -273,6 +289,7 @@ export async function saveDraft(input: DraftInput, draftId: number | null): Prom
     content: input.content,
     media: input.images.map((image) => ({ type: "IMAGE", url: image.url })),
     youtubeUrl: input.youtubeUrl,
+    attachedCoins: input.attachedCoins,
   };
 
   const saved = await http<DraftResponse>(
@@ -354,6 +371,8 @@ function toDraft(draft: DraftResponse, fallbackId: number | null = null): Draft 
       .filter((media) => media.type === "IMAGE" && media.url)
       .map((media) => ({ url: media.url, src: mediaSrc(media.url) })),
     youtubeUrl: draft.youtubeUrl ?? "",
+    // 옛 임시저장 · 빈 값은 서버가 빈 배열로 준다. 그래도 없으면 빈 배열.
+    attachedCoins: (draft.attachedCoins ?? []).filter((symbol) => typeof symbol === "string"),
     sourcePostId: draft.sourcePostId ?? null,
   };
 }
@@ -389,6 +408,14 @@ export async function setBookmarked(postId: number, on: boolean): Promise<PostRe
 export async function loadBookmarks(): Promise<PostSummary[]> {
   const posts = await http<PostResponse[]>("/api/v1/me/bookmarks");
   return posts.filter(hasPostId).map(toPostSummary);
+}
+
+/**
+ * 글쓰기에서 코인 옆에 보여 줄 지금 보유(참고용, `features/post/holdings.ts`).
+ * 서버가 지갑 · 거래소를 다시 읽어 최대 15초 걸린다. 글에 붙는 기록은 발행 때 따로 찍힌다.
+ */
+export async function loadHoldingsReference(): Promise<HoldingsReference> {
+  return toHoldingsReference(await http<Record<string, unknown>>("/api/v1/me/assets"));
 }
 
 function toReactions(post: PostResponse): PostReactions {

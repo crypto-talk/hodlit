@@ -5,6 +5,7 @@ import Link from "next/link";
 import { writeHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { deleteDraft, loadDrafts } from "../api";
+import { useClosedRoomSymbols } from "../hooks/use-write-rooms";
 import DraftRow from "./draft-row";
 
 /** 서버 한도. 새 글과 글 수정 임시저장을 합친 개수다(HODL-43 · 56). */
@@ -25,6 +26,8 @@ export default function MyDrafts() {
     queryFn: loadDrafts,
     enabled: !!member,
   });
+
+  const closedRooms = useClosedRoomSymbols();
 
   const remove = useMutation({
     mutationFn: deleteDraft,
@@ -73,6 +76,7 @@ export default function MyDrafts() {
             <DraftRow
               key={draft.id}
               draft={draft}
+              roomClosed={closedRooms.has(draft.coinSymbol)}
               deleting={remove.isPending}
               onDelete={remove.mutate}
             />

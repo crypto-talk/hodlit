@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Verify, summarize, and open a GitHub pull request for a CrypTalk feature branch with GitHub CLI. Use when the user asks to create, open, submit, or prepare a PR, write its title and body, or turn a pushed feature branch into a PR against develop.
+description: Verify, summarize, and open a GitHub pull request for a CrypTalk feature branch with GitHub CLI. Use when the user asks to create, open, submit, or prepare a PR, write its title and body, or turn a pushed feature branch into a PR against main.
 ---
 
 # Create a pull request
@@ -10,7 +10,7 @@ Open one reviewed, evidence-backed PR without merging it. Treat an explicit invo
 ## 1. Establish the PR scope
 
 1. Read the repository `AGENTS.md` files that govern the changed paths.
-2. Confirm the head branch starts with `feature/`. Use `develop` as the base unless the user explicitly names another base.
+2. Confirm the head branch starts with `feature/`. Use `main` as the base unless the user explicitly names another base.
 3. Check `git status --short --branch`. Never stash, reset, clean, or discard unrelated changes.
 4. Fetch the head and base refs from `origin` and verify the intended local commit is pushed.
 5. If unpushed commits remain, state the exact remote and request any approval required by the environment before pushing.
@@ -20,10 +20,10 @@ Open one reviewed, evidence-backed PR without merging it. Treat an explicit invo
 Inspect all commits and changes relative to the base:
 
 ```bash
-git log --oneline origin/develop..HEAD
-git diff --check origin/develop...HEAD
-git diff --stat origin/develop...HEAD
-git diff origin/develop...HEAD
+git log --oneline origin/main..HEAD
+git diff --check origin/main...HEAD
+git diff --stat origin/main...HEAD
+git diff origin/main...HEAD
 ```
 
 Confirm that the diff contains no credentials, generated data, accidental frontend changes, or unrelated files. Do not create the PR if the branch is empty or its scope is unclear.
@@ -65,7 +65,7 @@ Omit an empty section. Do not claim tests, compatibility, or deployment results 
 Create the PR with explicit refs:
 
 ```bash
-gh pr create --base develop --head <feature-branch> --title <title> --body-file <body-file>
+gh pr create --base main --head <feature-branch> --title <title> --body-file <body-file>
 ```
 
 Use `--draft` only when the user requests a draft or explicitly accepts incomplete checks. After creation, run `gh pr view` and verify the number, URL, base, head, title, and state. Do not merge, enable auto-merge, assign reviewers, or add labels unless the user asks.

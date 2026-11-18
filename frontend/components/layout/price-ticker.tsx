@@ -5,14 +5,14 @@ import type { QuoteSource, SymbolQuote } from "@/lib/market-price/quote";
 import { useSourceMarketQuotes } from "@/lib/market-price/use-market-price";
 
 /**
- * 전광판이 보여 줄 출처. 지금은 한국 사용자 대상이라 업비트 원화 마켓만 흘린다
- * (2026-10-21 성지 결정). 등락률이 모두 전일 대비라 칸마다 기준을 적지 않는다.
- * 업비트에 원화 마켓이 없는 BNB · LTC · TON 은 전광판에 없다(방 시세 칸에는 CoinGecko 로 나온다).
+ * 전광판이 보여 줄 출처. 지금은 한국 사용자 대상이라 국내 거래소 원화 마켓만 흘린다
+ * (2026-10-21 성지 결정, 2026-11-16 업비트 → 빗썸). 등락률이 모두 전일 대비라 칸마다 기준을 적지 않는다.
+ * 빗썸에 원화 마켓이 없는 LTC · TON 은 전광판에 없다(방 시세 칸에는 CoinGecko 로 나온다).
  *
  * 해외 사용자 대상이 되면 CoinGecko 로 바꾼다. 그때는 `coingecko.ts` 가 세 코인만이 아니라
  * 모든 코인을 받도록 바꾸고, 등락률 기준(24시간)도 전광판 어딘가에 적어야 한다.
  */
-const TICKER_SOURCE: QuoteSource = "upbit";
+const TICKER_SOURCE: QuoteSource = "bithumb";
 
 /** 한 칸이 화면을 지나는 시간(초). 코인 수가 바뀌어도 흐르는 속도가 같도록 칸 수에 곱한다. */
 const SECONDS_PER_CELL = 4;
@@ -43,7 +43,7 @@ export default function PriceTicker() {
   return (
     <section
       aria-label="코인 시세"
-      className="flex h-11 items-stretch overflow-hidden border-2 border-brand bg-brand/5"
+      className="flex h-11 items-stretch overflow-hidden border-y-2 border-brand bg-brand/5"
     >
       <div className="flex flex-none items-center gap-1.5 bg-brand px-3 text-xs font-semibold text-text-inverse">
         <span aria-hidden="true" className="size-1.5 bg-text-inverse" />

@@ -157,6 +157,28 @@ Content-Type: application/json
 }
 ```
 
+- `attachedCoins`: 선택적 코인 심볼 배열. 최대 3개이며 생략하면 방 코인만 저장합니다.
+  방 코인은 서버가 자동 포함하며 같은 심볼을 명시해도 중복 저장하지 않습니다.
+  선택 코인은 대소문자를 구분하지 않으며 중복 심볼, 미등록·비활성·인증 미지원 코인은 `400`입니다.
+  코인의 방이 닫혀 있어도 보유 인증을 지원하는 활성 코인이면 선택할 수 있습니다.
+  `OTHER` 방은 선택한 코인만 저장하고 빈 배열도 허용합니다. 방 자체의 시세·보유 스냅샷은 만들지 않습니다.
+- `attachedCoinSnapshots`: 상세·목록·피드·북마크 및 공개 프로필 글 목록에 반환하는 발행 시점 기록 배열.
+  방 코인 다음에 선택 순서로 반환합니다. 각 항목은 `coinSymbol`, `verificationAvailability`,
+  `holderStatus`, `verifiedHolder`, `quantityBand`, `holdingMonths`, `badge`,
+  `verificationLevel`, `syncStatus`, `capturedAt`을 제공합니다.
+  정확 수량·지갑 주소·정확 보유 시작일은 포함하지 않습니다.
+- 미보유와 미연결도 선택할 수 있으며 각각 기존 `EMPTY`, `NOT_CONNECTED` 상태를 저장합니다.
+  조회 불완전 시 기존 `UNKNOWN` 또는 확인된 부분합의 `HOLDER` 상태와 `PARTIAL`을 유지합니다.
+  모든 첨부 코인은 지갑·거래소를 한 번 갱신한 결과에서 캡처합니다.
+- `PUT /posts/{postId}`는 첨부 목록과 보유 기록을 변경하지 않습니다. 임시저장에는
+  선택 목록만 보관하고 잔액과 배지는 발행 시 서버가 확정합니다.
+- 회원 전체 자산 비공개이면 `attachedCoinSnapshots`는 빈 배열이며, 코인별 비공개 항목도 제외합니다.
+  공개 설정 변경은 저장된 기록을 수정하지 않습니다.
+- 기존 `holderSnapshot`은 방 코인의 단일 기록을 계속 제공합니다. 이전 글은 실제 저장된
+  방 코인 기록만 새 배열에 포함되며 기록이 없는 글은 빈 배열입니다.
+- Liquibase `024-post-coin-snapshots.sql`은 추가 코인 기록용 테이블을 생성합니다.
+  기존 방 코인 기록은 `post_holder_snapshots`에 유지됩니다. 글 삭제 시 추가 기록도 함께 삭제됩니다.
+
 - `media.type`: `IMAGE` 또는 `VIDEO`
 - `media.url`, `thumbnailUrl`: 업로드 API가 반환한 경로 또는 사용자 정보가 없는 HTTPS URL
 - `tradingViewInterval`: `1`, `3`, `5`, `15`, `30`, `45`, `60`, `120`, `180`, `240`, `D`, `W`, `M`
@@ -339,12 +361,13 @@ API에서 `503`이지만, 발행 경로에서는 성공한 거래소 조회를 �
 }
 ```
 
-`GET /market/prices?currency=KRW`는 모든 활성 코인의 같은 응답 객체를 표시 순서대로 배열로
+`GET /market/prices?currency=KRW`는 시세를 지원하는 활성 코인의 같은 응답 객체를 표시 순서대로 배열로
 반환합니다. 공급자에는 코인 ID를 묶어 한 번만 요청하므로 커뮤니티 화면은 이 API를 30초마다
-호출합니다. `change24h`는 공급자가 등락률을 제공하지 않으면 `null`일 수 있습니다.
+호출합니다. `OTHER` 및 시세 미지원 방은 배열에서 제외하며, 단일 시세 요청은 `422`입니다.
+`change24h`는 공급자가 등락률을 제공하지 않으면 `null`일 수 있습니다.
 
 가격은 20초간 서버 캐시를 사용합니다. 공급자 장애나 rate limit으로 조회하지 못하면
-`503 Service Unavailable`을 반환하며 가격이 없는 게시글을 저장하지 않습니다. 운영 환경은
+`503 Service Unavailable`을 반환합니다. 시세 지원 방은 글 작성 중 시세 조회가 실패하면 저장하지 않습니다. 운영 환경은
 `MARKET_PRICE_BASE_URL`로 공급자 호스트를 교체할 수 있습니다. 기본 구현은
 [CoinGecko Keyless Public API](https://docs.coingecko.com/docs/keyless-public-api)의
 [`/simple/price`](https://docs.coingecko.com/reference/simple-price)를 사용합니다.
@@ -355,3 +378,7 @@ API에서 `503`이지만, 발행 경로에서는 성공한 거래소 조회를 �
 | 활성 코인 심볼이 없음 | `404 Not Found` |
 | 코인은 있지만 가격 공급자 ID가 없음 | `422 Unprocessable Entity` |
 | 가격 공급자 timeout, 장애, rate limit 또는 응답 누락 | `503 Service Unavailable` |
+
+## 투표 기록 확장
+
+일일 투표의 지난 결과·본인 기록·참여 시점 스냅샷 계약은 [POLL_HISTORY_API.md](POLL_HISTORY_API.md)를 참고하세요.

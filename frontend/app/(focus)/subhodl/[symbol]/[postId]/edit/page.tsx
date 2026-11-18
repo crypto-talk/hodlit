@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import EditForm from "@/features/post/components/edit-form";
 
 export const metadata: Metadata = {
-  title: "글 수정 — Hodlit",
+  title: "글 수정",
 };
 
 /**

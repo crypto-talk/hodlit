@@ -16,7 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest(properties="cryptalk.admin.member-ids=100000")
+@SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 class NewsApiTest {
@@ -29,7 +29,7 @@ class NewsApiTest {
 
     @BeforeEach
     void setup() {
-        jdbc.update("INSERT INTO members(id,nickname,avatar_color,asset_visibility,created_at,updated_at) VALUES(100000,'news-admin','#123456','EXACT',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
+        jdbc.update("INSERT INTO members(id,role,nickname,avatar_color,asset_visibility,created_at,updated_at) VALUES(100000,'ADMIN','news-admin','#123456','EXACT',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
         user = members.saveAndFlush(new Member("ordinary-news-user", "#123456")).getId();
     }
 

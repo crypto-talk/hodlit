@@ -91,7 +91,7 @@ export default function PortfolioView() {
   );
 }
 
-const SCOPE_NOTE = "호들잇에 방이 있는 코인만 집계합니다. 원화 예수금과 방이 없는 토큰은 빠집니다.";
+const SCOPE_NOTE = "호들릿에 방이 있는 코인만 집계합니다. 원화 예수금과 방이 없는 토큰은 빠집니다.";
 
 function Chart({
   data,

@@ -5,9 +5,11 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name="community_polls")
+@SQLRestriction("deleted_at IS NULL")
 public class CommunityPoll {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY)
     private Long id;
@@ -20,6 +22,8 @@ public class CommunityPoll {
     private boolean active;
     @Column(name="created_at", nullable=false)
     private Instant createdAt;
+    @Column(name="deleted_at")
+    private Instant deletedAt;
     @OneToMany(mappedBy="poll", cascade=CascadeType.ALL)
     @OrderBy("position ASC")
     private List<PollChoice> choices = new ArrayList<>();
@@ -33,6 +37,10 @@ public class CommunityPoll {
         for (int i=0; i<labels.size(); i++) choices.add(new PollChoice(this,labels.get(i).strip(),i));
     }
     public void close() { active = false; }
+    public void delete(Instant deletedAt) {
+        close();
+        this.deletedAt = deletedAt;
+    }
     public Long getId() { return id; }
     public Coin getCoin() { return coin; }
     public String getQuestion() { return question; }

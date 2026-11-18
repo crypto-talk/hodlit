@@ -130,7 +130,8 @@ class HotRoomStatisticsTest {
         var cumulative = statistics.statistics("all", "BTC").rooms().getFirst();
         assertEquals(1, cumulative.postCount());
         assertEquals(0, cumulative.hotScore());
-        assertEquals(1, statistics.statistics("all", null).rooms().size());
+        assertEquals(List.of("BTC", "OTHER"), statistics.statistics("all", null).rooms()
+            .stream().map(room -> room.symbol()).toList());
     }
 
     @Test

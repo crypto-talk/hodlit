@@ -1,3 +1,4 @@
+import { extraAttachedSymbols, toAttachedHolders } from "@/lib/holder-snapshot/attachments";
 import type { components } from "@/lib/api-schema";
 import { markdownToPlainText } from "@/lib/format/plain-text";
 import { formatRelativeTime } from "@/lib/format/time";
@@ -35,6 +36,8 @@ export type PostSummary = {
   verifiable: boolean;
   symbol: string;
   tier: Tier;
+  badge?: import("@/components/holder/animal-badge").AnimalBadgeData | null;
+  holderStatus?: string | null;
   /** 수량 구간. **서버가 완성해서 주는 문자열**이다. 프론트가 계산하지 않는다. */
   range: string;
   /** ISO 시각. `<time dateTime>` 에 넣는다. */
@@ -43,6 +46,13 @@ export type PostSummary = {
   title: string;
   preview: string;
   nick: string;
+  /**
+   * 방 코인 말고 글쓴이가 더 붙인 코인(공개된 것만, HODL-106). 카드는 방 배지를 중심으로 그리고
+   * 이건 기호만 덧붙인다. 기타 방 글은 이것만 있다.
+   */
+  attached: string[];
+  /** 글쓴이 회원 id. 공개 프로필 주소(`profileHref`)에 쓴다. 없으면 링크 없이 이름만. */
+  authorId: number | null;
   /**
    * 보유 기간 문구. 보유가 확인된 글(지갑연결 · 거래소연동)에만 있고 나머지는 null.
    * 미인증 · 미보유에 "보유 기간" 을 붙이면 말이 안 된다. 인덱서 전까지는 항상
@@ -73,6 +83,10 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
     verifiable,
     symbol: post.coinSymbol ?? "",
     tier,
+    badge: (
+      snapshot as { badge?: import("@/components/holder/animal-badge").AnimalBadgeData } | undefined
+    )?.badge,
+    holderStatus: snapshot?.holderStatus,
     // 서버가 완성해서 주는 문자열이다. 여기서 수량으로 다시 계산하지 않는다.
     range: snapshot?.quantityBand ?? "",
     createdAt: post.createdAt ?? "",
@@ -80,6 +94,11 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
     title: post.title ?? "(제목 없음)",
     preview: toPreview(post.content),
     nick: post.author?.nickname ?? "알 수 없음",
+    authorId: post.author?.id ?? null,
+    attached: extraAttachedSymbols(
+      toAttachedHolders(post.attachedCoinSnapshots),
+      post.coinSymbol ?? "",
+    ),
     hold: verifiable && isHolderTier(tier) ? holdingPeriodLabel(snapshot?.holdingMonths) : null,
     likes: post.likes ?? 0,
     comments: post.comments ?? 0,

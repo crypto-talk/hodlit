@@ -34,6 +34,8 @@ const COIN_NAME_KO: Record<string, string> = {
   SUI: "수이",
   ARB: "아비트럼",
   OP: "옵티미즘",
+  // 기타 방(HODL-87). 백엔드 이름도 "기타" 다.
+  OTHER: "기타",
 };
 
 export const coinNameKo = (symbol: string, fallback: string) => COIN_NAME_KO[symbol] ?? fallback;

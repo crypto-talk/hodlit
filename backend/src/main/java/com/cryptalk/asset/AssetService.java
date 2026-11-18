@@ -7,6 +7,7 @@ import com.cryptalk.common.ApiException;
 import com.cryptalk.exchange.ExchangeConnectionService;
 import com.cryptalk.market.MarketPriceService;
 import com.cryptalk.member.MemberRepository;
+import com.cryptalk.wallet.WalletChain;
 import com.cryptalk.wallet.WalletRepository;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AssetService {
+    private final com.cryptalk.badge.BadgeService badgeSettings;
     private final AssetSnapshotRepository snapshots;
     private final CoinRepository coins;
     private final MemberRepository members;
@@ -36,7 +38,7 @@ public class AssetService {
 
     public AssetService(AssetSnapshotRepository snapshots, CoinRepository coins, MemberRepository members,
                         WalletRepository wallets, MarketPriceService marketPrices,
-                        AlchemyPortfolioClient alchemy, ExchangeConnectionService exchanges) {
+                        AlchemyPortfolioClient alchemy, ExchangeConnectionService exchanges, com.cryptalk.badge.BadgeService badgeSettings) {
         this.snapshots = snapshots;
         this.coins = coins;
         this.members = members;
@@ -44,6 +46,7 @@ public class AssetService {
         this.marketPrices = marketPrices;
         this.exchanges = exchanges;
         this.alchemy = alchemy;
+        this.badgeSettings = badgeSettings;
     }
 
     @Transactional
@@ -55,7 +58,7 @@ public class AssetService {
         long deadline = System.nanoTime() + publicationRefreshBudget.toNanos();
         var member = members.lockById(memberId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"회원을 찾을 수 없습니다."));
-        var connectedWallets = wallets.findByMemberIdOrderByCreatedAtAsc(memberId);
+        var connectedWallets = wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(memberId, WalletChain.EVM.name());
         var connections = exchanges.list(memberId);
         if (connectedWallets.isEmpty() && connections.isEmpty()) {
             snapshots.deleteByMemberId(memberId);
@@ -69,7 +72,9 @@ public class AssetService {
                 false, "NOT_CONFIGURED", Instant.now())
             : alchemy.fetch(connectedWallets.stream().map(wallet -> wallet.getAddress()).toList(),
                 publication ? Duration.ofNanos(Math.max(0, deadline - System.nanoTime())) : Duration.ofSeconds(15));
-        var walletCoins = coins.findByActiveTrueOrderByDisplayOrder().stream().filter(this::walletSupported).toList();
+        var assetCoins = coins.findByActiveTrueOrderByDisplayOrder().stream()
+            .filter(coin -> !coin.isGeneralRoom()).toList();
+        var walletCoins = assetCoins.stream().filter(this::walletSupported).toList();
         Map<String, WalletBalance> walletBalances = new HashMap<>();
         for (var coin : walletCoins) walletBalances.put(coin.getSymbol(), alchemyBalance(coin, discovered));
         Map<String,BigDecimal> exchangeQuantities = new HashMap<>();
@@ -83,9 +88,7 @@ public class AssetService {
                 exchangeComplete = false;
             }
         }
-        var candidates = connections.isEmpty()
-            ? walletCoins
-            : coins.findByActiveTrueOrderByDisplayOrder();
+        var candidates = connections.isEmpty() ? walletCoins : assetCoins;
         for (Coin coin : candidates) {
             String symbol = coin.getSymbol();
             boolean walletAsset = walletBalances.containsKey(symbol);
@@ -121,7 +124,9 @@ public class AssetService {
             snapshot.captureSources(level,connections.size(),sync);
             snapshots.save(snapshot);
         }
-        return new RefreshResult(snapshots.findByMemberIdOrderByCoinDisplayOrder(memberId).stream().map(this::response).toList(), discovered);
+        return new RefreshResult(snapshots.findByMemberIdOrderByCoinDisplayOrder(memberId).stream()
+            .filter(snapshot -> !snapshot.getCoin().isGeneralRoom())
+            .map(this::response).toList(), discovered);
     }
 
     @Transactional
@@ -138,19 +143,39 @@ public class AssetService {
 
     @Transactional
     public AssetSnapshot snapshotForPublication(Long memberId,Coin coin) {
+        if (coin.isGeneralRoom()) return null;
         if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED
                 && !(alchemy.isConfigured() && walletSupported(coin)) && exchanges.list(memberId).isEmpty()) return null;
-        boolean refreshFailed = false;
+        boolean refreshFailed = refreshForPublicationFailed(memberId);
+        return publicationSnapshot(memberId, coin, Instant.now(), refreshFailed);
+    }
+
+    @Transactional
+    public Map<Long, AssetSnapshot> snapshotsForPublication(Long memberId, List<Coin> selectedCoins) {
+        boolean refreshFailed = refreshForPublicationFailed(memberId);
+        Instant now = Instant.now();
+        Map<Long, AssetSnapshot> results = new HashMap<>();
+        for (Coin coin : selectedCoins) {
+            AssetSnapshot snapshot = publicationSnapshot(memberId, coin, now, refreshFailed);
+            if (snapshot != null) results.put(coin.getId(), snapshot);
+        }
+        return results;
+    }
+
+    private boolean refreshForPublicationFailed(Long memberId) {
         try {
             refreshAndList(memberId, true);
+            return false;
         } catch (ApiException exception) {
             if (exception.status() != HttpStatus.SERVICE_UNAVAILABLE) throw exception;
-            refreshFailed = true;
+            return true;
         }
-        if (coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
+    }
+
+    private AssetSnapshot publicationSnapshot(Long memberId, Coin coin, Instant now, boolean refreshFailed) {
+        if (coin.isGeneralRoom() || coin.getVerificationAvailability() != VerificationAvailability.SUPPORTED) return null;
         var snapshot = snapshots.findByMemberIdAndCoinId(memberId,coin.getId()).orElse(null);
         if (snapshot == null) return null;
-        Instant now = Instant.now();
         boolean fresh = snapshot.getCapturedAt() != null && !snapshot.getCapturedAt().isAfter(now)
             && !snapshot.getCapturedAt().isBefore(now.minus(publicationMaxAge));
         return snapshot.publicationCopy(fresh, refreshFailed);
@@ -159,7 +184,7 @@ public class AssetService {
     private AssetResponse response(AssetSnapshot snapshot) {
         return new AssetResponse(snapshot.getCoin().getSymbol(),snapshot.getQuantity(),
             "READY".equals(snapshot.getSyncStatus()) ? snapshot.getValueKrw() : null,
-            snapshot.isVerified() ? HoldingQuantityBand.of(snapshot.getCoin().getSymbol(),snapshot.getQuantity()) : null,
+            snapshot.isVerified() ? publicationBand(snapshot) : null,
             snapshot.isVerified(),snapshot.getVerificationLevel(),snapshot.getVerificationStatus(),snapshot.getWalletCount(),
             snapshot.getHoldingSince(),null,snapshot.getCapturedAt(),snapshot.getBlockNumber(),snapshot.getSyncStatus(),
             snapshot.getHolderStatus(),snapshot.getExchangeCount());
@@ -169,7 +194,7 @@ public class AssetService {
     @Transactional(readOnly = true)
     public WalletAssetPortfolioResponse walletPortfolio(Long memberId) {
         if (!members.existsById(memberId)) throw new ApiException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다.");
-        var addresses = wallets.findByMemberIdOrderByCreatedAtAsc(memberId).stream()
+        var addresses = wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(memberId, WalletChain.EVM.name()).stream()
             .map(wallet -> wallet.getAddress()).toList();
         if (addresses.isEmpty()) return WalletAssetPortfolioResponse.from(emptyWalletPortfolio());
         if (!alchemy.isConfigured()) throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Alchemy API 키를 설정해 주세요.");
@@ -212,6 +237,10 @@ public class AssetService {
                                          List<AssetIssueResponse> unresolvedAssets, WalletAssetPortfolioResponse walletAssets) {}
     public record AssetIssueResponse(String symbol, String status, String syncStatus, String holderStatus) {}
     @Schema(description = "성공적으로 확인된 수단의 잔액 합계. PARTIAL에서도 양수 부분합은 verified=true/HOLDER이며 전체 잔액을 의미하지 않습니다.")
+    private String publicationBand(AssetSnapshot snapshot) {
+        var badge = badgeSettings.capture(snapshot.getCoin(), snapshot);
+        return badge == null ? HoldingQuantityBand.of(snapshot.getCoin().getSymbol(), snapshot.getQuantity()) : badge.getQuantityBand();
+    }
     public record AssetResponse(String symbol,BigDecimal quantity,BigDecimal valueKrw,String quantityBand,
                                 boolean verified,String verificationLevel,String status,int walletCount,
                                 java.time.Instant holdingSince,Integer holdingMonths,java.time.Instant capturedAt,

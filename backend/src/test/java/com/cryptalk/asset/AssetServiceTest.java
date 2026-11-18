@@ -16,6 +16,7 @@ import com.cryptalk.market.MarketPriceService.PriceQuote;
 import com.cryptalk.member.Member;
 import com.cryptalk.member.MemberRepository;
 import com.cryptalk.wallet.Wallet;
+import com.cryptalk.wallet.WalletChain;
 import com.cryptalk.wallet.WalletRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -43,7 +44,7 @@ class AssetServiceTest {
         Wallet wallet = mock(Wallet.class);
         when(members.lockById(7L)).thenThrow(new com.cryptalk.common.ApiException(
             org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "temporarily unavailable"));
-        when(wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of(wallet));
+        when(wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(7L, WalletChain.EVM.name())).thenReturn(List.of(wallet));
         when(wallet.getAddress()).thenReturn("0x1111111111111111111111111111111111111111");
         when(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH")).thenReturn(Optional.of(eth));
         when(eth.getId()).thenReturn(2L);
@@ -52,7 +53,7 @@ class AssetServiceTest {
         cached.capture(BigDecimal.TEN, BigDecimal.TEN, true, "VERIFIED", 1);
         ReflectionTestUtils.setField(cached, "capturedAt", Instant.now().minus(Duration.ofHours(2)));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(cached));
-        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, prices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class))
+        AssetSnapshot published = new AssetService(snapshots, coins, members, wallets, prices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class), mock(com.cryptalk.badge.BadgeService.class))
             .snapshotForPublication(7L, eth);
         assertFalse(published.isVerified());
         assertEquals("STALE", published.getSyncStatus());
@@ -76,7 +77,7 @@ class AssetServiceTest {
         AssetSnapshot snapshot = new AssetSnapshot(member, eth);
 
         when(members.lockById(7L)).thenReturn(Optional.of(member));
-        when(wallets.findByMemberIdOrderByCreatedAtAsc(7L)).thenReturn(List.of(wallet, secondWallet));
+        when(wallets.findByMemberIdAndChainTypeOrderByCreatedAtAsc(7L, WalletChain.EVM.name())).thenReturn(List.of(wallet, secondWallet));
         when(wallet.getAddress()).thenReturn("0x1111111111111111111111111111111111111111");
         when(secondWallet.getAddress()).thenReturn("0x2222222222222222222222222222222222222222");
         when(coins.findBySymbolIgnoreCaseAndActiveTrue("ETH")).thenReturn(Optional.of(eth));
@@ -97,7 +98,7 @@ class AssetServiceTest {
             "KRW", new BigDecimal("-3.45"), Instant.parse("2026-09-02T12:49:50Z"), "COINGECKO"));
         when(snapshots.findByMemberIdAndCoinId(7L, 2L)).thenReturn(Optional.of(snapshot));
         when(snapshots.findByMemberIdOrderByCoinDisplayOrder(7L)).thenReturn(List.of(snapshot));
-        AssetService service = new AssetService(snapshots, coins, members, wallets, marketPrices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class));
+        AssetService service = new AssetService(snapshots, coins, members, wallets, marketPrices, alchemy, mock(com.cryptalk.exchange.ExchangeConnectionService.class), mock(com.cryptalk.badge.BadgeService.class));
 
         AssetService.AssetResponse asset = service.refreshAndList(7L).get(0);
 

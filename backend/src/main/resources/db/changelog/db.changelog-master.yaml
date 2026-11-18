@@ -39,3 +39,27 @@ databaseChangeLog:
       file: db/changelog/014-room-operation-status.sql
   - include:
       file: db/changelog/015-public-profile-indexes.sql
+  - include:
+      file: db/changelog/016-member-role.sql
+  - include:
+      file: db/changelog/017-banners.sql
+  - include:
+      file: db/changelog/018-draw-events.sql
+  - include:
+      file: db/changelog/019-badge-settings.sql
+  - include:
+      file: db/changelog/020-moderation.sql
+  - include:
+      file: db/changelog/021-room-categories.sql
+  - include:
+      file: db/changelog/022-profile-asset-preferences.sql
+  - include:
+      file: db/changelog/023-poll-vote-history.sql
+  - include:
+      file: db/changelog/024-post-coin-snapshots.sql
+  - include:
+      file: db/changelog/025-other-room.sql
+  - include:
+      file: db/changelog/026-solana-wallet-link.sql
+  - include:
+      file: db/changelog/027-poll-deletion.sql

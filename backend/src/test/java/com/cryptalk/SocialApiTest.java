@@ -194,7 +194,8 @@ class SocialApiTest {
         mvc.perform(get("/api/v1/market/prices/ETH").param("currency", "KRW"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.source").value("COINGECKO"));
         mvc.perform(get("/api/v1/market/prices").param("currency", "KRW"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$[0].symbol").value("BTC"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(20))
+            .andExpect(jsonPath("$[0].symbol").value("BTC"))
             .andExpect(jsonPath("$[0].change24h").value(2.75))
             .andExpect(jsonPath("$[4].symbol").value("DOGE"));
     }
@@ -203,7 +204,7 @@ class SocialApiTest {
     @CsvSource({"UNKNOWN,false", "PARTIAL,false", "UNKNOWN,true", "PARTIAL,true"})
     void publicationRefreshesAndReportsUnknownOnAnySourceFailure(String rpcStatus, boolean savedAssets) throws Exception {
         String suffix = rpcStatus.toLowerCase() + (savedAssets ? "-saved" : "-new");
-        Account author = signup("rpc-" + suffix, "RPC " + suffix);
+        Account author = signup("rpc-" + suffix, "RPC_" + suffix);
         wallets.save(new Wallet(members.findById(author.id()).orElseThrow(),
             "0x" + java.util.UUID.randomUUID().toString().replace("-", "") + "12345678"));
         if (savedAssets) {

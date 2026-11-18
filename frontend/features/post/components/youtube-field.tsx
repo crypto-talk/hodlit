@@ -6,6 +6,7 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   disabled: boolean;
+  hidePreviewCopy?: boolean;
 };
 
 /**
@@ -15,7 +16,12 @@ type Props = {
  * 스크립트가 통째로 따라 들어온다. 서버도 같은 주소(`i.ytimg.com/.../hqdefault.jpg`)를
  * 썸네일로 저장한다.
  */
-export default function YoutubeField({ value, onChange, disabled }: Props) {
+export default function YoutubeField({
+  value,
+  onChange,
+  disabled,
+  hidePreviewCopy = false,
+}: Props) {
   const videoId = youtubeVideoId(value);
   const invalid = value.trim().length > 0 && !videoId;
 
@@ -42,9 +48,11 @@ export default function YoutubeField({ value, onChange, disabled }: Props) {
             alt="유튜브 썸네일"
             className="h-16 w-28 flex-none rounded-sm object-cover"
           />
-          <p className="min-w-0 truncate text-xs text-text-muted">
-            영상 {videoId} · 글에 링크로 붙습니다
-          </p>
+          {hidePreviewCopy ? null : (
+            <p className="min-w-0 truncate text-xs text-text-muted">
+              영상 {videoId} · 글에 링크로 붙습니다
+            </p>
+          )}
           <div className="flex-1" />
           <button
             type="button"

@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error(exception.getName() + ": " + guidance));
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ResponseEntity<Map<String, Object>> handleConflict(org.springframework.dao.DataIntegrityViolationException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error("중복되거나 다른 데이터에서 참조 중인 항목입니다."));
+    }
+
     private Map<String, Object> error(String message) {
         return Map.of("message", message, "timestamp", Instant.now().toString());
     }
