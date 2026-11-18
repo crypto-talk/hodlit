@@ -93,6 +93,7 @@ for (const mode of ["login", "signup"] as const) {
         })
       ).ok(),
     ).toBe(true);
+    await page.goto("/login");
     await page.getByLabel("아이디", { exact: true }).fill(secondUser);
     await page.getByLabel("비밀번호", { exact: true }).fill("password-123");
     await page.getByRole("button", { name: "로그인", exact: true }).click();
