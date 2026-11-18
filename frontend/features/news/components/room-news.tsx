@@ -1,9 +1,10 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { formatRelativeTime } from "@/lib/format/time";
-import { cn } from "@/lib/utils";
+import { newsHref } from "@/lib/routes";
+import { ROOM_NEWS_PREVIEW_SIZE } from "../api";
 import { useRoomNews } from "../hooks/use-room-news";
 import type { RoomNewsItem } from "../types";
 
@@ -11,28 +12,36 @@ type Props = {
   symbol: string;
 };
 
-const PAGER =
-  "cursor-pointer rounded-sm px-2 py-1 text-xs text-text-muted hover:text-text-primary disabled:cursor-default disabled:opacity-40 disabled:hover:text-text-muted";
-
 /**
  * 방 게시판의 뉴스 칸 (HODL-62). [뉴스 | 투표] 2분할 중 왼쪽(구조 결정 G).
  *
- * 관리자가 등록한 제목 · 짧은 요약 · 출처를 평문으로 보여 주고, 원문은 새 탭의 바깥 링크로 연다.
- * 최신순 3개씩(옆 투표 칸과 높이를 맞추려고), 칸 안에서 쪽을 넘긴다. 쪽은 주소에 넣지 않았다 — 방 게시판의 `?page=` 는 글 목록의 쪽이고,
- * 뉴스 칸의 쪽까지 주소에 남길 만큼 오래 머무는 목록이 아니라서다.
+ * 최근 뉴스 몇 개를 **제목 한 줄씩**만 보여 준다. 요약까지 그리면 칸이 시세 · 차트와 글 목록 사이에서
+ * 너무 커진다(10-31 성지, 레이아웃 A안). 요약과 지난 뉴스는 "더보기" → 뉴스 페이지(`/subhodl/[symbol]/news`).
+ * 칸 안에서 쪽을 넘기던 것은 뺐다 — 3건 이하면 버튼이 안 보여 있는지도 몰랐다.
+ *
+ * 제목은 원문(새 탭) 링크다. 시각은 기사 시각이 아니라 관리자가 등록한 시각이다.
  */
 export default function RoomNews({ symbol }: Props) {
-  const [page, setPage] = useState(1);
-  const news = useRoomNews(symbol, page);
+  const news = useRoomNews(symbol, 1, ROOM_NEWS_PREVIEW_SIZE);
+  const total = news.data?.totalItems ?? 0;
 
   return (
     <section aria-label="뉴스" className="rounded-lg border border-border-subtle bg-surface p-4">
       <div className="flex items-baseline gap-2">
         <h2 className="text-body font-semibold text-text-primary">뉴스</h2>
-        {news.data && news.data.totalItems > 0 ? (
+        {total > 0 ? (
           <span className="text-xs text-text-muted tabular-nums">
-            {news.data.totalItems.toLocaleString("ko-KR")}건
+            {total.toLocaleString("ko-KR")}건
           </span>
+        ) : null}
+        {total > 0 ? (
+          <Link
+            href={newsHref(symbol)}
+            className="ml-auto inline-flex items-center text-xs text-text-muted hover:text-brand"
+          >
+            더보기
+            <ChevronRight aria-hidden className="size-3.5" />
+          </Link>
         ) : null}
       </div>
 
@@ -52,76 +61,41 @@ export default function RoomNews({ symbol }: Props) {
       ) : news.data.items.length === 0 ? (
         <p className="mt-2 text-sm text-text-muted">아직 등록된 뉴스가 없습니다.</p>
       ) : (
-        <>
-          <ul
-            className={cn(
-              "mt-2 flex flex-col divide-y divide-border-subtle transition-opacity",
-              news.isPlaceholderData && "opacity-60",
-            )}
-          >
-            {news.data.items.map((item) => (
-              <NewsRow key={item.id} item={item} />
-            ))}
-          </ul>
-
-          {news.data.totalPages > 1 ? (
-            <nav aria-label="뉴스 쪽 이동" className="mt-2 flex items-center justify-end gap-1">
-              <button
-                type="button"
-                className={PAGER}
-                disabled={page <= 1 || news.isFetching}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-              >
-                이전
-              </button>
-              <span className="text-xs text-text-muted tabular-nums">
-                {page} / {news.data.totalPages}
-              </span>
-              <button
-                type="button"
-                className={PAGER}
-                disabled={page >= news.data.totalPages || news.isFetching}
-                onClick={() => setPage((current) => current + 1)}
-              >
-                다음
-              </button>
-            </nav>
-          ) : null}
-        </>
+        <ul className="mt-1 flex flex-col divide-y divide-border-subtle">
+          {news.data.items.map((item) => (
+            <NewsLine key={item.id} item={item} />
+          ))}
+        </ul>
       )}
     </section>
   );
 }
 
-function NewsRow({ item }: { item: RoomNewsItem }) {
-  // 시각은 기사 시각이 아니라 관리자가 등록한 시각이다.
+function NewsLine({ item }: { item: RoomNewsItem }) {
   const added = formatRelativeTime(item.createdAt);
-  const meta = [item.sourceName ? `출처 ${item.sourceName}` : "", added ? `${added} 등록` : ""]
-    .filter(Boolean)
-    .join(" · ");
+  const title = <span className="min-w-0 flex-1 truncate">{item.title}</span>;
 
   return (
-    <li className="py-3 first:pt-1 last:pb-1">
+    <li className="flex items-baseline gap-3 py-2 text-sm">
       {item.sourceUrl ? (
         <a
           href={item.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="group inline-flex items-start gap-1 text-sm font-semibold text-text-primary hover:text-brand"
+          // 잘린 제목은 마우스를 올리면 전체가 보인다.
+          title={item.title}
+          className="flex min-w-0 flex-1 text-text-primary hover:text-brand"
         >
-          <span className="line-clamp-2">{item.title}</span>
-          <ExternalLink
-            className="mt-0.5 size-3.5 flex-none text-text-muted group-hover:text-brand"
-            aria-label="새 탭에서 원문 열기"
-          />
+          {title}
         </a>
       ) : (
-        <p className="line-clamp-2 text-sm font-semibold text-text-primary">{item.title}</p>
+        <span title={item.title} className="flex min-w-0 flex-1 text-text-primary">
+          {title}
+        </span>
       )}
-      {item.summary ? (
-        <p className="mt-1 line-clamp-2 text-sm text-text-muted">{item.summary}</p>
+      {added ? (
+        <span className="flex-none text-xs text-text-subtle tabular-nums">{added}</span>
       ) : null}
-      {meta ? <p className="mt-1 text-xs text-text-subtle">{meta}</p> : null}
     </li>
   );
 }

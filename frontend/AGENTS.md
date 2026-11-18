@@ -5,6 +5,9 @@ Read the repository `AGENTS.md` first. This file adds the rules that apply under
 The product is **Hodlit**. The repository, the npm package name, the API domain and the Java
 package are still spelled `cryptalk`; renaming those is a separate job scheduled for just
 before launch. Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
+The Korean name is **호들릿** (not 호들잇). It sits next to Hodlit in the site title, description,
+OG site name and the `WebSite` JSON-LD (`alternateName`) in `app/layout.tsx`, so Korean searches
+land here. Keep one spelling everywhere; mixed spellings split what search engines learn.
 The `sessionStorage` key `cryptalk_access` is left alone; it disappears when `access` moves
 to a cookie (B-3).
 
@@ -48,7 +51,8 @@ app/
     page.tsx            landing (server component, Promise.all over sections)
     subhodl/[symbol]/page.tsx             room board
     subhodl/[symbol]/[postId]/page.tsx    post detail
-    [handle]/page.tsx   public profile; notFound() unless handle starts with "@"
+    user/[memberId]/page.tsx  public profile by member id (HODL-104); notFound() unless the id
+                        is a positive integer. The old `/@nickname` route is gone (404, no redirect)
   (focus)/              header only
     login/  signup/  write/  settings/  settings/wallet/
     subhodl/[symbol]/[postId]/edit/
@@ -65,22 +69,36 @@ lib/auth-token.ts       the only place the access token is read or written; dele
 lib/api-schema.ts       generated from the backend OpenAPI spec by `pnpm gen:api`. Never
                         hand-edited, excluded from ESLint and Prettier
 lib/query.ts  lib/format/  lib/utils.ts (cn)  lib/config.ts (env, single read point)
-lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3). Was
+lib/holder-snapshot/    the only place holder-snapshot wording is made (rule 3). `attachments.ts` maps the
+                        per-coin `attachedCoinSnapshots` (HODL-106); an empty array means "nothing public",
+                        never fall back to `holderSnapshot` unless the field itself is missing. Was
                         `features/badge` — pure functions every feature needs, so it moved
                         down to lib/ when the post detail screen became its second user
-lib/routes.ts           screen URLs (room, post, write) + `safeSymbol()` + `roomSymbolOf()`
+lib/routes.ts           screen URLs (room, post, write, `profileHref(memberId)`) + `safeSymbol()` +
+                        `roomSymbolOf()` + `parseMemberId()`. Profile links always use the member
+                        id, never the nickname — nicknames change
+lib/room-status.ts      open/closed room checks (HODL-77) + `isGeneralRoom()` for the OTHER room (HODL-87):
+                        no price, chart, news, poll or room-coin badge there
+lib/nickname.ts         nickname rule copied from the backend (2–40 chars after trim, Hangul /
+                        A–Z / a–z / 0–9 / `_` / `-`), shared by signup and the mypage nickname editor
 lib/post-summary.ts     PostResponse -> list card view model, shared by landing and room board
-lib/market-price/       coin prices fetched by the browser straight from Upbit, or CoinGecko for
-                        coins Upbit does not list (HODL-61): the symbol -> Upbit market /
+lib/market-price/       coin prices fetched by the browser straight from Bithumb, or CoinGecko for
+                        coins Bithumb does not list (HODL-61): the symbol -> Bithumb market /
                         CoinGecko id / TradingView symbol table, the fetches, and
                         `useMarketQuote()` / `useSourceMarketQuotes()`; shared by the room price
                         box and the shell price ticker
-components/holder/      tier-badge.tsx — the shape of the 인증 badge; wording from lib
+lib/safe-url.ts         `safeExternalUrl()` / `safeSitePath()` / `safeLink()` — the check every server-supplied
+                        href goes through (news source links, banner links)
+components/holder/      holder-badge.tsx — the one badge slot next to an author. It draws the animal tier
+                        badge when the snapshot carries one and the old tier badge otherwise, never both
+                        (2026-11-11). tier-badge.tsx / animal-badge.tsx are the two shapes; wording from lib
 components/post/        post-card.tsx — the list card used by the landing feed and the room board
 styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
 styles/fonts/           Pretendard subset woff2, 400/600/700/800/900
 components.json         shadcn/ui config; `shadcn add` writes into components/ui/
 vitest.config.ts        unit test scope: features/**/*.test.ts, lib/**/*.test.ts
+mock/                   dependency-free fake API for clicking through screens locally: `pnpm dev:mock`
+                        (see mock/README.md). It does not replace a check against the real API
 tests/e2e/              Playwright: login.spec.ts, publish-post.spec.ts (run locally)
 .storybook/             Storybook config; stories only for components/ui and components/holder
 ```
@@ -228,9 +246,18 @@ had no posts, so every list screen could only be checked empty; writing first fi
    `lib/routes.ts` sends an edit draft to its edit page (the write page redirects there too).
 2. ✅ Post detail `/subhodl/[symbol]/[postId]`, first pass (`features/post/components/
 post-detail.tsx`): title, author, Markdown body, images, YouTube embed
-   (youtube-nocookie), the price captured at publish time. The body is rendered by Tiptap in
-   read-only mode (`post-body.tsx`) rather than a separate Markdown renderer — same schema and
-   same styles as the editor, and anything outside the schema (raw HTML) is not rendered.
+   (youtube-nocookie), the price captured at publish time. The body is rendered with the
+   editor's Tiptap schema through `@tiptap/static-renderer` (`post-body.tsx`) rather than a
+   separate Markdown renderer — same schema and same styles as the editor, anything outside the
+   schema (raw HTML) is not rendered, and it renders on the server too.
+   **SEO / GEO:** the page fetches the post once on the server, anonymously (public API, 3 s
+   timeout), and seeds `["post", id, null]` through `HydrationBoundary`, so the first HTML carries
+   the title and body for crawlers that do not run JavaScript. It also sets the title,
+   description, canonical (the post's own room), OG `article`, and a `DiscussionForumPosting`
+   JSON-LD (`features/post/structured-data.ts`). A missing post is a real 404. A closed room or
+   a failed/slow fetch falls back to the browser fetch. Logged-in viewers keep seeing that copy
+   (`keepPreviousData`) while their own `liked`/`bookmarked` load; the buttons stay locked until
+   then. Comments are still browser-only.
    Landing titles and the publish redirect now link here through `lib/routes.ts`.
    The holder snapshot block (tier badge, holding period, amount band) sits under the title.
    Comments, like/bookmark (`post-actions.tsx`) and the author's edit/delete
@@ -249,26 +276,28 @@ post-detail.tsx`): title, author, Markdown body, images, YouTube embed
    `docs/NUMBERED_PAGINATION_API.md`) and room news / poll APIs; none of them is wired yet.
    `postCount` is the room's real total (it used to stop at 100; the "100개 이상" label is gone).
    **Prices (HODL-61):** the browser fetches prices itself, not the backend `GET /market/prices`.
-   Coins with an Upbit KRW market use Upbit's public `/v1/ticker` (last trade price, change vs the
-   previous day's close) so the number matches the Upbit chart below it; BNB, LTC and TON, which
-   Upbit does not list, use CoinGecko's keyless `/simple/price` (KRW conversion, 24h change).
+   Coins with a Bithumb KRW market use Bithumb's public `/v1/ticker` (last trade price, change vs
+   the previous day's close — KST midnight, as far as Bithumb's docs show) so the number matches the
+   Bithumb chart below it; LTC and TON, which Bithumb does not list, use CoinGecko's keyless
+   `/simple/price` (KRW conversion, 24h change). It was Upbit until 2026-11-16: Upbit allows a
+   browser — a request with an Origin header — one call per 10 seconds, so a second tab or a shared
+   IP got refused and the browser logged it as a CORS error. Bithumb answered repeated browser calls.
    The price box names the source and the change basis. No API key — there is nothing secret to
-   ship. One query per source (`["market-quotes", "upbit" | "coingecko"]`), each one request for
-   all of its coins, refetched every 30 seconds (Jira asked for 5; Upbit allows a browser — a
-   request with an Origin header — one call per 10 seconds and blocks repeat offenders with 418,
-   and the keyless CoinGecko values change about once a minute — reasoning on HODL-61), paused
+   ship. One query per source (`["market-quotes", "bithumb" | "coingecko"]`), each one request for
+   all of its coins, refetched every 30 seconds (Jira asked for 5; the keyless CoinGecko values
+   change about once a minute — reasoning on HODL-61), paused
    while the tab is hidden. On 429/418 it waits 60 seconds and does not retry. Only the price line
    dims while refetching; a failed refresh keeps the last value.
    **Chart (HODL-63):** the TradingView advanced-chart embed (chart and data both TradingView),
-   1-hour candles, Upbit KRW markets where Upbit lists the coin, otherwise a USDT market (BNB, LTC
+   1-hour candles, Bithumb KRW markets where Bithumb lists the coin, otherwise a USDT market (LTC
    on Binance, TON on OKX), named under the chart. No countdown.
    **Ticker (HODL-57):** the shell's top strip shows prices instead of the mock service copy.
-   Upbit KRW markets only, for now — the service targets Korean users, so every change in the
-   strip is vs the previous day's close (UTC 0:00 on Upbit) and needs no per-cell basis label;
-   BNB, LTC and TON are not in the strip. It reads the same `["market-quotes", "upbit"]` query as
-   the price box, so a room screen still makes one Upbit request per 30 seconds. For foreign
+   Bithumb KRW markets only, for now — the service targets Korean users, so every change in the
+   strip is vs the previous day's close and needs no per-cell basis label;
+   LTC and TON are not in the strip. It reads the same `["market-quotes", "bithumb"]` query as
+   the price box, so a room screen still makes one Bithumb request per 30 seconds. For foreign
    users the plan is to switch the strip to CoinGecko (`TICKER_SOURCE`); `coingecko.ts` would
-   then have to fetch every coin, not only the three. Square board, brand frame and a static
+   then have to fetch every coin, not only the two. Square board, brand frame and a static
    LIVE badge; values change without flashing (성지's call). The strip pauses on hover; loading,
    failure and empty responses are one still line inside the strip.
    The landing's post card and its mapper moved down to `components/post/post-card.tsx` and
@@ -283,15 +312,14 @@ becomes the spec.
 
 ## Working rules
 
-- Base new work on the latest `origin/develop` and work on a `<type>/<what>` branch. `<type>` is
+- Base new work on the latest `origin/main` and work on a `<type>/<what>` branch. `<type>` is
   the Conventional Commit type the change mostly is — `feat/`, `fix/`, `refactor/`, `docs/`,
   `test/`, `chore/`; `<what>` is a few kebab-case words naming the area, not a ticket number
   (`refactor/screen-structure`, `feat/post-editor`). Mixed work takes the type of its largest part.
   ⚠️ This is a `frontend/` rule. The repository root still says `feature/...`, and two things
   actually depend on it: the `Backend feature check` workflow only runs on `feature/**`, and the
   `create-pr` skill refuses a head branch that does not start with `feature/`. Neither is a
-  frontend file — do not change them from a frontend task. Open frontend PRs yourself rather
-  than through `create-pr`.
+  frontend file — do not change them from a frontend task. Open frontend PRs directly with `main` as the base.
 - Keep backend changes out of frontend tasks unless the user explicitly expands the scope.
 - Preserve unrelated user changes. Never stash, reset, or delete them to make a task easier.
 - Never commit `.env*` files, tokens, or API credentials.
@@ -338,6 +366,43 @@ onto a single line to save space.
   not emit `required` on response schemas, so springdoc marks all of them `?`. Request bodies
   are correct. Until the backend fixes this, a feature that needs a non-optional field
   narrows it in its own `types.ts` and says why — do not spread `?` through the components.
+- Badge wording (`holderBadgeLabel()`): `NOT_CONNECTED` is `미인증`, never `미보유` — a member who
+  connected nothing was never checked. `EMPTY` is `ETH 미보유`, `UNKNOWN` is `조회 실패`.
+- Admin screens (`/admin/news`, `/admin/polls`, `/admin/banners`, HODL-110 · 111 · 92) live in
+  `features/admin/`. The header and mypage show the admin link only when `member.role === "ADMIN"`
+  (HODL-108); access itself is still decided by the admin API's 403, not by the role. The poll admin
+  screen never shows vote counts — the "no results before today's participation" rule has no admin bypass.
+- Home banners (`features/banner/`, HODL-92): `GET /banners` returns visible banners in order. The strip
+  renders nothing when there are none or the request fails; a banner whose image fails is dropped alone.
+  No auto-rotation. Server-supplied image URLs go through `lib/media.ts` `imageSrc()`.
+- Draw events (`features/draw/`, `/draw/[eventId]`, HODL-95): the POST is sent only on an explicit click,
+  the prize is whatever the server returns, and a lost response is recovered by re-reading
+  `/draw-events/{id}/me` — never assume "not drawn". The result is a record, not a delivery.
+- Admin draw events (`/admin/draws`, `features/admin/components/draw-*.tsx`, pure rules in
+  `features/admin/draw-events.ts`, HODL-94 · 96): create a draft → replace prizes → open. Opening locks the
+  title, description, period and prizes for good; afterwards only pause ↔ resume until `endsAt`. The server
+  status is `DRAFT` | `ACTIVE` | `PAUSED`; "ended" and "expired draft" are derived from the period, so the
+  phase is computed with `useNow()` (`lib/use-now.ts`, moved down from `features/draw`). Times are entered
+  in **KST** and sent as UTC (`kstInputToUtc`) regardless of the browser time zone. The odds shown next to
+  each weight are weight / sum, the server's formula. Weights are capped at `Number.MAX_SAFE_INTEGER` here
+  although the server takes 64-bit values — a larger value would come back rounded. There is no winner list
+  or delivery screen: no such API exists.
+- Poll history (`features/vote/history.ts`, HODL-109): `/subhodl/[symbol]/polls` shows past daily
+  results with the holder group next to the total, `/mypage/votes` shows the member's own choices.
+  Today's running result is not there — it stays behind today's participation.
+- Search (`features/search/`, HODL-100): `/search?q=…&room=ETH&type=posts&page=2`. No `type` shows a
+  per-category preview (`GET /search/groups`), a `type` shows that category with numbered pages.
+  Room search only has posts and comments — `parseCategory` drops `rooms` · `users` there, the server
+  would answer 400.
+- Room stats (`features/room/components/room-stats.tsx`, HODL-112): participants and verified rate
+  for the last 24 hours and cumulative. Participants are active logged-in members, never call them
+  signups. The rate is hidden for rooms without holder verification and when there are no participants.
+- Usage analytics (`lib/analytics/`, HODL-89, `docs/FRONTEND_ANALYTICS.md`): screens never import
+  `posthog-js`; they call `useTrackView` / `<TrackView>`. Off unless
+  `NEXT_PUBLIC_ANALYTICS_ENABLED=true` and `NEXT_PUBLIC_POSTHOG_KEY` are set. Only the three view
+  events in `events.ts` are sent, with allow-listed properties; success events (signup, wallet, post,
+  comment) belong to the server and must not be sent from here. `identify` waits for a server-issued
+  analytics id (`Member.analyticsId`, not provided yet) — do not substitute the member id or nickname.
 - `holdingMonths` is always `null` until an EVM indexer populates `holdingSince`. Render the
   fixed label `보유 기간 미확인`; do not build UI that assumes a value.
 - Public post and comment responses do not carry wallet addresses. Do not reintroduce them.

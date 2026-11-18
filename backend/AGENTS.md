@@ -2,6 +2,11 @@
 
 These instructions apply to the entire `backend/` tree.
 
+## Scope
+
+- Never create, edit, delete, regenerate, commit, or push files under `frontend/**` during backend work. This includes UI components, page routes, styles, assets, generated API clients, tests, dependencies, configuration, and `frontend/AGENTS.md`.
+- Record required frontend integration and visual changes in Jira for the frontend owner. Keep implementation changes within the backend and its required API documentation or deployment configuration.
+
 ## Architecture
 
 - Organize code by feature package under `com.cryptalk` (`auth`, `post`, `social`, and similar).

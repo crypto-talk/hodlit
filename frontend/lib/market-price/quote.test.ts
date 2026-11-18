@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type MarketQuote, orderQuotes } from "./quote";
 
 const quote = (price: number): MarketQuote => ({
-  source: "upbit",
+  source: "bithumb",
   price,
   changeRate: null,
   changeBasis: "prev-close",

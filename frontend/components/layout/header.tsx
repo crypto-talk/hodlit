@@ -5,9 +5,11 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { MYPAGE_HREF, roomSymbolOf, searchHref, writeHref } from "@/lib/routes";
+import { isAdminMember } from "@/lib/api";
+import { ADMIN_HREF, MYPAGE_HREF, roomSymbolOf, searchHref, writeHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import Logo from "./logo";
+import { roomCallName } from "@/lib/room-status";
 
 /**
  * 모든 화면 위에 오는 헤더.
@@ -63,9 +65,11 @@ export default function Header() {
           <input
             type="search"
             enterKeyHint="search"
-            aria-label={room ? `${room} 방에서 검색` : "검색"}
+            aria-label={room ? `${roomCallName(room)} 방에서 검색` : "검색"}
             className="min-w-0 flex-1 bg-transparent text-text-primary outline-none placeholder:text-text-muted"
-            placeholder={room ? `${room} 방에서 검색` : "글 · 댓글 · 방 · 닉네임 검색"}
+            placeholder={
+              room ? `${roomCallName(room)} 방에서 검색` : "글 · 댓글 · 방 · 닉네임 검색"
+            }
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -90,6 +94,19 @@ export default function Header() {
             >
               {member.nickname}
             </Link>
+            {/*
+              관리자에게만 보인다(HODL-108). 로그인 전 · 세션 복원 중에는 member 가 없어 이 가지에
+              오지 않고, 로그아웃 · 계정 전환 때는 member 가 통째로 바뀌어 이전 권한이 남지 않는다.
+              숨기는 것은 보안이 아니다 — 주소를 직접 쳐도 관리자 API 가 403 으로 막는다.
+            */}
+            {isAdminMember(member) ? (
+              <Link
+                href={ADMIN_HREF}
+                className="text-sm font-semibold text-text-muted hover:text-brand max-shell:hidden"
+              >
+                관리자
+              </Link>
+            ) : null}
             <WriteButton href={write} />
             <Button type="button" onClick={logout}>
               로그아웃
@@ -102,7 +119,7 @@ export default function Header() {
             </Button>
             <WriteButton href={write} />
             <Button asChild>
-              <Link href="/signup">시작하기</Link>
+              <Link href="/signup">회원가입</Link>
             </Button>
           </>
         )}

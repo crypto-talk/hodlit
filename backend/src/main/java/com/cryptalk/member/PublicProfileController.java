@@ -17,9 +17,23 @@ public class PublicProfileController {
 
     public PublicProfileController(PublicProfileService profiles) { this.profiles = profiles; }
 
+    @Operation(summary = "회원 ID로 공개 프로필 조회", description = "닉네임 변경 후에도 같은 ID로 공개 프로필을 조회합니다.")
+    @GetMapping("/{memberId:[0-9]+}")
+    PublicProfileDtos.ProfileResponse profileById(@PathVariable Long memberId) {
+        return profiles.byId(memberId);
+    }
+
     @Operation(summary = "닉네임으로 공개 프로필 조회", description = "현재 닉네임으로 조회합니다. 공개 글·댓글 수와 마지막 저장 시점의 공개 자산 구간을 반환합니다.")
     @GetMapping("/by-nickname/{nickname}")
     PublicProfileDtos.ProfileResponse profile(@PathVariable String nickname) {
+        return profiles.byNickname(nickname);
+    }
+
+    @Operation(summary = "검색어 파라미터로 공개 프로필 조회", description = "슬래시 등 URL 예약 문자가 포함된 닉네임도 조회합니다. 기존 경로 방식과 동일한 공개 정보만 반환합니다.")
+    @GetMapping("/by-nickname")
+    PublicProfileDtos.ProfileResponse profileQuery(@RequestParam String nickname) {
+        if (nickname.isBlank() || nickname.length() > 40)
+            throw new com.cryptalk.common.ApiException(org.springframework.http.HttpStatus.BAD_REQUEST, "닉네임은 1~40자여야 합니다.");
         return profiles.byNickname(nickname);
     }
 

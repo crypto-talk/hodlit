@@ -48,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PostService {
+    private final com.cryptalk.badge.BadgeService badges;
     private final RoomAccess rooms;
     private static final Pattern YOUTUBE = Pattern.compile("^(?:https://)?(?:www\\.)?(?:youtube\\.com/(?:shorts/|watch\\?v=)|youtu\\.be/)([A-Za-z0-9_-]{11})(?:[?&].*)?$");
     private static final Comparator<FeedEvent> FEED_ORDER = (left, right) -> {
@@ -73,6 +74,8 @@ public class PostService {
     private final MarketPriceService marketPrices;
     private final FollowRepository follows;
     private final PostHolderSnapshotRepository holderSnapshots;
+    private final PostCoinSnapshotRepository coinSnapshots;
+    private final PostCoinAttachments attachments;
     private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public PostService(PostRepository posts, PostLikeRepository likes, CommentRepository comments,
@@ -80,8 +83,13 @@ public class PostService {
                        AssetService assets, PostMediaRepository postMedia,
                        PostBookmarkRepository bookmarks, PostRepostRepository reposts,
                        MediaService mediaFiles, MarketPriceService marketPrices, FollowRepository follows,
-                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc, RoomAccess rooms) {
+                       PostHolderSnapshotRepository holderSnapshots, org.springframework.jdbc.core.JdbcTemplate jdbc,
+                       RoomAccess rooms, com.cryptalk.badge.BadgeService badges,
+                       PostCoinSnapshotRepository coinSnapshots, PostCoinAttachments attachments) {
+        this.coinSnapshots = coinSnapshots;
+        this.attachments = attachments;
         this.rooms = rooms;
+        this.badges = badges;
         this.posts = posts; this.likes = likes; this.comments = comments; this.members = members;
         this.coins = coins; this.assets = assets; this.postMedia = postMedia;
         this.bookmarks = bookmarks; this.reposts = reposts; this.mediaFiles = mediaFiles;
@@ -126,7 +134,7 @@ public class PostService {
         return feedPage(memberId, cursor, size, follows.findFollowingMemberIds(memberId));
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse get(Long postId, Long viewerId) {
         Post post = post(postId);
         PostResponse result = response(post, viewerId);
@@ -139,30 +147,53 @@ public class PostService {
     @Transactional(readOnly = true)
     public PostResponse pageItem(Long postId, Long viewerId) { return response(post(postId), viewerId); }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse create(Long memberId, CreatePostRequest request) {
         Member member = member(memberId);
         Coin coin = coins.findBySymbolIgnoreCaseAndActiveTrue(request.coinSymbol())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "코인 커뮤니티를 찾을 수 없습니다."));
         rooms.requireOpen(coin);
-        AssetSnapshot snapshot = assets.snapshotForPublication(memberId, coin);
+        boolean generalRoom = coin.isGeneralRoom();
+        List<Coin> selected = attachments.selectExtraCoins(coin, request.attachedCoins());
+        java.util.Map<Long, AssetSnapshot> captured = java.util.Map.of();
+        AssetSnapshot snapshot = null;
+        if (!selected.isEmpty()) {
+            var captureCoins = new ArrayList<>(selected);
+            if (!generalRoom) captureCoins.addFirst(coin);
+            captured = assets.snapshotsForPublication(memberId, captureCoins);
+            snapshot = captured.get(coin.getId());
+        } else if (!generalRoom) {
+            snapshot = assets.snapshotForPublication(memberId, coin);
+        }
         boolean verified = snapshot != null && snapshot.isVerified();
         // Exchange-backed aggregate quantities are public only as bands, never inferable exact valuations.
         BigDecimal value = verified && snapshot.getExchangeCount() == 0 && "READY".equals(snapshot.getSyncStatus())
             ? snapshot.getValueKrw() : null;
         YoutubeData youtube = youtube(request.youtubeUrl());
-        PriceQuote quote = marketPrices.currentPrice(coin, request.assetPriceCurrency());
+        PriceQuote quote = coin.hasMarketPrice() ? marketPrices.currentPrice(coin, request.assetPriceCurrency()) : null;
         Post saved = posts.save(new Post(member, coin, request.title().trim(), request.content().trim(), value, verified,
             clean(request.tradingViewSymbol()), clean(request.tradingViewInterval()), clean(request.tradingViewAnalysis()),
-            quote.price(), quote.currency(), quote.capturedAt(), quote.source(),
+            quote == null ? null : quote.price(), quote == null ? null : quote.currency(),
+            quote == null ? null : quote.capturedAt(), quote == null ? null : quote.source(),
             youtube == null ? null : youtube.url(), youtube == null ? null : youtube.videoId(),
             youtube == null ? null : youtube.thumbnailUrl()));
-        holderSnapshots.save(new PostHolderSnapshot(saved, snapshot));
+        if (!generalRoom) {
+            var holderRecord = new PostHolderSnapshot(saved, snapshot);
+            holderRecord.applyBadge(badges.capture(coin, snapshot));
+            holderSnapshots.save(holderRecord);
+        }
+        for (int index = 0; index < selected.size(); index++) {
+            Coin attached = selected.get(index);
+            AssetSnapshot holding = captured.get(attached.getId());
+            var record = new PostCoinSnapshot(saved, attached, holding, index);
+            record.applyBadge(badges.capture(attached, holding));
+            coinSnapshots.save(record);
+        }
         saveMedia(memberId, saved, request.media(), Set.of());
         return response(saved, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse update(Long memberId, Long postId, UpdatePostRequest request) {
         Post post = post(postId);
         own(memberId, post.getMember().getId());
@@ -174,37 +205,40 @@ public class PostService {
         return response(post, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void delete(Long memberId, Long postId) {
         Post post = post(postId);
         own(memberId, post.getMember().getId());
         List<String> mediaUrls = new ArrayList<>(postMedia.findUrlsByPostId(postId));
         mediaUrls.addAll(postMedia.findThumbnailUrlsByPostId(postId));
         mediaFiles.deleteManagedAfterCommit(mediaUrls);
+        // Delete managed snapshot children before their parent as well as relying on DB cascades.
+        coinSnapshots.deleteByPostId(postId);
+        holderSnapshots.deleteById(postId);
         posts.delete(post);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse like(Long memberId, Long postId) {
         Post post = post(postId); PostLikeId id = new PostLikeId(postId, memberId);
         if (!likes.existsById(id)) likes.save(new PostLike(post, member(memberId)));
         return response(post, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse unlike(Long memberId, Long postId) {
         post(postId);
         likes.deleteById(new PostLikeId(postId, memberId)); return response(post(postId), memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse bookmark(Long memberId, Long postId) {
         Post post = post(postId); PostMemberId id = new PostMemberId(postId, memberId);
         if (!bookmarks.existsById(id)) bookmarks.save(new PostBookmark(post, member(memberId)));
         return response(post, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse unbookmark(Long memberId, Long postId) {
         post(postId);
         bookmarks.deleteById(new PostMemberId(postId, memberId)); return response(post(postId), memberId);
@@ -217,14 +251,14 @@ public class PostService {
             .map(item -> response(item.getPost(), memberId)).toList();
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse repost(Long memberId, Long postId) {
         Post post = post(postId); PostMemberId id = new PostMemberId(postId, memberId);
         if (!reposts.existsById(id)) reposts.save(new PostRepost(post, member(memberId)));
         return response(post, memberId);
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public PostResponse unrepost(Long memberId, Long postId) {
         post(postId);
         reposts.deleteById(new PostMemberId(postId, memberId)); return response(post(postId), memberId);
@@ -348,7 +382,8 @@ public class PostService {
 
     private PostResponse response(Post post, Long viewerId) {
         Member member = post.getMember();
-        boolean visible = member.getAssetVisibility() != AssetVisibility.HIDDEN;
+        boolean generalRoom = post.getCoin().isGeneralRoom();
+        boolean visible = !generalRoom && member.getAssetVisibility() != AssetVisibility.HIDDEN;
         BigDecimal value = visible ? post.getAuthorAssetValueKrw() : null;
         boolean liked = viewerId != null && likes.existsById(new PostLikeId(post.getId(), viewerId));
         boolean reposted = viewerId != null && reposts.existsById(new PostMemberId(post.getId(), viewerId));
@@ -358,19 +393,21 @@ public class PostService {
                 item.getThumbnailUrl(), item.getDisplayOrder())).toList();
         TradingViewResponse tradingView = post.getTradingViewSymbol() == null ? null
             : new TradingViewResponse(post.getTradingViewSymbol(), post.getTradingViewInterval(), post.getTradingViewAnalysis());
-        PriceSnapshotResponse priceSnapshot = post.getAssetPrice() == null ? null
+        PriceSnapshotResponse priceSnapshot = generalRoom || post.getAssetPrice() == null ? null
             : new PriceSnapshotResponse(post.getAssetPrice(), post.getAssetPriceCurrency(), post.getAssetPriceAt(), post.getAssetPriceSource());
         YoutubeResponse youtube = post.getYoutubeVideoId() == null ? null
             : new YoutubeResponse(post.getYoutubeUrl(), post.getYoutubeVideoId(), post.getYoutubeThumbnailUrl());
-        HolderSnapshotResponse holderSnapshot = holderSnapshots.findById(post.getId()).map(item ->
+        PostHolderSnapshot roomSnapshot = generalRoom ? null : holderSnapshots.findById(post.getId()).orElse(null);
+        HolderSnapshotResponse holderSnapshot = java.util.Optional.ofNullable(roomSnapshot).map(item ->
             new HolderSnapshotResponse(item.getVerificationAvailability(), item.getVerificationLevel(),
                 item.isVerifiedHolder(), item.getQuantityBand(), item.getHoldingMonths(), item.getWalletCount(),
-                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus())).orElse(null);
+                item.getCapturedAt(), item.getBlockNumber(), item.getSyncStatus(), item.getHolderStatus(), item.getBadge())).orElse(null);
         return new PostResponse(post.getId(), post.getCoin().getSymbol(), post.getTitle(), post.getContent(), author(member),
             visible && post.isAuthorVerified(), value, assetDisplay(member.getAssetVisibility(), value),
             likes.countByPostId(post.getId()), comments.countByPostId(post.getId()), liked,
             post.getCreatedAt(), post.getUpdatedAt(), mediaResponses, tradingView, priceSnapshot, youtube,
-            reposts.countByPostId(post.getId()), reposted, bookmarked, holderSnapshot);
+            reposts.countByPostId(post.getId()), reposted, bookmarked, holderSnapshot,
+            attachments.visibleSnapshots(post, roomSnapshot));
     }
 
     private AuthorResponse author(Member member) {

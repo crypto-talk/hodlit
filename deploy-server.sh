@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 APP_DIRECTORY="${CRYPTALK_APP_DIRECTORY:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
-DEPLOY_BRANCH="${CRYPTALK_BRANCH:-develop}"
+DEPLOY_BRANCH="${CRYPTALK_BRANCH:-main}"
 HEALTH_TIMEOUT_SECONDS="${CRYPTALK_HEALTH_TIMEOUT_SECONDS:-180}"
 
 if [[ ! -d "$APP_DIRECTORY/.git" ]]; then

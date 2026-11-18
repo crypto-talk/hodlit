@@ -1,18 +1,24 @@
 "use client";
 
+import { useTrackView } from "@/lib/analytics/track";
 import Link from "next/link";
-import TierBadge from "@/components/holder/tier-badge";
+import HolderBadge from "@/components/holder/holder-badge";
+import RoomClosedNotice from "@/components/room-closed-notice";
 import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
 import { coinNameKo } from "@/lib/coin-name-ko";
 import { formatKrw } from "@/lib/format/number";
 import { formatRelativeTime } from "@/lib/format/time";
 import { ApiError } from "@/lib/http";
-import { roomHref } from "@/lib/routes";
+import { isGeneralRoom, isRoomClosedError } from "@/lib/room-status";
+import { profileHref, roomHref } from "@/lib/routes";
 import { useSession } from "@/lib/session";
 import { usePost } from "../hooks/use-post";
+import { useWriteRooms } from "../hooks/use-write-rooms";
 import PostActions from "./post-actions";
 import PostBody from "./post-body";
+import HolderRecords from "./holder-records";
 import PostOwnerActions from "./post-owner-actions";
+import type { PostDetail } from "../types";
 
 type Props = {
   postId: number;
@@ -31,14 +37,31 @@ type Props = {
  *
  * 글쓴이에게는 제목 위 줄에 수정 · 삭제(`post-owner-actions.tsx`)가 붙는다.
  *
+ * 닫힌 방(HODL-77)의 글은 403 `ROOM_CLOSED` 로 온다. 없는 글이 아니라 닫힌 방이라고 알린다.
+ *
  * 아직 없는 것: 재게시 (이번 범위에서 뺐다)
  */
 export default function PostDetailView({ postId, symbol }: Props) {
   const post = usePost(postId);
-  const { member } = useSession();
+  const { member, restored } = useSession();
+
+  // 글 내용이 실제로 보였을 때만 센다. 닫힌 방 · 없는 글 · 오류는 세지 않는다(HODL-89).
+  useTrackView(
+    post.data
+      ? {
+          name: "post_viewed",
+          postId: post.data.id,
+          roomSymbol: post.data.coinSymbol || symbol,
+        }
+      : null,
+  );
 
   if (post.isPending) {
     return <p className="text-sm text-text-muted">불러오는 중…</p>;
+  }
+
+  if (post.isError && isRoomClosedError(post.error)) {
+    return <ClosedRoom symbol={symbol} />;
   }
 
   if (post.isError) {
@@ -74,7 +97,10 @@ export default function PostDetailView({ postId, symbol }: Props) {
           {room} · {coinNameKo(room, room)}
         </Link>
         <span className="flex-1" />
-        <time dateTime={data.createdAt}>{formatRelativeTime(data.createdAt)}</time>
+        {/* 서버와 브라우저가 그리는 시각이 달라 "3분 전"이 "4분 전"으로 바뀔 수 있다 */}
+        <time dateTime={data.createdAt} suppressHydrationWarning>
+          {formatRelativeTime(data.createdAt)}
+        </time>
         {data.edited ? <span>· 수정됨</span> : null}
         {member && data.authorId === member.id ? (
           <PostOwnerActions postId={data.id} room={room} />
@@ -82,41 +108,23 @@ export default function PostDetailView({ postId, symbol }: Props) {
       </div>
 
       <h1 className="mt-4 text-h1 font-semibold break-words text-text-primary">{data.title}</h1>
-      <p className="mt-2 text-sm font-semibold text-text-primary">{data.authorNickname}</p>
-
-      {data.holder && !data.holder.verifiable ? (
-        <p className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4 text-sm text-text-muted">
-          <b className="font-semibold text-text-primary">{UNSUPPORTED_LABEL}</b> · {room} 방은 아직
-          보유 인증을 지원하지 않아 이 글에는 보유 정보가 붙지 않습니다.
-        </p>
-      ) : null}
-
-      {data.holder?.verifiable ? (
-        <section
-          aria-label="작성 시점 보유 정보"
-          className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
+      {data.authorId !== null ? (
+        <Link
+          href={profileHref(data.authorId)}
+          className="mt-2 block text-sm font-semibold text-text-primary"
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <TierBadge tier={data.holder.tier} symbol={room} />
-            {isHolderTier(data.holder.tier) ? (
-              <span className="text-sm font-semibold text-text-primary">{data.holder.holding}</span>
-            ) : null}
-            {data.holder.tier === "empty" ? (
-              <span className="text-sm text-text-muted">
-                작성 시점에 연결한 지갑 · 거래소를 모두 확인했고 {room} 잔액이 0이었습니다.
-              </span>
-            ) : null}
-            {data.holder.amount ? (
-              <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
-                {data.holder.amount}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-2 text-xs text-text-muted">
-            작성 시점에 기록된 보유 정보입니다. 이후 글을 수정해도 바뀌지 않습니다.
-          </p>
-        </section>
-      ) : null}
+          {data.authorNickname}
+        </Link>
+      ) : (
+        <p className="mt-2 text-sm font-semibold text-text-primary">{data.authorNickname}</p>
+      )}
+
+      {data.attachments ? (
+        <HolderRecords records={data.attachments} room={room} general={isGeneralRoom(room)} />
+      ) : (
+        // 코인별 기록 필드가 생기기 전 응답. 방 코인 기록 하나로 그린다.
+        <LegacyHolder holder={data.holder} room={room} />
+      )}
 
       <div className="mt-6">
         <PostBody markdown={data.content} />
@@ -167,8 +175,70 @@ export default function PostDetailView({ postId, symbol }: Props) {
           postId={data.id}
           reactions={{ likes: data.likes, liked: data.liked, bookmarked: data.bookmarked }}
           comments={data.comments}
+          settling={!restored || post.isPlaceholderData}
         />
       </div>
     </article>
+  );
+}
+
+function ClosedRoom({ symbol }: { symbol: string }) {
+  const rooms = useWriteRooms();
+  return (
+    <RoomClosedNotice
+      symbol={symbol}
+      subject="글을 볼 수 없습니다."
+      openRooms={rooms.data?.filter((room) => room.open)}
+    />
+  );
+}
+
+/** 코인별 기록(`attachedCoinSnapshots`)이 없는 옛 응답용. 방 코인 기록 하나만 그린다. */
+function LegacyHolder({ holder, room }: { holder: PostDetail["holder"]; room: string }) {
+  if (!holder) return null;
+  return (
+    <>
+      {holder && !holder.verifiable ? (
+        <p className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4 text-sm text-text-muted">
+          <b className="font-semibold text-text-primary">{UNSUPPORTED_LABEL}</b> · {room} 방은 아직
+          보유 인증을 지원하지 않아 이 글에는 보유 정보가 붙지 않습니다.
+        </p>
+      ) : null}
+
+      {holder?.verifiable ? (
+        <section
+          aria-label="작성 시점 보유 정보"
+          className="mt-4 rounded-sm border border-border-subtle bg-canvas p-4"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <HolderBadge
+              badge={holder.badge}
+              tier={holder.tier}
+              symbol={room}
+              holderStatus={holder.holderStatus}
+              partial={holder.partial}
+              position="detail"
+            />
+            {holder.partial && <span className="text-xs text-text-muted">일부 조회 기준</span>}
+            {isHolderTier(holder.tier) ? (
+              <span className="text-sm font-semibold text-text-primary">{holder.holding}</span>
+            ) : null}
+            {holder.tier === "empty" ? (
+              <span className="text-sm text-text-muted">
+                작성 시점에 연결한 지갑 · 거래소를 모두 확인했고 {room} 잔액이 0이었습니다.
+              </span>
+            ) : null}
+            {holder.amount ? (
+              <span className="rounded-sm border border-border-subtle px-2 py-0.5 text-xs text-text-muted tabular-nums">
+                {holder.amount}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-xs text-text-muted">
+            작성 시점에 기록된 보유 정보입니다. 이후 글을 수정해도 바뀌지 않습니다.
+          </p>
+        </section>
+      ) : null}
+    </>
   );
 }

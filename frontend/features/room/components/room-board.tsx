@@ -2,15 +2,19 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import RoomClosedNotice from "@/components/room-closed-notice";
 import { Button } from "@/components/ui/button";
+import { useTrackView } from "@/lib/analytics/track";
 import { UNSUPPORTED_LABEL } from "@/lib/holder-snapshot/label";
 import { ApiError } from "@/lib/http";
+import { isGeneralRoom } from "@/lib/room-status";
 import { writeHref } from "@/lib/routes";
-import { loadRoom } from "../api";
+import { loadRoom, loadRooms } from "../api";
 import type { RoomInfo } from "../types";
 import RoomChart from "./room-chart";
 import RoomPosts, { type RoomTab } from "./room-posts";
 import RoomPrice from "./room-price";
+import RoomStats from "./room-stats";
 
 type Props = {
   symbol: string;
@@ -37,12 +41,23 @@ type Props = {
  * 있는 방일 때만 시세 · 차트와 글을 받는다. 없는 방(404)에 요청을 두 번 더 보내지 않으려고
  * 왕복 한 번을 감수했다.
  *
+ * 머리 아래 참여 통계 칸(HODL-112)은 `room-stats.tsx` 가 따로 읽는다. 실패해도 방의 나머지는 보인다.
+ *
  * 아직 없는 것
- *   - 인증 참여자 비율: 방 통계 API(`/communities/{symbol}/stats`)가 생겼다. 아직 붙이지 않았다
  *   - 평균 보유 기간: `holdingMonths` 가 아직 전부 null 이다
+ *
+ * 기타 방(HODL-87, `OTHER`)은 방 코인이 없어 시세 · 차트 · 뉴스 · 투표 칸이 없다. 머리와 글 목록만.
+ *
+ * 닫힌 방(HODL-77)이면 시세 · 투표 · 뉴스 · 글을 부르지 않고 안내와 열린 방 링크만 둔다.
+ * 어차피 글 · 투표 · 뉴스는 403 으로 막힌다.
  */
 export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
   const room = useQuery({ queryKey: ["room", symbol], queryFn: () => loadRoom(symbol) });
+
+  // 운영 중인 방이 실제로 보였을 때만 센다. 닫힌 방은 안내 쪽이 따로 센다(HODL-89).
+  useTrackView(
+    room.data && !room.data.closed ? { name: "room_viewed", roomSymbol: room.data.symbol } : null,
+  );
 
   if (room.isError) {
     const missing = room.error instanceof ApiError && room.error.status === 404;
@@ -74,6 +89,8 @@ export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
 
   const info = room.data;
 
+  if (info.closed) return <ClosedRoom symbol={info.symbol} />;
+
   return (
     <div
       className="flex flex-col gap-8"
@@ -86,34 +103,56 @@ export default function RoomBoard({ symbol, tab, page, poll, news }: Props) {
     >
       <RoomHeader info={info} />
 
-      <div className="flex flex-col gap-4">
-        <RoomPrice symbol={info.symbol} name={info.name} />
-        <RoomChart symbol={info.symbol} name={info.name} />
-      </div>
+      {/* 기타 방은 방 코인이 없어 보유 인증률이 없다. 참여자 수만 보인다. */}
+      <RoomStats symbol={info.symbol} verifiable={info.verifiable && !isGeneralRoom(info.symbol)} />
 
-      <div className="grid grid-cols-2 gap-4 max-shell:grid-cols-1">
-        {news}
-        {poll}
-      </div>
+      {isGeneralRoom(info.symbol) ? null : (
+        <>
+          <div className="flex flex-col gap-4">
+            <RoomPrice symbol={info.symbol} name={info.name} />
+            <RoomChart symbol={info.symbol} name={info.name} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 max-shell:grid-cols-1">
+            {news}
+            {poll}
+          </div>
+        </>
+      )}
 
       <RoomPosts symbol={info.symbol} tab={tab} page={page} verifiable={info.verifiable} />
     </div>
   );
 }
 
+function ClosedRoom({ symbol }: { symbol: string }) {
+  // 사이드바와 같은 목록(열린 방만). 못 받아도 안내와 홈 링크는 보인다.
+  const openRooms = useQuery({ queryKey: ["open-rooms"], queryFn: loadRooms });
+  return <RoomClosedNotice symbol={symbol} openRooms={openRooms.data} />;
+}
+
 function RoomHeader({ info }: { info: RoomInfo }) {
   const count = `글 ${info.postCount.toLocaleString("ko-KR")}개`;
+  const general = isGeneralRoom(info.symbol);
 
   return (
     <header className="flex flex-wrap items-end gap-x-4 gap-y-2 border-l-4 border-l-room-accent pl-4">
       <div className="min-w-0">
-        <h1 className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-h1 font-semibold text-text-primary">{info.symbol}</span>
-          <span className="text-body text-text-muted">{info.name} 방</span>
-        </h1>
+        {general ? (
+          <h1 className="text-h1 font-semibold text-text-primary">기타 방</h1>
+        ) : (
+          <h1 className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-h1 font-semibold text-text-primary">{info.symbol}</span>
+            <span className="text-body text-text-muted">{info.name} 방</span>
+          </h1>
+        )}
         <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-text-muted">
           <span>{count}</span>
-          {info.verifiable ? null : <span>· {UNSUPPORTED_LABEL}</span>}
+          {general ? (
+            <span>· 전용 방이 없는 코인 이야기. 글마다 보유 코인을 붙일 수 있습니다</span>
+          ) : info.verifiable ? null : (
+            <span>· {UNSUPPORTED_LABEL}</span>
+          )}
         </p>
       </div>
       <span className="flex-1" />

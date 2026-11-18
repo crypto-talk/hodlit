@@ -19,6 +19,8 @@ export type RoomInfo = {
   verifiable: boolean;
   /** 방 강조색. 없으면 null 이고 화면은 브랜드색을 쓴다. */
   accentColor: string | null;
+  /** 관리자가 닫은 방(HODL-77). 글 · 시세 · 투표 · 뉴스 대신 안내만 보인다. */
+  closed: boolean;
 };
 
 /** 방 글 목록 한 쪽. `GET /communities/{symbol}/posts/page` 에서 온다. */
@@ -28,4 +30,23 @@ export type RoomPostPage = {
   totalPages: number;
   /** 이 탭 기준 전체 글 수. */
   totalPosts: number;
+};
+
+/** 통계 기간. `24h` 는 지금부터 거꾸로 24시간(달력의 하루가 아님), `all` 은 누적이다. */
+export type StatsWindow = "24h" | "all";
+
+/**
+ * 방 참여 통계 (HODL-112). `GET /communities/{symbol}/stats` 에서 온다.
+ *
+ * 참여자는 그 기간에 로그인한 채 글 · 댓글 · 좋아요를 남기거나 글 상세를 연 회원 수다.
+ * **가입자 수가 아니다.** 비로그인 조회는 세지 않는다.
+ */
+export type RoomStats = {
+  window: StatsWindow;
+  participants: number;
+  /**
+   * 참여자 중 지금 이 방 코인 보유가 인증된 회원의 비율(0~100).
+   * 참여자가 없으면 비율을 말할 수 없어 null 이다(서버는 0 을 준다).
+   */
+  verifiedRate: number | null;
 };

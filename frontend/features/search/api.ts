@@ -3,14 +3,16 @@ import { coinNameKo } from "@/lib/coin-name-ko";
 import { markdownToPlainText } from "@/lib/format/plain-text";
 import { http } from "@/lib/http";
 import { safeSymbol } from "@/lib/routes";
-import { SEARCH_PAGE_SIZE } from "./limits";
-import type { SearchPage, SearchResult } from "./types";
+import { categoriesFor } from "./categories";
+import { SEARCH_PAGE_SIZE, SEARCH_PREVIEW_SIZE } from "./limits";
+import type { SearchCategory, SearchGroup, SearchPage, SearchResult } from "./types";
 
 /**
  * 검색 (구조 규칙 2: 데이터 진입점은 여기 하나). 공개 API 라 로그인 없이 된다.
  *
  * - 전체: `GET /search` — 글 · 댓글 · 방 · 사용자 (HODL-65)
  * - 방: `GET /communities/{symbol}/search` — 그 방의 글 · 댓글만 (HODL-69). 없거나 운영 중이 아닌 방은 404
+ * - 두 주소 뒤에 `/groups` 를 붙이면 분류별 미리보기, `type=` 을 붙이면 한 분류만 (HODL-99)
  *
  * 둘 다 관련도순(제목 3 · 닉네임 2 · 본문 1 을 더한 점수) → 최신순이고, 검색어 전체가 들어 있는지만 본다
  * (단어 · 형태소 검색 아님). 운영 중인 방의 글 · 댓글만 나온다.
@@ -19,23 +21,56 @@ import type { SearchPage, SearchResult } from "./types";
 type Schemas = components["schemas"];
 type SearchItem = Schemas["SearchItem"];
 type SearchPageResponse = Schemas["PageResponseSearchItem"];
+type GroupedResults = Schemas["GroupedResults"];
 
-/** `page` 는 화면 기준 1부터다. API 는 0부터라 여기서 하나 뺀다. */
+/**
+ * 한 분류의 결과를 쪽 번호로 읽는다. `page` 는 화면 기준 1부터다. API 는 0부터라 여기서 하나 뺀다.
+ * `category` 가 없으면 예전처럼 종류가 섞인 목록이다.
+ */
 export async function loadSearch(input: {
   q: string;
   page: number;
   room: string | null;
+  category?: SearchCategory | null;
 }): Promise<SearchPage> {
   const query = new URLSearchParams({
     q: input.q.trim(),
     page: String(Math.max(0, input.page - 1)),
     size: String(SEARCH_PAGE_SIZE),
   });
-  const path = input.room
-    ? `/api/v1/communities/${encodeURIComponent(input.room)}/search`
-    : "/api/v1/search";
-  const result = await http<SearchPageResponse>(`${path}?${query}`);
+  if (input.category) query.set("type", input.category);
+  return toSearchPage(await http<SearchPageResponse>(`${basePath(input.room)}?${query}`));
+}
 
+/**
+ * 분류별 미리보기 (HODL-99). 분류마다 앞의 몇 건과 그 분류 전체 건수를 준다.
+ * 방 검색은 글 · 댓글만 온다. 화면 순서(`categoriesFor`)대로 돌려주고, 응답에 없는 분류는 0건으로 채운다.
+ */
+export async function loadSearchGroups(input: {
+  q: string;
+  room: string | null;
+}): Promise<SearchGroup[]> {
+  const query = new URLSearchParams({
+    q: input.q.trim(),
+    previewSize: String(SEARCH_PREVIEW_SIZE),
+  });
+  const result = await http<GroupedResults>(`${basePath(input.room)}/groups?${query}`);
+  return toSearchGroups(result, input.room);
+}
+
+/** 테스트에서 쓰려고 내보낸다. */
+export function toSearchGroups(result: GroupedResults, room: string | null): SearchGroup[] {
+  return categoriesFor(room).map((category) => ({
+    category,
+    ...toSearchPage(result[category] ?? {}),
+  }));
+}
+
+function basePath(room: string | null): string {
+  return room ? `/api/v1/communities/${encodeURIComponent(room)}/search` : "/api/v1/search";
+}
+
+function toSearchPage(result: SearchPageResponse): SearchPage {
   return {
     results: (result.items ?? []).flatMap((item) => {
       const view = toSearchResult(item);

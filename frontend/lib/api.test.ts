@@ -60,7 +60,8 @@ it("실제 세션 만료는 null을 반환하고 저장된 토큰을 제거한�
   const { getAccessToken } = await import("./auth-token");
   await expect(refreshSession()).resolves.toBeNull();
   expect(getAccessToken()).toBeNull();
-  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(new Headers(fetchMock.mock.calls[2][1]?.headers).has("Authorization")).toBe(false);
 });
 
 it.each([403, 503])("/me의 %s 오류는 로그아웃으로 바꾸지 않는다", async (status) => {
@@ -108,12 +109,15 @@ it("중복 복원과 일반 요청의 401은 갱신을 한 번만 보낸다", as
 
 it("로그아웃 후 늦게 도착한 갱신은 토큰을 되살리지 않는다", async () => {
   let finish!: (response: Response) => void;
-  fetchMock.mockResolvedValueOnce(json(401, {})).mockImplementationOnce(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      }),
-  );
+  fetchMock
+    .mockResolvedValueOnce(json(401, {}))
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(json(401, {}));
   const { refreshSession } = await import("./api");
   const { clearAccessToken, getAccessToken } = await import("./auth-token");
   const restoring = refreshSession();
@@ -122,6 +126,7 @@ it("로그아웃 후 늦게 도착한 갱신은 토큰을 되살리지 않는다
   finish(json(200, { accessToken: "late" }));
   await expect(restoring).resolves.toBeNull();
   expect(getAccessToken()).toBeNull();
+  expect(new Headers(fetchMock.mock.calls[2][1]?.headers).has("Authorization")).toBe(false);
 });
 
 it.each([403, 503])("refresh의 %s 오류도 세션 만료와 구분한다", async (status) => {

@@ -3,6 +3,8 @@ import type { HolderSnapshot } from "./types";
 import {
   UNKNOWN_HOLDING_LABEL,
   amountLabel,
+  animalBadgeExplanation,
+  holderBadgeLabel,
   holdingLabel,
   holdingPeriodLabel,
   isVerifiable,
@@ -154,5 +156,53 @@ describe("isVerifiable", () => {
     expect(isVerifiable("SOMETHING_NEW")).toBe(false);
     expect(isVerifiable(undefined)).toBe(false);
     expect(isVerifiable(null)).toBe(false);
+  });
+});
+
+describe("holderBadgeLabel", () => {
+  it("연결한 수단이 없으면 미보유가 아니라 미인증", () => {
+    expect(
+      holderBadgeLabel(tierOf("UNVERIFIED", false, "NOT_CONNECTED"), "ETH", "NOT_CONNECTED"),
+    ).toBe("미인증");
+  });
+
+  it("모두 확인했고 0개면 코인을 붙여 미보유", () => {
+    expect(holderBadgeLabel("empty", "ETH", "EMPTY")).toBe("ETH 미보유");
+  });
+
+  it("확인 실패는 조회 실패", () => {
+    expect(holderBadgeLabel("none", "ETH", "UNKNOWN")).toBe("조회 실패");
+  });
+
+  it("보유자는 등급 문구", () => {
+    expect(holderBadgeLabel("wallet", "ETH", "HOLDER")).toBe("지갑연결");
+    expect(holderBadgeLabel("exchange", "ETH", "HOLDER")).toBe("거래소연동");
+  });
+
+  it("holderStatus 가 없는 옛 응답은 등급 문구 그대로", () => {
+    expect(holderBadgeLabel("none", "ETH")).toBe("미인증");
+    expect(holderBadgeLabel("wallet", "ETH", null)).toBe("지갑연결");
+  });
+});
+
+describe("animalBadgeExplanation", () => {
+  const badge = { name: "돌고래", quantityBand: "1 이상 10 미만 ETH" };
+
+  it("등급 · 구간 · 확인 수단 · 기준을 적는다", () => {
+    expect(animalBadgeExplanation(badge, { tier: "exchange" })).toBe(
+      "돌고래 · 1 이상 10 미만 ETH · 거래소연동 · 작성 시점 기준 · 정확 수량 비공개",
+    );
+  });
+
+  it("일부만 조회된 기록이면 그렇게 적는다", () => {
+    expect(animalBadgeExplanation(badge, { tier: "wallet", partial: true })).toContain(
+      "일부 조회 기준",
+    );
+  });
+
+  it("확인 수단을 모르면 뺀다", () => {
+    expect(animalBadgeExplanation(badge)).toBe(
+      "돌고래 · 1 이상 10 미만 ETH · 작성 시점 기준 · 정확 수량 비공개",
+    );
   });
 });

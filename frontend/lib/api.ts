@@ -17,7 +17,22 @@ export type Member = {
   avatarColor: string;
   walletAddress: string | null;
   assetVisibility: string;
+  /**
+   * 본인 응답에만 오는 역할(HODL-88). 관리자 메뉴를 보일지 정하는 데만 쓴다 — 관리자 화면에
+   * 들어갈 수 있는지는 관리자 API 의 403 이 정한다. 값이 없는 옛 응답은 일반 회원으로 본다.
+   */
+  role?: "USER" | "ADMIN";
+  /**
+   * 분석 전용 식별자(HODL-89). **백엔드가 아직 주지 않는다.** 생기면 로그인한 행동이 PostHog 에서
+   * 한 사람으로 이어진다. 없는 동안에는 식별하지 않고 익명으로 남긴다 — 회원 번호 · 닉네임으로 대신하지 않는다.
+   */
+  analyticsId?: string;
 };
+
+/** 관리자 메뉴를 보여도 되는 회원인지. 로그인 전 · 세션 복원 중(null)이면 false 다. */
+export function isAdminMember(member: Member | null): boolean {
+  return member?.role === "ADMIN";
+}
 
 type AuthResult = { accessToken: string; member: Member };
 

@@ -8,6 +8,11 @@ import java.time.Instant;
 public class Member {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(nullable = false) private boolean suspended;
+    public boolean isSuspended() { return suspended; }
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 20)
+    private MemberRole role = MemberRole.USER;
     @Column(name = "login_id", unique = true, length = 254)
     private String loginId;
     @Column(name = "password_hash", length = 100)
@@ -41,6 +46,7 @@ public class Member {
     }
 
     public Long getId() { return id; }
+    public MemberRole getRole() { return role; }
     public Instant getCreatedAt() { return createdAt; }
     public String getNickname() { return nickname; }
     public String getLoginId() { return loginId; }

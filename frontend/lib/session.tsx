@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { identify, resetIdentity } from "@/lib/analytics/client";
 import { api, refreshSession, type Member } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { linkWallet } from "@/lib/wallet-link";
@@ -42,9 +43,24 @@ type SessionValue = {
    * 성공하면 member 가 새 객체로 바뀐다.
    */
   connectWallet: () => Promise<Member>;
+  /**
+   * 서버가 돌려준 내 정보로 바꾼다. 닉네임 변경(`PATCH /me`) 뒤 헤더 · 마이페이지에
+   * 새 닉네임이 바로 보이게 한다. 다른 회원으로 바꾸는 용도가 아니다.
+   */
+  replaceMember: (next: Member) => void;
 };
 
 const SessionContext = createContext<SessionValue | null>(null);
+
+/**
+ * 같은 회원의 정보를 새 응답으로 바꿀 때, 새 응답에 role 이 빠져 있으면 알던 값을 잇는다.
+ * 지갑 연결 · 닉네임 변경 응답이 role 을 안 줘도 관리자 메뉴가 사라지지 않게 하려는 것이다.
+ * 다른 회원이면 잇지 않는다 — 이전 계정의 권한 표시가 남으면 안 된다(HODL-108).
+ */
+function keepRole(previous: Member | null, next: Member): Member {
+  if (next.role || !previous || previous.id !== next.id) return next;
+  return { ...next, role: previous.role };
+}
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
@@ -89,6 +105,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setRestoreError(false);
   }, []);
 
+  // 분석용 식별(HODL-89). 서버가 분석 전용 식별자를 줄 때만 잇는다. 없으면 아무 일도 없다.
+  const analyticsId = member?.analyticsId ?? null;
+  useEffect(() => {
+    identify(analyticsId);
+  }, [analyticsId]);
+
   const value = useMemo<SessionValue>(
     () => ({
       member,
@@ -107,12 +129,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         epoch.current += 1;
         await api.logout().catch(() => undefined);
         changeMember(null);
+        resetIdentity();
       },
       connectWallet: async () => {
+        const started = epoch.current;
         const next = await linkWallet();
-        changeMember(next);
+        if (epoch.current === started) changeMember(keepRole(member, next));
         return next;
       },
+      replaceMember: (next) => setMember((previous) => keepRole(previous, next)),
     }),
     [member, restored, changeMember],
   );

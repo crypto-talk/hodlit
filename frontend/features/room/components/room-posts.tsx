@@ -1,5 +1,6 @@
 "use client";
 
+import { isGeneralRoom } from "@/lib/room-status";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import PostCard from "@/components/post/post-card";
@@ -55,14 +56,17 @@ export default function RoomPosts({ symbol, tab, page, verifiable }: Props) {
         >
           전체
         </Link>
-        <Link
-          href={roomHref(symbol, "verified")}
-          scroll={false}
-          aria-current={tab === "verified" ? "page" : undefined}
-          className={`${TAB_CLASS} ${tab === "verified" ? TAB_ACTIVE : ""}`}
-        >
-          인증
-        </Link>
+        {/* 기타 방은 방 코인이 없어 방 기준 인증 글이 없다. 탭을 두지 않는다. */}
+        {isGeneralRoom(symbol) ? null : (
+          <Link
+            href={roomHref(symbol, "verified")}
+            scroll={false}
+            aria-current={tab === "verified" ? "page" : undefined}
+            className={`${TAB_CLASS} ${tab === "verified" ? TAB_ACTIVE : ""}`}
+          >
+            인증
+          </Link>
+        )}
         <span className="flex-1" />
         <span className="self-center text-xs text-text-muted">최신순</span>
       </nav>

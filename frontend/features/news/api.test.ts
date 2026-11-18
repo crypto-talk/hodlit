@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { safeExternalUrl, toNewsItem } from "./api";
+import { safeExternalUrl } from "@/lib/safe-url";
+import { toNewsItem } from "./api";
 
 describe("safeExternalUrl", () => {
   it("http(s) 만 통과한다", () => {

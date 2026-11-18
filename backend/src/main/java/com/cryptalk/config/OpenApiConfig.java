@@ -23,7 +23,11 @@ public class OpenApiConfig {
                 .addSecuritySchemes(BEARER_AUTH, new SecurityScheme()
                     .type(SecurityScheme.Type.HTTP)
                     .scheme("bearer")
-                    .bearerFormat("JWT")))
+                    .bearerFormat("JWT"))
+                .addSecuritySchemes("newsPublisherToken", new SecurityScheme()
+                    .type(SecurityScheme.Type.APIKEY)
+                    .in(SecurityScheme.In.HEADER)
+                    .name("X-News-Publisher-Token")))
             .addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH));
     }
 }

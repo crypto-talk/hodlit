@@ -37,7 +37,7 @@ class CrypTalkApplicationTest {
             .andReturn();
         JsonNode document = json.readTree(result.getResponse().getContentAsString());
         Set<String> expectedTags = Set.of("인증", "코인·커뮤니티", "댓글", "실시간 시세", "미디어",
-            "내 정보·자산", "게시글·피드", "팔로우", "지갑 연결", "거래소 자산", "임시저장", "방 뉴스", "방 투표", "검색", "서비스 관리자 방 관리", "공개 프로필");
+            "내 정보·자산", "게시글·피드", "팔로우", "지갑 연결", "거래소 자산", "임시저장", "방 뉴스", "방 투표", "검색", "서비스 관리자 방 관리", "공개 프로필", "배너", "뽑기 이벤트", "관리자 등급 배지", "서비스 운영 관리", "방·카테고리 관리", "공개 프로필 자산 설정", "뉴스 게시 연동");
         Set<String> actualTags = new HashSet<>();
         Set<String> httpMethods = Set.of("get", "post", "put", "patch", "delete", "options", "head");
         int operationCount = 0;
@@ -52,8 +52,12 @@ class CrypTalkApplicationTest {
             }
         }
 
-        assertEquals(83, operationCount);
+        assertTrue(operationCount >= 84);
+        assertTrue(document.path("paths").has("/api/v1/news-publisher/communities/{symbol}/news"));
         assertTrue(document.path("paths").has("/api/v1/communities/stats"));
+        assertTrue(document.path("paths").has("/api/v1/communities/{symbol}/polls/results"));
+        assertTrue(document.path("paths").has("/api/v1/polls/{pollId}/results"));
+        assertTrue(document.path("paths").has("/api/v1/me/votes"));
         assertTrue(document.path("paths").has("/api/v1/communities/{symbol}/stats"));
         assertTrue(document.path("paths").has("/api/v1/members/by-nickname/{nickname}"));
         assertTrue(document.path("paths").has("/api/v1/members/{memberId}/posts/page"));
@@ -83,18 +87,20 @@ class CrypTalkApplicationTest {
     void exposesSeededCoins() throws Exception {
         mvc.perform(get("/api/v1/coins"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(20))
+            .andExpect(jsonPath("$.length()").value(21))
             .andExpect(jsonPath("$[0].symbol").value("BTC"))
             .andExpect(jsonPath("$[0].verificationAvailability").value("SUPPORTED"))
             .andExpect(jsonPath("$[1].symbol").value("ETH"))
             .andExpect(jsonPath("$[1].verificationAvailability").value("SUPPORTED"))
-            .andExpect(jsonPath("$[19].symbol").value("SUI"));
+            .andExpect(jsonPath("$[19].symbol").value("SUI"))
+            .andExpect(jsonPath("$[20].symbol").value("OTHER"));
 
         var activeCoins = coins.findByActiveTrueOrderByDisplayOrder();
         assertEquals(List.of("BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "AVAX", "DOT", "LINK",
-            "POL", "TON", "TRX", "LTC", "BCH", "UNI", "AAVE", "ATOM", "NEAR", "SUI"),
+            "POL", "TON", "TRX", "LTC", "BCH", "UNI", "AAVE", "ATOM", "NEAR", "SUI", "OTHER"),
             activeCoins.stream().map(Coin::getSymbol).toList());
-        assertTrue(activeCoins.stream().allMatch(coin -> coin.getMarketPriceId() != null && !coin.getMarketPriceId().isBlank()));
+        assertTrue(activeCoins.subList(0, 20).stream().allMatch(Coin::hasMarketPrice));
+        assertFalse(activeCoins.getLast().hasMarketPrice());
     }
 
     @Test

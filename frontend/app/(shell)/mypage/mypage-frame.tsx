@@ -3,12 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import NicknameEditor from "@/features/profile/components/nickname-editor";
 import {
+  ADMIN_HREF,
   MYPAGE_ASSETS_HREF,
   MYPAGE_BOOKMARKS_HREF,
   MYPAGE_DRAFTS_HREF,
+  MYPAGE_VOTES_HREF,
   MYPAGE_WALLET_HREF,
+  profileHref,
 } from "@/lib/routes";
+import { isAdminMember } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
 /** 마이페이지 탭. 탭이 늘면 여기에 줄을 더한다. */
@@ -17,6 +22,7 @@ const TABS = [
   { href: MYPAGE_ASSETS_HREF, label: "내 자산" },
   { href: MYPAGE_BOOKMARKS_HREF, label: "북마크" },
   { href: MYPAGE_DRAFTS_HREF, label: "임시저장" },
+  { href: MYPAGE_VOTES_HREF, label: "내 투표" },
 ] as const;
 
 const TAB_CLASS =
@@ -53,10 +59,27 @@ export default function MypageFrame({ children }: { children: React.ReactNode })
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-h1 font-bold">마이페이지</h1>
-        <p className="mt-1 text-sm text-text-muted">{member.nickname} · 나만 보는 화면입니다</p>
+        <p className="mt-1 text-sm break-words text-text-muted">
+          {member.nickname} · 나만 보는 화면입니다
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link href={profileHref(member.id)} className="text-sm text-brand hover:underline">
+            내 공개 프로필
+          </Link>
+          <NicknameEditor />
+          {/* 관리자에게만(HODL-108). 좁은 화면에서는 헤더의 관리자 링크가 숨어 여기가 입구다. */}
+          {isAdminMember(member) ? (
+            <Link href={ADMIN_HREF} className="text-sm text-brand hover:underline">
+              서비스 관리
+            </Link>
+          ) : null}
+        </div>
       </div>
 
-      <nav aria-label="마이페이지 탭" className="flex gap-6 border-b border-border-subtle">
+      <nav
+        aria-label="마이페이지 탭"
+        className="flex gap-6 overflow-x-auto border-b border-border-subtle whitespace-nowrap"
+      >
         {TABS.map((tab) => (
           <Link
             key={tab.href}

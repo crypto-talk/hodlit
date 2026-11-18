@@ -3,7 +3,7 @@ name: Deploy backend to Umbrel
 on:
   push:
     branches:
-      - develop
+      - main
     paths:
       - "backend/**"
       - "docker-compose.yml"
@@ -20,15 +20,18 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     name: Test and deploy backend
     runs-on:
       - self-hosted
       - linux
     timeout-minutes: 15
     steps:
+      - name: Check out deployment scripts
+        uses: actions/checkout@v4
       - name: Deploy the triggering commit
         env:
           CRYPTALK_APP_DIRECTORY: /home/umbrel/cryptalk
-          CRYPTALK_BRANCH: develop
+          CRYPTALK_BRANCH: main
           CRYPTALK_EXPECTED_COMMIT: ${{ github.sha }}
-        run: /home/umbrel/cryptalk/deploy-backend.sh
+        run: bash "$GITHUB_WORKSPACE/deploy-backend.sh"
