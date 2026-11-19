@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownInput } from "../markdown-input";
+import EditorYoutube from "./editor-youtube";
 import { RICH_TEXT_CLASS } from "../rich-text-class";
 
 type Props = {
@@ -41,6 +42,9 @@ type Props = {
  * 밑줄은 끈다. Markdown 에 밑줄 문법이 없어 저장하면 사라진다.
  * 이미지는 아직 본문 안이 아니라 아래 첨부 칸으로 붙는다. 백엔드 `media` 목록과
  * 본문 안 위치를 어떻게 맞출지 정한 뒤에 옮긴다.
+ *
+ * 본문에 유튜브 링크를 붙여 넣으면 에디터 아래에 영상 미리보기가 붙는다
+ * (`editor-youtube.tsx`, HODL-123). 링크는 본문에 링크로 남는다.
  */
 export default function BodyEditor({ onChange, disabled, initialContent }: Props) {
   const editor = useEditor({
@@ -89,6 +93,7 @@ export default function BodyEditor({ onChange, disabled, initialContent }: Props
     <div className="mt-2 rounded-sm border border-border-subtle bg-canvas focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-brand">
       {editor ? <Toolbar editor={editor} disabled={disabled} /> : <ToolbarPlaceholder />}
       <EditorContent editor={editor} />
+      {editor ? <EditorYoutube editor={editor} /> : null}
     </div>
   );
 }

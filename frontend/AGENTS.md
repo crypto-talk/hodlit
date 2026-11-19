@@ -92,7 +92,12 @@ lib/safe-url.ts         `safeExternalUrl()` / `safeSitePath()` / `safeLink()` �
 components/holder/      holder-badge.tsx — the one badge slot next to an author. It draws the animal tier
                         badge when the snapshot carries one and the old tier badge otherwise, never both
                         (2026-11-11). tier-badge.tsx / animal-badge.tsx are the two shapes; wording from lib
-components/post/        post-card.tsx — the list card used by the landing feed and the room board
+components/post/        post-card.tsx — the list card used by the landing feed and the room board;
+                        post-media.tsx draws its attached photos and YouTube video (HODL-127)
+components/media/       YouTube thumbnail / click-to-play preview / embed, shared by the list card and
+                        the post detail. Nothing plays until it is clicked
+lib/youtube.ts          the YouTube URL pattern (same as the backend `PostService.YOUTUBE`), video-id check,
+                        thumbnail / embed URLs, and `youtubeIdsInContent()` — the YouTube links in a body
 styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
 styles/fonts/           Pretendard subset woff2, 400/600/700/800/900
 components.json         shadcn/ui config; `shadcn add` writes into components/ui/
@@ -225,6 +230,10 @@ had no posts, so every list screen could only be checked empty; writing first fi
    An image removed before publishing is deleted with `DELETE /media/{file}`; files left
    behind when the tab is closed are the backend's to clean up. One YouTube link, checked
    with the same pattern as `PostService.YOUTUBE`, previewed by its thumbnail only.
+   YouTube links pasted into the body stay links; the editor lists a thumbnail for each one
+   below the body and drops it when the link is removed, and the post detail shows a
+   click-to-play preview under the body (HODL-123). The backend never sees these as videos —
+   only the separate YouTube field is the post's attached video.
    **E-2 settled: the body is stored as Markdown.** The editor is Tiptap (StarterKit +
    `@tiptap/markdown`) and sends `editor.getMarkdown()` as `content`. Not Tiptap JSON:
    the backend counts `content` up to 5000 characters and JSON is several times longer;

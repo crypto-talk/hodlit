@@ -2,7 +2,9 @@ import { extraAttachedSymbols, toAttachedHolders } from "@/lib/holder-snapshot/a
 import type { components } from "@/lib/api-schema";
 import { markdownToPlainText } from "@/lib/format/plain-text";
 import { formatRelativeTime } from "@/lib/format/time";
+import { imageSrc } from "@/lib/media";
 import { postHref } from "@/lib/routes";
+import { isYoutubeVideoId } from "@/lib/youtube";
 import type { Tier } from "@/lib/holder-snapshot/types";
 
 import {
@@ -63,6 +65,19 @@ export type PostSummary = {
   comments: number;
   /** ⚠️ 조회수 API 가 없다. null 이면 화면에서 자리를 뺀다. */
   views: number | null;
+  /**
+   * 첨부 사진(HODL-127). 서버가 준 순서대로, `<img src>` 에 넣을 수 있는 주소만.
+   * 목록 응답에 이미 들어 있어 카드마다 상세를 다시 부르지 않는다.
+   */
+  images: PostImage[];
+  /** 유튜브 칸으로 붙인 영상 id. 없거나 모양이 이상하면 null. */
+  videoId: string | null;
+};
+
+export type PostImage = {
+  /** 목록 key. 서버 미디어 id, 없으면 주소. */
+  id: string;
+  src: string;
 };
 
 const PREVIEW_LENGTH = 120;
@@ -104,7 +119,23 @@ export function toPostSummary(post: IdentifiedPost): PostSummary {
     comments: post.comments ?? 0,
     // 조회수 API 가 없다. 숫자를 지어내지 않고 화면에서 자리를 뺀다(G-5).
     views: null,
+    images: toImages(post.media),
+    videoId: isYoutubeVideoId(post.youtube?.videoId) ? (post.youtube?.videoId ?? null) : null,
   };
+}
+
+/**
+ * 첨부 사진만, 서버 순서(`order`)대로. 글쓰기는 동영상을 올리지 않으므로(영상은 유튜브 링크)
+ * `VIDEO` 미디어는 그리지 않는다. 주소가 이상한 항목은 뺀다.
+ */
+function toImages(media: PostResponse["media"]): PostImage[] {
+  return [...(media ?? [])]
+    .filter((item) => item.type === "IMAGE")
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .flatMap((item) => {
+      const src = imageSrc(item.url);
+      return src ? [{ id: String(item.id ?? item.url), src }] : [];
+    });
 }
 
 /** 본문은 Markdown 이다. 기호를 걷어낸 평문을 자른다. */
