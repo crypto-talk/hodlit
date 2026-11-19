@@ -16,3 +16,8 @@ export type RoomNewsPage = {
   totalPages: number;
   totalItems: number;
 };
+
+export type HomeNewsCard = RoomNewsItem & {
+  symbol: string;
+  cover: string | null;
+};

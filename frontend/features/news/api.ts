@@ -1,7 +1,7 @@
 import type { components } from "@/lib/api-schema";
 import { safeExternalUrl } from "@/lib/safe-url";
 import { http } from "@/lib/http";
-import type { RoomNewsItem, RoomNewsPage } from "./types";
+import type { HomeNewsCard, RoomNewsItem, RoomNewsPage } from "./types";
 
 /**
  * 방 뉴스 (HODL-62, `docs/COMMUNITY_NEWS_API.md`). 구조 규칙 2: 데이터 진입점은 여기 하나.
@@ -30,6 +30,7 @@ export async function loadRoomNews(
   symbol: string,
   page: number,
   size: number,
+  signal?: AbortSignal,
 ): Promise<RoomNewsPage> {
   const query = new URLSearchParams({
     page: String(Math.max(0, page - 1)),
@@ -37,6 +38,7 @@ export async function loadRoomNews(
   });
   const result = await http<NewsPageResponse>(
     `/api/v1/communities/${encodeURIComponent(symbol)}/news?${query}`,
+    { signal },
   );
 
   return {
@@ -61,4 +63,10 @@ export function toNewsItem(raw: NewsResponse): RoomNewsItem | null {
     sourceUrl: safeExternalUrl(raw.sourceUrl),
     createdAt: raw.createdAt ?? "",
   };
+}
+
+export async function loadHomeNews(): Promise<HomeNewsCard[]> {
+  const response = await fetch("/api/home-news");
+  if (!response.ok) throw new Error("카드뉴스를 불러오지 못했습니다.");
+  return response.json();
 }
