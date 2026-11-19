@@ -1,14 +1,14 @@
 import { defineConfig } from "@playwright/test";
 
+/** 빌드 후 실행한다. API 응답은 각 브라우저 테스트가 가로채 운영 데이터를 변경하지 않는다. */
 export default defineConfig({
   testDir: "./tests/e2e",
+  testIgnore: "**/session-restore.spec.ts",
   workers: 1,
-  timeout: 60_000,
-  use: { baseURL: "http://localhost:3110" },
+  use: { baseURL: "http://127.0.0.1:13000", trace: "retain-on-failure" },
   webServer: {
-    command: "node node_modules/next/dist/bin/next dev --port 3110",
-    url: "http://localhost:3110/login",
-    env: { NEXT_PUBLIC_API_URL: "http://localhost:8798" },
-    timeout: 120_000,
+    command: "node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 13000",
+    url: "http://127.0.0.1:13000/login",
+    timeout: 60_000,
   },
 });

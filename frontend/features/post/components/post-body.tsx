@@ -1,6 +1,5 @@
-import { MarkdownManager } from "@tiptap/markdown";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
-import StarterKit from "@tiptap/starter-kit";
+import { BODY_EXTENSIONS, bodyMarkdown } from "../body-markdown";
 import { RICH_TEXT_CLASS } from "../rich-text-class";
 
 /**
@@ -12,23 +11,13 @@ import { RICH_TEXT_CLASS } from "../rich-text-class";
  *     않으므로 따로 sanitize 할 필요가 없다
  *   - 서버에서도 그려진다. 본문이 첫 HTML 에 들어가 검색엔진 · AI 크롤러가 읽을 수 있다
  *
- * 링크는 StarterKit 기본값대로 새 탭 + `noopener noreferrer nofollow` 로 나간다.
- * 회원이 쓴 링크라 검색엔진에 추천 신호를 주지 않는다(`nofollow`).
+ * 스키마와 링크 처리는 `../body-markdown.ts` 에 있다. 본문 속 유튜브 링크의 미리보기는
+ * 글 상세(`post-detail.tsx`)가 본문 아래에 붙인다.
  */
-const extensions = [
-  StarterKit.configure({
-    heading: { levels: [2, 3] },
-    underline: false,
-    link: { openOnClick: true, autolink: false },
-  }),
-];
-
-const markdown = new MarkdownManager({ extensions });
-
 export default function PostBody({ markdown: source }: { markdown: string }) {
   return (
     <div className={RICH_TEXT_CLASS}>
-      {renderToReactElement({ extensions, content: markdown.parse(source) })}
+      {renderToReactElement({ extensions: BODY_EXTENSIONS, content: bodyMarkdown.parse(source) })}
     </div>
   );
 }

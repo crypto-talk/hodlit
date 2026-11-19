@@ -1,6 +1,6 @@
 "use client";
 
-import { youtubeVideoId } from "../limits";
+import { youtubeThumbnailSrc, youtubeVideoId } from "@/lib/youtube";
 
 type Props = {
   value: string;
@@ -44,7 +44,7 @@ export default function YoutubeField({
         <div className="mt-2 flex items-center gap-3 rounded-sm border border-border-subtle bg-surface p-2">
           {/* eslint-disable-next-line @next/next/no-img-element -- 외부 썸네일 한 장, 최적화 대상 아님 */}
           <img
-            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            src={youtubeThumbnailSrc(videoId)}
             alt="유튜브 썸네일"
             className="h-16 w-28 flex-none rounded-sm object-cover"
           />

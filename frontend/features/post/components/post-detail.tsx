@@ -3,6 +3,7 @@
 import { useTrackView } from "@/lib/analytics/track";
 import Link from "next/link";
 import HolderBadge from "@/components/holder/holder-badge";
+import YoutubeEmbed from "@/components/media/youtube-embed";
 import RoomClosedNotice from "@/components/room-closed-notice";
 import { UNSUPPORTED_LABEL, isHolderTier } from "@/lib/holder-snapshot/label";
 import { coinNameKo } from "@/lib/coin-name-ko";
@@ -15,6 +16,7 @@ import { useSession } from "@/lib/session";
 import { usePost } from "../hooks/use-post";
 import { useWriteRooms } from "../hooks/use-write-rooms";
 import PostActions from "./post-actions";
+import BodyYoutube from "./body-youtube";
 import PostBody from "./post-body";
 import HolderRecords from "./holder-records";
 import PostOwnerActions from "./post-owner-actions";
@@ -130,6 +132,8 @@ export default function PostDetailView({ postId, symbol }: Props) {
         <PostBody markdown={data.content} />
       </div>
 
+      <BodyYoutube content={data.content} attached={data.youtubeVideoId} />
+
       {data.images.length > 0 ? (
         <div className="mt-6 flex flex-col gap-3">
           {data.images.map((image) => (
@@ -145,19 +149,7 @@ export default function PostDetailView({ postId, symbol }: Props) {
         </div>
       ) : null}
 
-      {data.youtubeVideoId ? (
-        <div className="mt-6 aspect-video w-full overflow-hidden rounded-sm border border-border-subtle">
-          {/* 쿠키를 덜 남기는 youtube-nocookie 임베드 */}
-          <iframe
-            className="size-full"
-            src={`https://www.youtube-nocookie.com/embed/${data.youtubeVideoId}`}
-            title="유튜브 영상"
-            loading="lazy"
-            allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      ) : null}
+      {data.youtubeVideoId ? <YoutubeEmbed videoId={data.youtubeVideoId} className="mt-6" /> : null}
 
       <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-border-subtle pt-4 text-sm text-text-muted">
         {data.price ? (
