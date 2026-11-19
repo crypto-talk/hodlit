@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 async function call(page: Page, path: string, method = "GET") {
   return page.evaluate(
@@ -104,26 +104,83 @@ for (const mode of ["login", "signup"] as const) {
   });
 }
 
-test("expired refresh becomes logged out without a refresh loop", async ({ page, context }) => {
-  await page.goto("/login");
-  await context.clearCookies();
-  const calls: string[] = [];
-  page.on("request", (r) => {
-    if (r.url().endsWith("/api/v1/auth/refresh")) calls.push(r.url());
+test("세션 만료 시 보호 화면에서 로그인으로 이동하고 갱신을 반복하지 않는다", async ({ page }) => {
+  const refreshes: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/v1/auth/refresh")) refreshes.push(request.url());
   });
-  await page.reload();
-  await expect(page.getByRole("button", { name: "로그인", exact: true })).toBeVisible();
-  await expect.poll(() => calls.length).toBe(1);
+
+  await page.goto("/write");
+  await expect(page).toHaveURL(/\/login\?next=%2Fwrite/);
+  await expect(page.getByRole("link", { name: "로그인", exact: true })).toBeVisible();
+  expect(refreshes).toHaveLength(1);
   expect((await call(page, "me")).status).toBe(401);
 });
 
-test("일시적인 복원 오류는 보호 화면에서 로그인 리다이렉트를 일으키지 않는다", async ({ page }) => {
+async function signUpInContext(context: BrowserContext) {
+  const nickname = `restore-${Date.now()}`;
+  const response = await context.request.post("/api/v1/auth/signup", {
+    headers: { Origin: "http://localhost:3109", "X-Hodlit-Request": "1" },
+    data: { loginId: nickname, nickname, password: "password-123" },
+  });
+  expect(response.ok()).toBe(true);
+  return nickname;
+}
+
+test("일시적인 복원 오류 뒤 재시도하면 보호 화면에서 세션을 복원한다", async ({
+  page,
+  context,
+}) => {
+  const nickname = await signUpInContext(context);
   await page.route("**/api/v1/me", (route) => route.fulfill({ status: 503, body: "unavailable" }));
   await page.goto("/write");
-  await expect(page.getByText("로그인 상태를 확인하지 못했습니다.")).toBeVisible();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "로그인 상태를 확인하지 못했습니다." }),
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/write$/);
-  await expect(page.getByRole("status")).toContainText("로그인 확인 중");
+  await expect(page.getByRole("status").filter({ hasText: "로그인 확인 중" })).toBeVisible();
   await page.unroute("**/api/v1/me");
   await page.getByRole("button", { name: "다시 시도", exact: true }).click();
-  await expect(page).toHaveURL(/\/login\?next=/);
+  await expect(page.getByRole("link", { name: nickname, exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/write$/);
+  await expect(
+    page.getByRole("alert").filter({ hasText: "로그인 상태를 확인하지 못했습니다." }),
+  ).toHaveCount(0);
+});
+
+test("유효한 access 쿠키로 홈과 글쓰기에서 갱신 없이 복원한다", async ({ page, context }) => {
+  const nickname = await signUpInContext(context);
+  await context.clearCookies({ name: "cryptalk_refresh" });
+
+  // Hold /me so the pending state is observable before restoring the member.
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/me", async (route) => {
+    await pending;
+    await route.continue();
+  });
+  const refreshes: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/v1/auth/refresh")) refreshes.push(request.url());
+  });
+
+  await page.goto("/write");
+  try {
+    await expect(page.getByRole("status").filter({ hasText: "로그인 확인 중" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "로그인", exact: true })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/write$/);
+  } finally {
+    release();
+  }
+  const memberLink = page.getByRole("link", { name: nickname, exact: true });
+  await expect(memberLink).toBeVisible();
+  await page.reload();
+  await expect(memberLink).toBeVisible();
+  await expect(page).toHaveURL(/\/write$/);
+  await page.goto("/");
+  await page.reload();
+  await expect(memberLink).toBeVisible();
+  expect(refreshes).toHaveLength(0);
 });

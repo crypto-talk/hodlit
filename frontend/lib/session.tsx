@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { identify, resetIdentity } from "@/lib/analytics/client";
 import { api, refreshSession, type Member } from "@/lib/api";
 import { linkWallet } from "@/lib/wallet-link";
@@ -176,16 +177,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   return (
     <SessionContext.Provider value={value}>
       {restoreError && (
-        <div role="alert">
+        <div role="alert" className="flex items-center gap-3 bg-surface px-6 py-3 text-sm">
           로그인 상태를 확인하지 못했습니다.
-          <button
+          <Button
+            type="button"
             onClick={() => {
               setRestoreError(false);
               setAttempt((n) => n + 1);
             }}
           >
             다시 시도
-          </button>
+          </Button>
         </div>
       )}
       {children}
