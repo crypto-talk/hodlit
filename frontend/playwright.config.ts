@@ -1,21 +1,14 @@
 import { defineConfig } from "@playwright/test";
 
-const rustApi = process.env.AUTH_E2E_API_URL;
-
+/** 빌드 후 실행한다. API 응답은 각 브라우저 테스트가 가로채 운영 데이터를 변경하지 않는다. */
 export default defineConfig({
   testDir: "./tests/e2e",
+  testIgnore: "**/cookie-auth.spec.ts",
   workers: 1,
-  timeout: 60_000,
-  use: { baseURL: "http://localhost:3109" },
-  webServer: [
-    ...(rustApi
-      ? []
-      : [{ command: "node tests/e2e/auth-api.mjs", url: "http://127.0.0.1:8799/health" }]),
-    {
-      command: "node node_modules/next/dist/bin/next dev --port 3109",
-      url: "http://localhost:3109/login",
-      env: { NEXT_PUBLIC_API_URL: rustApi ?? "http://127.0.0.1:8799" },
-      timeout: 120_000,
-    },
-  ],
+  use: { baseURL: "http://127.0.0.1:13000", trace: "retain-on-failure" },
+  webServer: {
+    command: "node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 13000",
+    url: "http://127.0.0.1:13000/login",
+    timeout: 60_000,
+  },
 });

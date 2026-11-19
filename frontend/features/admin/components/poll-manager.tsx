@@ -1,16 +1,19 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/http";
 import { adminPollsHref } from "@/lib/routes";
-import { closePoll, createPoll, loadActivePoll } from "../api";
+import { closePoll, createPoll, deletePoll, loadActivePoll } from "../api";
 import { adminErrorMessage } from "../error-message";
-import type { PollInput } from "../types";
+import { refreshPollQueries, pollDeletionError } from "../poll-deletion";
+import type { ActivePoll, AdminPoll, PollInput } from "../types";
 import PollForm from "./poll-form";
+import PollLookup from "./poll-lookup";
 import RoomPicker from "./room-picker";
 
 /**
@@ -23,14 +26,24 @@ import RoomPicker from "./room-picker";
  * - **표 수는 여기서도 보이지 않는다.** 오늘 참여하지 않은 사람에게 집계를 보이지 않는 정책은
  *   관리자에게도 같다. 결과는 방 게시판의 지난 투표 결과에서 본다
  */
-export default function PollManager({ room }: { room: string | null }) {
+export default function PollManager({
+  room,
+  pollId,
+}: {
+  room: string | null;
+  pollId: number | null;
+}) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [pendingInput, setPendingInput] = useState<PollInput | null>(null);
   const [closing, setClosing] = useState(false);
+  const [deleting, setDeleting] = useState<AdminPoll | null>(null);
+  const deleteInFlight = useRef(false);
   /** 만들 때마다 폼을 새로 그려 입력을 비운다. */
   const [formKey, setFormKey] = useState(0);
   const cancelCreate = useCallback(() => setPendingInput(null), []);
   const cancelClose = useCallback(() => setClosing(false), []);
+  const cancelDelete = useCallback(() => setDeleting(null), []);
 
   const poll = useQuery({
     queryKey: ["admin", "poll", room],
@@ -39,12 +52,7 @@ export default function PollManager({ room }: { room: string | null }) {
     retry: false,
   });
 
-  const refresh = () => {
-    void queryClient.invalidateQueries({ queryKey: ["admin", "poll", room] });
-    // 사용자 화면(방 게시판 · 랜딩)의 투표 칸도 다음에 새로 받게 한다.
-    void queryClient.invalidateQueries({ queryKey: ["room-poll"] });
-    void queryClient.invalidateQueries({ queryKey: ["open-polls"] });
-  };
+  const refresh = () => refreshPollQueries(queryClient);
 
   const create = useMutation({
     mutationFn: (input: PollInput) => createPoll(room ?? "", input),
@@ -52,7 +60,7 @@ export default function PollManager({ room }: { room: string | null }) {
       setPendingInput(null);
       setFormKey((key) => key + 1);
       toast.success("새 투표를 열었습니다.");
-      refresh();
+      void refresh();
     },
     onError: (error) => {
       setPendingInput(null);
@@ -61,16 +69,54 @@ export default function PollManager({ room }: { room: string | null }) {
   });
   const close = useMutation({
     mutationFn: (pollId: number) => closePoll(pollId),
-    onSuccess: () => {
+    onSuccess: (_, closedId) => {
       setClosing(false);
       toast.success("투표를 닫았습니다. 참여 기록은 그대로 남습니다.");
-      refresh();
+      // 닫은 투표를 바로 확인·삭제할 수 있고 새로고침 후에도 선택을 유지한다.
+      router.push(adminPollsHref(room, closedId));
+      void refresh();
     },
     onError: (error) => {
       setClosing(false);
       toast.error(adminErrorMessage(error, "투표를 닫지 못했습니다."));
     },
   });
+
+  const removeFromCache = (target: AdminPoll) => {
+    queryClient.setQueryData<ActivePoll | null>(["admin", "poll", target.coinSymbol], (cached) =>
+      cached?.id === target.id ? null : cached,
+    );
+    queryClient.setQueryData(["admin", "poll-detail", target.id], null);
+  };
+  const remove = useMutation({
+    mutationFn: (target: AdminPoll) => deletePoll(target.id),
+    retry: false,
+    onSuccess: async (_, target) => {
+      setDeleting(null);
+      removeFromCache(target);
+      await refresh();
+      toast.success("투표를 삭제했습니다.");
+    },
+    onError: async (error, target) => {
+      setDeleting(null);
+      if (error instanceof ApiError && error.status === 404) removeFromCache(target);
+      toast.error(pollDeletionError(error));
+      // 응답 유실로 서버에서만 삭제됐을 수도 있으므로 실패 시에도 최신 상태를 읽는다.
+      await refresh();
+      if (error instanceof ApiError && error.status === 401) {
+        router.replace(`/login?next=${encodeURIComponent(adminPollsHref(room, target.id))}`);
+      }
+    },
+    onSettled: () => {
+      deleteInFlight.current = false;
+    },
+  });
+  const confirmDelete = () => {
+    if (!deleting || deleteInFlight.current) return;
+    deleteInFlight.current = true;
+    remove.mutate(deleting);
+  };
+  const busy = create.isPending || close.isPending || remove.isPending;
 
   const active = poll.data ?? null;
   const closedRoom =
@@ -118,6 +164,7 @@ export default function PollManager({ room }: { room: string | null }) {
                 <p className="mt-2 font-semibold break-words text-text-primary">
                   {active.question}
                 </p>
+                <p className="mt-1 text-xs text-text-muted">투표 #{active.id}</p>
                 <ol className="mt-2 flex flex-wrap gap-2">
                   {active.choices.map((choice) => (
                     <li
@@ -131,14 +178,22 @@ export default function PollManager({ room }: { room: string | null }) {
                 <p className="mt-3 text-xs text-text-muted">
                   표 수는 여기서 보이지 않습니다. 오늘 참여한 사람만 오늘 집계를 봅니다.
                 </p>
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
                   <Button
                     type="button"
                     className="text-danger hover:border-danger"
                     onClick={() => setClosing(true)}
-                    disabled={close.isPending || create.isPending}
+                    disabled={busy}
                   >
                     이 투표 닫기
+                  </Button>
+                  <Button
+                    type="button"
+                    className="text-danger hover:border-danger"
+                    disabled={busy}
+                    onClick={() => setDeleting({ ...active, coinSymbol: room!, active: true })}
+                  >
+                    이 투표 삭제
                   </Button>
                 </div>
               </>
@@ -159,12 +214,39 @@ export default function PollManager({ room }: { room: string | null }) {
             </p>
             <PollForm
               key={formKey}
-              busy={create.isPending}
+              busy={busy}
               onSubmit={(input) => (active ? setPendingInput(input) : create.mutate(input))}
             />
           </div>
         </>
       )}
+
+      {room ? (
+        <PollLookup
+          key={`${room}:${pollId}`}
+          room={room}
+          pollId={pollId}
+          busy={busy}
+          onDelete={setDeleting}
+        />
+      ) : null}
+
+      {deleting ? (
+        <ConfirmDialog
+          title="이 투표를 삭제할까요?"
+          confirmLabel="삭제"
+          busyLabel="삭제하는 중…"
+          busy={remove.isPending}
+          onCancel={cancelDelete}
+          onConfirm={confirmDelete}
+        >
+          <p>
+            {deleting.coinSymbol} · 투표 #{deleting.id} · {deleting.active ? "진행 중" : "종료됨"}
+          </p>
+          <p className="break-words">{deleting.question}</p>
+          <p>삭제하면 현재 투표, 지난 결과와 내 투표 기록에서 제외됩니다. 되돌릴 수 없습니다.</p>
+        </ConfirmDialog>
+      ) : null}
 
       {pendingInput && active ? (
         <ConfirmDialog

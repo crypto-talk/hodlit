@@ -7,6 +7,7 @@ import { imageSrc } from "@/lib/media";
 import { kstInputToUtc, parseWeight, toDrawStatus } from "./draw-events";
 import type {
   ActivePoll,
+  AdminPoll,
   AdminBanner,
   AdminDrawEvent,
   AdminDrawPrize,
@@ -269,6 +270,27 @@ export async function createPoll(symbol: string, input: PollInput): Promise<Acti
 /** 투표를 닫는다. 새 참여만 막고 기록은 지우지 않는다. */
 export const closePoll = (pollId: number) =>
   http<void>(`/api/v1/polls/${pollId}/close`, { method: "POST" });
+
+/** 진행 중·종료된 투표 모두 번호로 찾는다. 표 수와 참여 내역은 관리 화면에 전달하지 않는다. */
+export async function loadPollForDeletion(pollId: number): Promise<AdminPoll> {
+  const raw = await http<PollResponse>(`/api/v1/polls/${pollId}`);
+  if (raw.id !== pollId || !raw.coinSymbol || typeof raw.active !== "boolean") {
+    throw new Error("투표 정보를 확인하지 못했습니다. 다시 조회해 주세요.");
+  }
+  return {
+    id: raw.id,
+    coinSymbol: raw.coinSymbol,
+    active: raw.active,
+    question: raw.question ?? "",
+    choices: (raw.choices ?? []).flatMap((choice) =>
+      choice.id === undefined ? [] : [{ id: choice.id, label: choice.label ?? "" }],
+    ),
+  };
+}
+
+/** 204 빈 응답. 투표 기록도 공개 목록에서 제외되므로 확인한 대상에만 호출한다. */
+export const deletePoll = (pollId: number) =>
+  http<void>(`/api/v1/polls/${pollId}`, { method: "DELETE" });
 
 export function toActivePoll(raw: PollResponse): ActivePoll | null {
   if (raw.id === undefined || raw.active === false) return null;

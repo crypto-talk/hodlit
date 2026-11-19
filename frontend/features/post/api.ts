@@ -6,6 +6,7 @@ import { holdingPeriodLabel, isVerifiable, tierOf } from "@/lib/holder-snapshot/
 import { ApiError, http } from "@/lib/http";
 import { hasPostId, toPostSummary, type PostSummary } from "@/lib/post-summary";
 import { isOpenRoom } from "@/lib/room-status";
+import { isYoutubeVideoId } from "@/lib/youtube";
 import { toHoldingsReference, type HoldingsReference } from "./holdings";
 import type {
   Draft,
@@ -137,6 +138,12 @@ function mediaSrc(url: string): string {
  *
  * 404 는 `ApiError.status` 로 화면이 구분한다. `init` 은 서버에서 부를 때 시간 제한을 걸려고 둔다.
  */
+/** 첨부 영상 id. 11자 영상 id 모양이 아니면 버린다 — iframe 주소에 들어간다. */
+function videoIdOf(post: PostResponse): string | null {
+  const id = post.youtube?.videoId;
+  return isYoutubeVideoId(id) ? id : null;
+}
+
 export async function loadPost(postId: number, init?: RequestInit): Promise<PostDetail> {
   const post = await http<PostResponse>(`/api/v1/posts/${postId}`, init);
 
@@ -161,7 +168,7 @@ export async function loadPost(postId: number, init?: RequestInit): Promise<Post
       .filter((media) => media.type === "IMAGE" && media.url)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((media) => ({ id: String(media.id ?? media.url), src: mediaSrc(media.url ?? "") })),
-    youtubeVideoId: post.youtube?.videoId ?? null,
+    youtubeVideoId: videoIdOf(post),
     price:
       typeof price?.price === "number" && price.currency
         ? { value: price.price, currency: price.currency }

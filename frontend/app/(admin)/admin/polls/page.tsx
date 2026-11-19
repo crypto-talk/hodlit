@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import PollManager from "@/features/admin/components/poll-manager";
 import { adminRoomParam } from "@/lib/routes";
+import { parsePollNumber } from "@/features/admin/poll-deletion";
 
 export const metadata: Metadata = {
   title: "투표 관리",
@@ -10,8 +11,9 @@ export const metadata: Metadata = {
 export default async function AdminPollsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ room?: string }>;
+  searchParams: Promise<{ room?: string; poll?: string }>;
 }) {
-  const { room } = await searchParams;
-  return <PollManager room={adminRoomParam(room)} />;
+  const { room, poll } = await searchParams;
+  const symbol = adminRoomParam(room);
+  return <PollManager key={symbol} room={symbol} pollId={parsePollNumber(poll)} />;
 }

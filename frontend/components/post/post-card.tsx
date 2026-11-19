@@ -1,6 +1,7 @@
 import Link from "next/link";
 import HolderBadge from "@/components/holder/holder-badge";
 import type { PostSummary } from "@/lib/post-summary";
+import PostMedia from "./post-media";
 import { profileHref, roomHref } from "@/lib/routes";
 
 type Props = {
@@ -31,6 +32,9 @@ const stats = (post: PostSummary) => {
  * 미인증은 미보유와 같은 회색 테두리 칩이다(사실만 같은 무게로).
  * 인증을 지원하지 않는 코인(BTC 등)의 글에는 아무것도 붙이지 않는다. 방 전체가
  * 미지원이라 카드마다 반복하면 소음이고, 그 사실은 방 머리와 글 상세가 말한다.
+ *
+ * 첨부 사진 · 유튜브 영상이 있으면 본문 미리보기 아래에 붙인다(`post-media.tsx`, HODL-127).
+ * 없으면 예전 그대로 글자만이다.
  *
  * 데이터는 `lib/post-summary.ts` 의 `toPostSummary()` 가 만든다.
  */
@@ -86,6 +90,9 @@ export default function PostCard({ post, showRoom = true }: Props) {
         {post.title}
       </Link>
       {post.preview ? <p className="mt-2 text-body text-text-muted">{post.preview}</p> : null}
+      {post.images.length > 0 || post.videoId ? (
+        <PostMedia images={post.images} videoId={post.videoId} href={post.href} />
+      ) : null}
 
       <p className="mt-4 text-xs text-text-muted tabular-nums">{stats(post)}</p>
     </article>

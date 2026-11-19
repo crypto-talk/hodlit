@@ -2,9 +2,8 @@
 
 Read the repository `AGENTS.md` first. This file adds the rules that apply under `frontend/`.
 
-The product is **Hodlit**. The repository, the npm package name, the API domain and the Java
-package are still spelled `cryptalk`; renaming those is a separate job scheduled for just
-before launch. Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
+The product is **Hodlit**. The npm package name and the Java package still use `cryptalk`.
+Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
 The Korean name is **호들릿** (not 호들잇). It sits next to Hodlit in the site title, description,
 OG site name and the `WebSite` JSON-LD (`alternateName`) in `app/layout.tsx`, so Korean searches
 land here. Keep one spelling everywhere; mixed spellings split what search engines learn.
@@ -23,8 +22,9 @@ in HttpOnly cookies issued and validated by Rust through a same-origin Next.js t
 - pnpm is the package manager, pinned by `packageManager` in `package.json`. Never run
   `npm install` here; it would create a competing `package-lock.json`.
 - Deployed on Vercel. `next build` is the build; there is no Cloudflare Worker runtime.
-- Browser API calls use the same-origin Next.js BFF. `NEXT_PUBLIC_API_URL` is the trusted
-  upstream address for BFF and public server calls. There is no database or ORM here.
+- Browser API calls use the same-origin Next.js BFF. The BFF and public server calls use
+  the trusted upstream `NEXT_PUBLIC_API_URL`. Production uses `https://api.hodlit.xyz`.
+  There is no database or ORM here.
 
 ## Where the other documents are
 
@@ -92,7 +92,12 @@ lib/safe-url.ts         `safeExternalUrl()` / `safeSitePath()` / `safeLink()` �
 components/holder/      holder-badge.tsx — the one badge slot next to an author. It draws the animal tier
                         badge when the snapshot carries one and the old tier badge otherwise, never both
                         (2026-11-11). tier-badge.tsx / animal-badge.tsx are the two shapes; wording from lib
-components/post/        post-card.tsx — the list card used by the landing feed and the room board
+components/post/        post-card.tsx — the list card used by the landing feed and the room board;
+                        post-media.tsx draws its attached photos and YouTube video (HODL-127)
+components/media/       YouTube thumbnail / click-to-play preview / embed, shared by the list card and
+                        the post detail. Nothing plays until it is clicked
+lib/youtube.ts          the YouTube URL pattern (same as the backend `PostService.YOUTUBE`), video-id check,
+                        thumbnail / embed URLs, and `youtubeIdsInContent()` — the YouTube links in a body
 styles/tokens.css       semantic CSS variables; [data-theme="dark"] block left empty
 styles/fonts/           Pretendard subset woff2, 400/600/700/800/900
 components.json         shadcn/ui config; `shadcn add` writes into components/ui/
@@ -223,6 +228,10 @@ had no posts, so every list screen could only be checked empty; writing first fi
    An image removed before publishing is deleted with `DELETE /media/{file}`; files left
    behind when the tab is closed are the backend's to clean up. One YouTube link, checked
    with the same pattern as `PostService.YOUTUBE`, previewed by its thumbnail only.
+   YouTube links pasted into the body stay links; the editor lists a thumbnail for each one
+   below the body and drops it when the link is removed, and the post detail shows a
+   click-to-play preview under the body (HODL-123). The backend never sees these as videos —
+   only the separate YouTube field is the post's attached video.
    **E-2 settled: the body is stored as Markdown.** The editor is Tiptap (StarterKit +
    `@tiptap/markdown`) and sends `editor.getMarkdown()` as `content`. Not Tiptap JSON:
    the backend counts `content` up to 5000 characters and JSON is several times longer;
@@ -356,7 +365,7 @@ onto a single line to save space.
   comments have none), `holdingMonths` is an already-floored integer or null.
 - The server refreshes holdings itself when a post or comment is saved (HODL-45). The client
   does not call `/me/assets` before publishing.
-- OpenAPI spec: https://cryptalk-api.hojun.xyz/v3/api-docs — the accurate endpoint list.
+- OpenAPI spec: https://api.hodlit.xyz/v3/api-docs — the accurate endpoint list.
   `pnpm gen:api` writes it to `lib/api-schema.ts`; run it after any backend change and commit
   the result. `GET /feed` (cursor + size, returns `{items, nextCursor, hasMore}`) already
   exists; the older documents claiming there is no global feed are out of date.
@@ -369,6 +378,13 @@ onto a single line to save space.
   `features/admin/`. The header and mypage show the admin link only when `member.role === "ADMIN"`
   (HODL-108); access itself is still decided by the admin API's 403, not by the role. The poll admin
   screen never shows vote counts — the "no results before today's participation" rule has no admin bypass.
+- Poll deletion (HODL-116): `/admin/polls?room=ETH&poll=42` preserves the selected poll number.
+  Current polls have a delete action; an ended poll can be loaded with the existing `GET /polls/{id}`.
+  Closing selects that poll for immediate follow-up. There is no administrator all-polls list API.
+  Delete requires the shared confirmation dialog and sends `DELETE /polls/{id}` only on confirmation.
+  Invalidate current/home polls, poll results and member vote history after deletion; 404 means an
+  already-removed or missing poll and must not produce a success message. Never display vote counts
+  from the deletion lookup, and never delete a lookup from a different selected room.
 - Home banners (`features/banner/`, HODL-92): `GET /banners` returns visible banners in order. The strip
   renders nothing when there are none or the request fails; a banner whose image fails is dropped alone.
   No auto-rotation. Server-supplied image URLs go through `lib/media.ts` `imageSrc()`.
@@ -431,4 +447,7 @@ Run from `frontend/`, in order:
 
 CI runs steps 1-3. Do not put `test:html` in CI as well; it would make the build run twice.
 
-Playwright e2e tests need the backend running; they are run locally, not in CI, for now.
+`pnpm run test:e2e:polls` runs the poll deletion Chromium scenarios after a production build.
+Install the browser with `pnpm exec playwright install chromium` if needed. These scenarios intercept
+API responses and do not modify any real backend; actual API integration is verified separately.
+They are run locally, not in CI, for now.
