@@ -81,7 +81,7 @@ const publicCoin = (coin) => {
   delete copy.displayOrder;
   return copy;
 };
-const auth = () => ({ accessToken: "mock-access-token", member: member() });
+const auth = () => ({ member: member() });
 const today = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
 // ── 인증 · 내 정보 ────────────────────────────────────────────────────────────

@@ -42,20 +42,18 @@ async function apiFixture(page: Page) {
         ...(status === 204 ? {} : { json: value }),
       });
     if (method === "OPTIONS") return send(undefined, 204);
-    if (path === "/auth/refresh") {
-      return state.expired
-        ? send({ message: "로그인이 필요합니다." }, 401)
-        : send({
-            accessToken: "test-only-token",
-            member: {
-              id: 7,
-              nickname: "테스트관리자",
-              avatarColor: "#abcdef",
-              role: "ADMIN",
-              assetVisibility: "HIDDEN",
-              walletAddress: null,
-            },
-          });
+    if (path === "/auth/refresh" || (path === "/me" && state.expired)) {
+      return send({ message: "로그인이 필요합니다." }, 401);
+    }
+    if (path === "/me") {
+      return send({
+        id: 7,
+        nickname: "테스트관리자",
+        avatarColor: "#abcdef",
+        role: "ADMIN",
+        assetVisibility: "HIDDEN",
+        walletAddress: null,
+      });
     }
     if (path === "/admin/communities")
       return send({
@@ -179,8 +177,18 @@ test("기존 종료 확인 후 종료된 투표를 다시 선택하고 새 투�
   expect(state.createCalls).toBe(1);
 });
 
+test("삭제 중 세션이 만료되면 로그인 화면으로 이동한다", async ({ page }) => {
+  const state = await apiFixture(page);
+  state.deleteStatus = 401;
+  await page.goto("/admin/polls?room=ETH");
+  await page.getByRole("button", { name: "이 투표 삭제", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "삭제", exact: true }).click();
+  await expect(page).toHaveURL(/\/login\?next=/);
+  await expect(page.getByText("투표를 삭제했습니다.", { exact: true })).toHaveCount(0);
+  expect(state.deleteCalls).toBe(1);
+});
+
 for (const [status, message] of [
-  [401, "다시 로그인"],
   [403, "관리자 권한"],
   [404, "이미 삭제"],
   [500, "서버 점검 중입니다."],

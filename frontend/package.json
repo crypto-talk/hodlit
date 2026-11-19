@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "test:watch": "vitest",
     "test:html": "next build && node --test tests/rendered-html.test.mjs",
+    "test:e2e": "playwright test --config playwright.auth.config.ts",
     "test:e2e:polls": "playwright test tests/e2e/admin-poll-deletion.spec.ts",
     "typecheck": "tsc --noEmit",
     "gen:api": "openapi-typescript https://api.hodlit.xyz/v3/api-docs -o lib/api-schema.ts"

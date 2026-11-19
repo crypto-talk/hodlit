@@ -21,10 +21,8 @@ import { roomSymbolOf, writeHref } from "@/lib/routes";
  * 사이드바의 방 목록과 연결된 지갑은 화면이 아니라 셸의 것이라 페이지가 아니라
  * 여기서 가져온다. 3단계 화면들이 그대로 물려받는다.
  *
- * ⚠️ 이 레이아웃은 `"use client"` 다. access 토큰이 아직 sessionStorage 라
- * 서버에서 로그인 상태를 알 수 없고(B-3), 지갑 연결이 브라우저 확장을 부르기
- * 때문이다. access 가 쿠키로 옮겨지면 방 목록을 서버에서 가져오고 클라이언트
- * 부분만 잘라낼 수 있다.
+ * 이 레이아웃은 쿠키 세션 복원과 브라우저 지갑 연결을 위해 클라이언트에서 동작한다.
+ * 방 목록의 서버 조회와 인터랙티브 영역 분리는 별도 레이아웃 작업이다.
  */
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   // 방 게시판·글 상세 안이면 그 방. 사이드바 표시와 FAB 글쓰기가 쓴다.

@@ -7,8 +7,8 @@ Anything a user can see — page titles, OG tags, visible copy — says Hodlit.
 The Korean name is **호들릿** (not 호들잇). It sits next to Hodlit in the site title, description,
 OG site name and the `WebSite` JSON-LD (`alternateName`) in `app/layout.tsx`, so Korean searches
 land here. Keep one spelling everywhere; mixed spellings split what search engines learn.
-The `sessionStorage` key `cryptalk_access` is left alone; it disappears when `access` moves
-to a cookie (B-3).
+Legacy `cryptalk_access` storage is removed on session startup (HODL-129). Tokens live only
+in HttpOnly cookies issued and validated by Rust through a same-origin Next.js transport proxy. See `AUTH_COOKIES.md`.
 
 ## Stack
 
@@ -22,8 +22,9 @@ to a cookie (B-3).
 - pnpm is the package manager, pinned by `packageManager` in `package.json`. Never run
   `npm install` here; it would create a competing `package-lock.json`.
 - Deployed on Vercel. `next build` is the build; there is no Cloudflare Worker runtime.
-- The API client reads `NEXT_PUBLIC_API_URL`. Production uses `https://api.hodlit.xyz`.
-  There is no database, ORM or server-side data layer in this project.
+- Browser API calls use the same-origin Next.js BFF. The BFF and public server calls use
+  the trusted upstream `NEXT_PUBLIC_API_URL`. Production uses `https://api.hodlit.xyz`.
+  There is no database or ORM here.
 
 ## Where the other documents are
 
@@ -61,10 +62,10 @@ features/               one folder per domain: auth wallet room post comment vot
 components/ui/          shadcn primitives (+ *.stories.tsx)
 components/layout/      header sidebar footer fab price-ticker (+ types.ts: the shape the shell receives)
                         bottom-tab is still to come
-lib/http.ts             fetch wrapper: baseURL, credentials, bearer token, single-flight 401
+lib/http.ts             fetch wrapper: same-origin cookies, single-flight 401
                         refresh, {code,message} normalisation. Every backend request goes
                         through it
-lib/auth-token.ts       the only place the access token is read or written; deleted at B-3
+lib/api-proxy.ts        transport proxy: Rust Cookie/Set-Cookie and Origin/CSRF forwarding
 lib/api-schema.ts       generated from the backend OpenAPI spec by `pnpm gen:api`. Never
                         hand-edited, excluded from ESLint and Prettier
 lib/query.ts  lib/format/  lib/utils.ts (cn)  lib/config.ts (env, single read point)
@@ -163,9 +164,9 @@ Deliberately not done yet, do not treat these as oversights:
   only after today's (KST) participation, and the query keys carry the KST date so midnight clears
   them. Trending rooms are wired (HODL-44); the old marquee mock was replaced by the price ticker
   (HODL-57). Rooms come from `features/room/api.ts`; the feed from `features/landing/api.ts`.
-- `lib/http.ts` carries the bearer token and refreshes once on 401, but it still does not
-  forward cookies from a server component: that waits for `access` to move to a cookie (B-3).
-  Until then server components fetch public data only. It also does not branch on the error
+- `lib/http.ts` uses same-origin cookie authentication and refreshes once on 401.
+  Server components continue to fetch public data only; authenticated SSR needs an explicit
+  server-only helper and request-scoped cookie forwarding to the configured API. It also does not branch on the error
   `code`, because the code list is not agreed yet (C-5) — branch on `ApiError.status`.
 - `components/ui/` is exempt from ESLint so the shadcn copies stay diffable against upstream.
 - Storybook. It goes in now that `components/ui/` and `components/holder/` exist.
@@ -202,10 +203,8 @@ C-1 (who owns the API types) is settled: the backend's OpenAPI spec generates th
 
 Known rough edges left by step 2, deliberately:
 
-- `app/(shell)/layout.tsx` is a client component. `access` is still in sessionStorage, so the
-  server cannot know who is logged in (B-3), and connecting a wallet calls a browser
-  extension. When `access` moves to a cookie, the room list can be fetched on the server and
-  only the interactive part stays a client component.
+- `app/(shell)/layout.tsx` remains a client component. Session restoration uses Rust's
+  HttpOnly cookies through the same-origin proxy. Moving the room list to the server is a separate layout change.
 - ~~The 글쓰기 buttons in the header and the fab are disabled~~ — they link to `/write` since
   step 3 ①. The search box is still disabled with a title.
 - The top strip is rendered by the shell layout, not the landing, because it is a strip across
@@ -370,10 +369,9 @@ onto a single line to save space.
   `pnpm gen:api` writes it to `lib/api-schema.ts`; run it after any backend change and commit
   the result. `GET /feed` (cursor + size, returns `{items, nextCursor, hasMore}`) already
   exists; the older documents claiming there is no global feed are out of date.
-- **Every field of every response type is optional in `lib/api-schema.ts`.** The backend does
-  not emit `required` on response schemas, so springdoc marks all of them `?`. Request bodies
-  are correct. Until the backend fixes this, a feature that needs a non-optional field
-  narrows it in its own `types.ts` and says why — do not spread `?` through the components.
+- Imported Spring response schemas mostly omit `required`, so many generated response fields
+  remain optional. Rust's `AuthResponse.member` is required. A feature that needs a non-optional
+  field narrows it in its own `types.ts` and says why — do not spread `?` through components.
 - Badge wording (`holderBadgeLabel()`): `NOT_CONNECTED` is `미인증`, never `미보유` — a member who
   connected nothing was never checked. `EMPTY` is `ETH 미보유`, `UNKNOWN` is `조회 실패`.
 - Admin screens (`/admin/news`, `/admin/polls`, `/admin/banners`, HODL-110 · 111 · 92) live in
@@ -423,9 +421,10 @@ onto a single line to save space.
 - Public post and comment responses do not carry wallet addresses. Do not reintroduce them.
 - `POST /posts` ignores a client-supplied `assetPrice`; the server captures the price itself.
 - Auth uses `loginId`, not email: `{ loginId, password }` to log in, plus `nickname` to sign
-  up. `refresh` is an httpOnly cookie today; `access` is in sessionStorage and is being moved
-  to an httpOnly cookie (backend task). Until then, server components cannot render
-  logged-in state.
+  up. Rust owns HttpOnly cryptalk_access/cryptalk_refresh cookies and returns only member
+  information. Next forwards Cookie/Set-Cookie and CSRF metadata; it does not mint cookies
+  or translate access cookies into Bearer headers. Server components
+  currently fetch public data only. See `AUTH_COOKIES.md` for rollout and CSRF rules.
 - `lib/api-schema.ts` is the accurate list of endpoints. Do not copy it into a document; the
   copy goes stale and someone writes against it.
 - Open backend requests are listed in the Notion page "구조 고민하기" → "백엔드와 논의할 항목".
