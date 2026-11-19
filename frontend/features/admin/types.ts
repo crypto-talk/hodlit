@@ -72,6 +72,8 @@ export type ActivePoll = {
   question: string;
   choices: { id: number; label: string }[];
 };
+/** 삭제 대상을 확인하는 투표. 종료 여부와 방을 보존하며 집계는 담지 않는다. */
+export type AdminPoll = ActivePoll & { coinSymbol: string; active: boolean };
 export type PollInput = { question: string; choices: string[] };
 
 /** 배너 한 건(HODL-92). `imageUrl` 은 서버가 준 값 그대로, `imageSrc` 는 화면에 띄울 주소다. */

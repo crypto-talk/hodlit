@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "test:watch": "vitest",
     "test:html": "next build && node --test tests/rendered-html.test.mjs",
+    "test:e2e:polls": "playwright test tests/e2e/admin-poll-deletion.spec.ts",
     "typecheck": "tsc --noEmit",
     "gen:api": "openapi-typescript https://api.hodlit.xyz/v3/api-docs -o lib/api-schema.ts"
   },
@@ -44,6 +45,7 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

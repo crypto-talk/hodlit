@@ -380,6 +380,13 @@ onto a single line to save space.
   `features/admin/`. The header and mypage show the admin link only when `member.role === "ADMIN"`
   (HODL-108); access itself is still decided by the admin API's 403, not by the role. The poll admin
   screen never shows vote counts — the "no results before today's participation" rule has no admin bypass.
+- Poll deletion (HODL-116): `/admin/polls?room=ETH&poll=42` preserves the selected poll number.
+  Current polls have a delete action; an ended poll can be loaded with the existing `GET /polls/{id}`.
+  Closing selects that poll for immediate follow-up. There is no administrator all-polls list API.
+  Delete requires the shared confirmation dialog and sends `DELETE /polls/{id}` only on confirmation.
+  Invalidate current/home polls, poll results and member vote history after deletion; 404 means an
+  already-removed or missing poll and must not produce a success message. Never display vote counts
+  from the deletion lookup, and never delete a lookup from a different selected room.
 - Home banners (`features/banner/`, HODL-92): `GET /banners` returns visible banners in order. The strip
   renders nothing when there are none or the request fails; a banner whose image fails is dropped alone.
   No auto-rotation. Server-supplied image URLs go through `lib/media.ts` `imageSrc()`.
@@ -441,4 +448,7 @@ Run from `frontend/`, in order:
 
 CI runs steps 1-3. Do not put `test:html` in CI as well; it would make the build run twice.
 
-Playwright e2e tests need the backend running; they are run locally, not in CI, for now.
+`pnpm run test:e2e:polls` runs the poll deletion Chromium scenarios after a production build.
+Install the browser with `pnpm exec playwright install chromium` if needed. These scenarios intercept
+API responses and do not modify any real backend; actual API integration is verified separately.
+They are run locally, not in CI, for now.

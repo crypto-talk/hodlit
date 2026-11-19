@@ -205,8 +205,11 @@ export function adminNewsHref(options: { room?: string | null; page?: number } =
 }
 
 /** 관리자 방 투표 관리(HODL-111). */
-export function adminPollsHref(room?: string | null): string {
-  return room ? `/admin/polls?room=${encodeURIComponent(room)}` : "/admin/polls";
+export function adminPollsHref(room?: string | null, pollId?: number | null): string {
+  const query = new URLSearchParams();
+  if (room) query.set("room", room);
+  if (pollId) query.set("poll", String(pollId));
+  return query.size ? `/admin/polls?${query}` : "/admin/polls";
 }
 
 /** 관리자 배너 관리(HODL-92). */
