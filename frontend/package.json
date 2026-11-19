@@ -36,6 +36,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "ethers": "6.17.0",
+    "htmlparser2": "^10.1.0",
+    "ipaddr.js": "^2.5.0",
     "lucide-react": "^1.46.0",
     "next": "16.2.6",
     "posthog-js": "1.447.6",

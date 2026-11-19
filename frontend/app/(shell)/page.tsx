@@ -7,6 +7,8 @@ import { loadFeed, loadTrendingRooms } from "@/features/landing/api";
 import PostFeed from "@/features/landing/components/post-feed";
 import TrendingRooms from "@/features/landing/components/trending-rooms";
 import type { FeedPost } from "@/features/landing/types";
+import { loadHomeNews } from "@/features/news/api";
+import CardNewsSection from "@/features/news/components/card-news-section";
 import OpenPolls from "@/features/vote/components/open-polls";
 
 /**
@@ -28,6 +30,7 @@ import OpenPolls from "@/features/vote/components/open-polls";
 export default function Landing() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
+  const news = useQuery({ queryKey: ["home-news"], queryFn: loadHomeNews, staleTime: 60_000 });
   const trending = useQuery({ queryKey: ["trending-rooms"], queryFn: loadTrendingRooms });
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export default function Landing() {
         failed={trending.isError}
         onRetry={() => trending.refetch()}
       />
+      <CardNewsSection items={news.data ?? []} />
       <OpenPolls />
       <PostFeed posts={posts} />
     </>
