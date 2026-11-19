@@ -46,12 +46,14 @@ async function load() {
 
 beforeEach(() => {
   vi.resetModules();
+  vi.stubEnv("NEXT_PUBLIC_API_URL", undefined);
   vi.stubGlobal("window", { sessionStorage: fakeSessionStorage() });
   fetchMock = vi.fn<(input: unknown, init?: RequestInit) => Promise<Response>>();
   vi.stubGlobal("fetch", fetchMock);
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
@@ -63,6 +65,20 @@ describe("http", () => {
 
     await expect(http("/api/v1/coins")).resolves.toEqual({ symbol: "ETH" });
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`${API_URL}/api/v1/coins`);
+  });
+
+  it.each([
+    ["https://cryptalk-api.hojun.xyz", "https://api.hodlit.xyz"],
+    ["https://cryptalk-api.hojun.xyz/", "https://api.hodlit.xyz"],
+    ["http://localhost:8089", "http://localhost:8089"],
+  ])("설정된 API 주소 %s의 요청을 %s로 보낸다", async (configuredUrl, expectedUrl) => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", configuredUrl);
+    fetchMock.mockResolvedValue(jsonResponse(200, {}));
+
+    const { http } = await load();
+
+    await http("/api/v1/feed");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${expectedUrl}/api/v1/feed`);
   });
 
   it("본문 없는 200 을 undefined 로 돌려준다", async () => {

@@ -19,7 +19,7 @@
     "test:watch": "vitest",
     "test:html": "next build && node --test tests/rendered-html.test.mjs",
     "typecheck": "tsc --noEmit",
-    "gen:api": "openapi-typescript https://cryptalk-api.hojun.xyz/v3/api-docs -o lib/api-schema.ts"
+    "gen:api": "openapi-typescript https://api.hodlit.xyz/v3/api-docs -o lib/api-schema.ts"
   },
   "dependencies": {
     "@reown/appkit": "1.8.24",
