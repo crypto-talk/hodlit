@@ -10,10 +10,11 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { identify, resetIdentity } from "@/lib/analytics/client";
 import { api, refreshSession, type Member } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { linkWallet } from "@/lib/wallet-link";
 
 /**
@@ -26,9 +27,8 @@ import { linkWallet } from "@/lib/wallet-link";
  * `features/auth/` 가 아니라 `lib/` 에 있는 이유: 헤더가 `components/layout/` 에
  * 있고 거기서는 `features/` 를 참조할 수 없다(구조 규칙 1).
  *
- * ⚠️ access 토큰이 아직 sessionStorage 라 서버 컴포넌트는 로그인 상태를 그릴 수
- * 없다. 복원은 마운트 후 저장된 access와 필요 시 refresh 쿠키를 사용한다. access 가 httpOnly
- * 쿠키로 옮겨지면(B-3) 이 파일부터 고친다.
+ * 세션은 동일 출처 BFF의 HttpOnly 쿠키로 복원한다. 복원 중에는 보호 화면을
+ * 비로그인 상태로 확정하지 않으며, 일시적인 실패는 재시도할 수 있다.
  */
 
 type SessionValue = {
@@ -68,17 +68,55 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [restoreError, setRestoreError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const epoch = useRef(0);
+  const channel = useRef<BroadcastChannel | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const expired = () => {
+  const changeMember = useCallback(
+    async (next: Member | null, broadcast = false) => {
       epoch.current += 1;
-      setMember(null);
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      setMember(next);
       setRestored(true);
       setRestoreError(false);
+      if (broadcast) channel.current?.postMessage("changed");
+    },
+    [queryClient],
+  );
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const events = new BroadcastChannel("hodlit-session");
+    channel.current = events;
+    events.onmessage = () => {
+      epoch.current += 1;
+      setMember(null);
+      setRestored(false);
+      void queryClient.cancelQueries().then(() => {
+        queryClient.clear();
+        setAttempt((n) => n + 1);
+      });
+    };
+    return () => {
+      events.close();
+      channel.current = null;
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
+    // One-time migration: never read the previous token into JS state.
+    try {
+      window.sessionStorage.removeItem("cryptalk_access");
+      window.localStorage.removeItem("cryptalk_access");
+    } catch {
+      // Storage may be disabled; cookie authentication does not depend on it.
+    }
+    const expired = () => {
+      void changeMember(null);
     };
     window.addEventListener("hodlit-session-expired", expired);
     return () => window.removeEventListener("hodlit-session-expired", expired);
-  }, []);
+  }, [changeMember]);
 
   useEffect(() => {
     let alive = true;
@@ -98,13 +136,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [attempt]);
 
-  const changeMember = useCallback((next: Member | null) => {
-    epoch.current += 1;
-    setMember(next);
-    setRestored(true);
-    setRestoreError(false);
-  }, []);
-
   // 분석용 식별(HODL-89). 서버가 분석 전용 식별자를 줄 때만 잇는다. 없으면 아무 일도 없다.
   const analyticsId = member?.analyticsId ?? null;
   useEffect(() => {
@@ -117,24 +148,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       restored,
       login: async (loginId, password) => {
         const next = await api.login(loginId, password);
-        changeMember(next);
+        await changeMember(next, true);
         return next;
       },
       signup: async (loginId, password, nickname) => {
         const next = await api.signup(loginId, password, nickname);
-        changeMember(next);
+        await changeMember(next, true);
         return next;
       },
       logout: async () => {
+        // Invalidate restoration before awaiting logout. A failed logout stays visible.
         epoch.current += 1;
-        await api.logout().catch(() => undefined);
-        changeMember(null);
+        await api.logout();
+        await changeMember(null, true);
         resetIdentity();
       },
       connectWallet: async () => {
         const started = epoch.current;
         const next = await linkWallet();
-        if (epoch.current === started) changeMember(keepRole(member, next));
+        if (epoch.current === started) await changeMember(keepRole(member, next), true);
         return next;
       },
       replaceMember: (next) => setMember((previous) => keepRole(previous, next)),
@@ -172,9 +204,9 @@ export function useSession(): SessionValue {
 /**
  * 로그인이 필요한 동작 앞에 부른다.
  *
- * 복원 중이면 이동 없이 동작을 보류하고 `true`를 돌려준다.
- * 복원 후 비로그인이면 `/login?next=<지금 주소>`로 보내고 `true`를 돌려준다.
- * 로그인 상태이면 `false`를 돌려주므로 호출부가 동작을 계속할 수 있다.
+ * 로그인 전이면 `/login?next=<지금 주소>` 로 보내고 `true` 를 돌려준다.
+ * 이미 로그인돼 있으면 아무것도 하지 않고 `false` 를 돌려주므로, 부르는 쪽은
+ * 그때 자기 안내 문구를 띄우면 된다.
  */
 export function useRequireLogin(): () => boolean {
   const { member, restored } = useSession();

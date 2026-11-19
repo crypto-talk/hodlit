@@ -1,5 +1,4 @@
-import { clearAccessToken, setAccessToken } from "@/lib/auth-token";
-import { ApiError, http } from "@/lib/http";
+import { ApiError, http, withSessionLock } from "@/lib/http";
 
 /**
  * 구조 개편 전부터 남은 마지막 API 모음. `lib/session.tsx` 만 쓴다 —
@@ -8,7 +7,7 @@ import { ApiError, http } from "@/lib/http";
  * 전송은 `lib/http.ts` 를 거친다. 타입은 손으로 적은 `Member` 하나뿐이다.
  *
  * 새 코드를 여기에 추가하지 않는다. 화면이 쓰는 API 는 `features/<domain>/api.ts` 로
- * 간다. access 토큰이 쿠키로 옮겨질 때(B-3) 세션 코드와 함께 정리한다.
+ * 간다. Rust 인증 응답의 본문은 회원 정보만 포함한다.
  */
 
 export type Member = {
@@ -34,15 +33,16 @@ export function isAdminMember(member: Member | null): boolean {
   return member?.role === "ADMIN";
 }
 
-type AuthResult = { accessToken: string; member: Member };
+type AuthResult = { member: Member };
 
 async function authenticate(path: string, body: unknown): Promise<Member> {
-  const result = await http<AuthResult>(path, { method: "POST", body: JSON.stringify(body) });
-  setAccessToken(result.accessToken);
+  const result = await withSessionLock(() =>
+    http<AuthResult>(path, { method: "POST", body: JSON.stringify(body) }),
+  );
   return result.member;
 }
 
-/** 저장된 access로 회원을 조회하고, 만료된 경우 http의 공유 갱신을 이용한다. */
+/** Read the current session; http handles one coordinated refresh on expiry. */
 export async function refreshSession(): Promise<Member | null> {
   try {
     return await http<Member>("/api/v1/me");
@@ -59,11 +59,5 @@ export const api = {
   login: (loginId: string, password: string) =>
     authenticate("/api/v1/auth/login", { loginId, password }),
 
-  logout: async () => {
-    try {
-      await http<void>("/api/v1/auth/logout", { method: "POST" });
-    } finally {
-      clearAccessToken();
-    }
-  },
+  logout: () => withSessionLock(() => http<void>("/api/v1/auth/logout", { method: "POST" })),
 };

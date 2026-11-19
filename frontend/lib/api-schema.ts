@@ -283,6 +283,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/news-publisher/communities/{symbol}/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 스킬용 방 뉴스 등록
+         * @description JWT 대신 X-News-Publisher-Token 헤더로 인증합니다. 비밀번호 미설정 시 비활성화됩니다.
+         */
+        post: operations["create_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/members/{memberId}/follow": {
         parameters: {
             query?: never;
@@ -332,7 +352,7 @@ export interface paths {
         put?: never;
         /**
          * 지갑 연결
-         * @description 서명을 검증해 EVM 지갑 소유권을 확인하고 로그인 계정에 연결합니다.
+         * @description 서명을 검증해 EVM 또는 Solana 지갑 소유권을 확인하고 로그인 계정에 연결합니다.
          */
         post: operations["connect"];
         delete?: never;
@@ -419,7 +439,7 @@ export interface paths {
          * 임시저장 생성
          * @description 빈 필드를 허용합니다. 지갑·시세 조회나 스냅샷 기록을 수행하지 않습니다.
          */
-        post: operations["create_2"];
+        post: operations["create_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -439,7 +459,7 @@ export interface paths {
          * 운영자 방 투표 생성
          * @description 새 질문 생성 시 기존 활성 질문은 종료하고 기록은 유지합니다.
          */
-        post: operations["create_3"];
+        post: operations["create_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -457,7 +477,7 @@ export interface paths {
         get: operations["list_2"];
         put?: never;
         /** 관리자 방 뉴스 등록 */
-        post: operations["create_4"];
+        post: operations["create_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -475,7 +495,7 @@ export interface paths {
         put?: never;
         /**
          * 회원가입
-         * @description 로그인 아이디로 회원을 생성하고 access token과 refresh cookie를 발급합니다.
+         * @description Rust가 HttpOnly access·refresh 쿠키를 발급/회전하고 회원 정보만 반환합니다. 토큰은 JSON으로 반환하지 않습니다.
          */
         post: operations["signup"];
         delete?: never;
@@ -495,7 +515,7 @@ export interface paths {
         put?: never;
         /**
          * 인증 토큰 갱신
-         * @description refresh cookie를 검증하고 access token과 refresh cookie를 재발급합니다.
+         * @description Rust가 HttpOnly access·refresh 쿠키를 발급/회전하고 회원 정보만 반환합니다. 토큰은 JSON으로 반환하지 않습니다.
          */
         post: operations["refresh"];
         delete?: never;
@@ -535,7 +555,7 @@ export interface paths {
         put?: never;
         /**
          * 로그인
-         * @description 로그인 아이디와 비밀번호를 검증하고 새로운 인증 토큰을 발급합니다.
+         * @description Rust가 HttpOnly access·refresh 쿠키를 발급/회전하고 회원 정보만 반환합니다. 토큰은 JSON으로 반환하지 않습니다.
          */
         post: operations["login"];
         delete?: never;
@@ -573,7 +593,7 @@ export interface paths {
         get: operations["list_4"];
         put?: never;
         /** 관리자 이벤트 초안 생성 */
-        post: operations["create_5"];
+        post: operations["create_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -594,7 +614,7 @@ export interface paths {
         get: operations["list_5"];
         put?: never;
         /** 관리자 방 생성 */
-        post: operations["create_6"];
+        post: operations["create_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -612,7 +632,7 @@ export interface paths {
         get: operations["list_6"];
         put?: never;
         /** 관리자 배너 등록 */
-        post: operations["create_7"];
+        post: operations["create_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -954,7 +974,11 @@ export interface paths {
         get: operations["get_4"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 운영자 투표 삭제
+         * @description 진행 중이거나 종료된 투표를 조회와 참여 대상에서 제외합니다.
+         */
+        delete: operations["delete_6"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1128,46 +1152,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/members/by-nickname": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 검색어 파라미터로 공개 프로필 조회
-         * @description 슬래시 등 URL 예약 문자가 포함된 닉네임도 조회합니다. 기존 경로 방식과 동일한 공개 정보만 반환합니다.
-         */
-        get: operations["profileQuery"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/members/by-nickname/{nickname}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 닉네임으로 공개 프로필 조회
-         * @description 현재 닉네임으로 조회합니다. 공개 글·댓글 수와 마지막 저장 시점의 공개 자산 구간을 반환합니다.
-         */
-        get: operations["profile"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/media/{fileName}": {
         parameters: {
             query?: never;
@@ -1183,7 +1167,7 @@ export interface paths {
          * 미디어 파일 삭제
          * @description 업로드한 회원이 아직 게시글에 연결되지 않은 파일을 삭제합니다.
          */
-        delete: operations["delete_6"];
+        delete: operations["delete_7"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1196,7 +1180,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 연결된 EVM 지갑 목록 조회 */
+        /** 연결된 지갑 목록 조회 */
         get: operations["wallets"];
         put?: never;
         post?: never;
@@ -1608,26 +1592,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/communities/{symbol}/posts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 커뮤니티 게시글 목록 조회
-         * @description 코인 커뮤니티의 게시글을 최신순으로 조회합니다.
-         */
-        get: operations["list_9"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/communities/{symbol}/posts/page": {
         parameters: {
             query?: never;
@@ -1660,6 +1624,26 @@ export interface paths {
          * @description KST 어제까지와 종료된 투표의 오늘 집계를 날짜·투표별로 조회합니다.
          */
         get: operations["roomResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/polls/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 운영 중인 방의 열린 투표 목록
+         * @description 방 표시 순서로 정렬합니다. day는 한국 날짜입니다. 오늘 해당 투표에 참여한 요청자에게만 userChoiceId, totalVotes, choices[].voteCount를 반환합니다.
+         */
+        get: operations["listOpenPolls"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1895,7 +1879,7 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * EVM 지갑 연결 해제
+         * 지갑 연결 해제
          * @description 과거 게시글과 댓글의 발행 스냅샷은 유지됩니다.
          */
         delete: operations["disconnect_1"];
@@ -2225,7 +2209,13 @@ export interface components {
             walletAddress: string;
             /** Format: uuid */
             nonceId: string;
+            /** @description EVM personal_sign의 16진수 서명 또는 Solana Ed25519의 Base58 서명 */
             signature: string;
+            /**
+             * @default EVM
+             * @enum {string}
+             */
+            chainType: "EVM" | "SOLANA";
         };
         MemberResponse: {
             /** Format: int64 */
@@ -2242,6 +2232,11 @@ export interface components {
         };
         NonceRequest: {
             walletAddress: string;
+            /**
+             * @default EVM
+             * @enum {string}
+             */
+            chainType: "EVM" | "SOLANA";
         };
         NonceResponse: {
             /** Format: uuid */
@@ -2283,9 +2278,7 @@ export interface components {
             nickname: string;
         };
         AuthResponse: {
-            accessToken?: string;
-            tokenType?: string;
-            member?: components["schemas"]["MemberResponse"];
+            member: components["schemas"]["MemberResponse"];
         };
         LoginRequest: {
             loginId: string;
@@ -2938,7 +2931,10 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+        CookieCsrfHeader: "1";
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -2981,7 +2977,10 @@ export interface operations {
     update: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3018,7 +3017,10 @@ export interface operations {
     delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3082,7 +3084,10 @@ export interface operations {
     save: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3119,7 +3124,10 @@ export interface operations {
     update_1: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 newsId: number;
             };
@@ -3156,7 +3164,10 @@ export interface operations {
     delete_1: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 newsId: number;
             };
@@ -3187,7 +3198,10 @@ export interface operations {
     save_1: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 symbol: string;
             };
@@ -3257,7 +3271,10 @@ export interface operations {
     update_2: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 draftId: number;
             };
@@ -3294,7 +3311,10 @@ export interface operations {
     delete_2: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 draftId: number;
             };
@@ -3325,7 +3345,10 @@ export interface operations {
     prizes: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -3395,7 +3418,10 @@ export interface operations {
     save_2: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 symbol: string;
             };
@@ -3432,7 +3458,10 @@ export interface operations {
     create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -3467,7 +3496,10 @@ export interface operations {
     repost: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3500,7 +3532,10 @@ export interface operations {
     unrepost: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3533,7 +3568,10 @@ export interface operations {
     like: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3566,7 +3604,10 @@ export interface operations {
     unlike: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3632,7 +3673,10 @@ export interface operations {
     create_1: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3669,7 +3713,10 @@ export interface operations {
     bookmark: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3702,7 +3749,10 @@ export interface operations {
     unbookmark: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 postId: number;
             };
@@ -3735,7 +3785,10 @@ export interface operations {
     vote: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 pollId: number;
             };
@@ -3772,7 +3825,10 @@ export interface operations {
     close: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 pollId: number;
             };
@@ -3800,10 +3856,50 @@ export interface operations {
             };
         };
     };
-    follow: {
+    create_2: {
         parameters: {
             query?: never;
             header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveNewsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NewsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    follow: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 memberId: number;
             };
@@ -3836,7 +3932,10 @@ export interface operations {
     unfollow: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 memberId: number;
             };
@@ -3869,7 +3968,10 @@ export interface operations {
     upload: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -3907,7 +4009,10 @@ export interface operations {
     connect: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -3942,7 +4047,10 @@ export interface operations {
     nonce: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -3977,7 +4085,10 @@ export interface operations {
     connect_1: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 exchange: string;
             };
@@ -4014,7 +4125,10 @@ export interface operations {
     disconnect: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 exchange: string;
             };
@@ -4045,7 +4159,10 @@ export interface operations {
     draw: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -4106,10 +4223,13 @@ export interface operations {
             };
         };
     };
-    create_2: {
+    create_3: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -4141,10 +4261,13 @@ export interface operations {
             };
         };
     };
-    create_3: {
+    create_4: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 symbol: string;
             };
@@ -4214,10 +4337,13 @@ export interface operations {
             };
         };
     };
-    create_4: {
+    create_5: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 symbol: string;
             };
@@ -4254,7 +4380,10 @@ export interface operations {
     signup: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description 허용 Origin과 함께 전송하는 CSRF 방어 헤더. */
+                "X-Hodlit-Request": "1";
+            };
             path?: never;
             cookie?: never;
         };
@@ -4267,10 +4396,12 @@ export interface operations {
             /** @description OK */
             200: {
                 headers: {
+                    /** @description cryptalk_access 및 cryptalk_refresh HttpOnly 쿠키를 각각 발급/회전한다. */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AuthResponse"];
+                    "application/json": components["schemas"]["AuthResponse"];
                 };
             };
             /** @description Bad Request */
@@ -4281,6 +4412,20 @@ export interface operations {
                 content: {
                     "*/*": {
                         [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description CSRF 검증 실패 또는 이용 정지 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type?: string;
+                        title?: string;
+                        status?: number;
+                        detail?: string;
                     };
                 };
             };
@@ -4289,7 +4434,10 @@ export interface operations {
     refresh: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description 허용 Origin과 함께 전송하는 CSRF 방어 헤더. */
+                "X-Hodlit-Request": "1";
+            };
             path?: never;
             cookie?: never;
         };
@@ -4298,10 +4446,12 @@ export interface operations {
             /** @description OK */
             200: {
                 headers: {
+                    /** @description cryptalk_access 및 cryptalk_refresh HttpOnly 쿠키를 각각 발급/회전한다. */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AuthResponse"];
+                    "application/json": components["schemas"]["AuthResponse"];
                 };
             };
             /** @description Bad Request */
@@ -4315,20 +4465,53 @@ export interface operations {
                     };
                 };
             };
+            /** @description 인증 실패 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type?: string;
+                        title?: string;
+                        status?: number;
+                        detail?: string;
+                    };
+                };
+            };
+            /** @description CSRF 검증 실패 또는 이용 정지 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type?: string;
+                        title?: string;
+                        status?: number;
+                        detail?: string;
+                    };
+                };
+            };
         };
     };
     logout: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description 허용 Origin과 함께 전송하는 CSRF 방어 헤더. */
+                "X-Hodlit-Request": "1";
+            };
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
             /** @description OK */
-            200: {
+            204: {
                 headers: {
+                    /** @description 두 인증 쿠키를 원래 Path에서 Max-Age=0으로 삭제한다. */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -4344,12 +4527,29 @@ export interface operations {
                     };
                 };
             };
+            /** @description CSRF 검증 실패 또는 이용 정지 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type?: string;
+                        title?: string;
+                        status?: number;
+                        detail?: string;
+                    };
+                };
+            };
         };
     };
     login: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description 허용 Origin과 함께 전송하는 CSRF 방어 헤더. */
+                "X-Hodlit-Request": "1";
+            };
             path?: never;
             cookie?: never;
         };
@@ -4362,10 +4562,12 @@ export interface operations {
             /** @description OK */
             200: {
                 headers: {
+                    /** @description cryptalk_access 및 cryptalk_refresh HttpOnly 쿠키를 각각 발급/회전한다. */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AuthResponse"];
+                    "application/json": components["schemas"]["AuthResponse"];
                 };
             };
             /** @description Bad Request */
@@ -4376,6 +4578,34 @@ export interface operations {
                 content: {
                     "*/*": {
                         [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 인증 실패 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type?: string;
+                        title?: string;
+                        status?: number;
+                        detail?: string;
+                    };
+                };
+            };
+            /** @description CSRF 검증 실패 또는 이용 정지 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type?: string;
+                        title?: string;
+                        status?: number;
+                        detail?: string;
                     };
                 };
             };
@@ -4415,7 +4645,10 @@ export interface operations {
     createCategory: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -4481,10 +4714,13 @@ export interface operations {
             };
         };
     };
-    create_5: {
+    create_6: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -4552,10 +4788,13 @@ export interface operations {
             };
         };
     };
-    create_6: {
+    create_7: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -4618,10 +4857,13 @@ export interface operations {
             };
         };
     };
-    create_7: {
+    create_8: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -4687,7 +4929,10 @@ export interface operations {
     update_3: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -4753,7 +4998,10 @@ export interface operations {
     visibility: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -4788,7 +5036,10 @@ export interface operations {
     delete_3: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 commentId: number;
             };
@@ -4819,7 +5070,10 @@ export interface operations {
     update_4: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 commentId: number;
             };
@@ -4856,7 +5110,10 @@ export interface operations {
     deleteCategory: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -4887,7 +5144,10 @@ export interface operations {
     updateCategory: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -4924,7 +5184,10 @@ export interface operations {
     change: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -4963,7 +5226,10 @@ export interface operations {
     change_1: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -5035,7 +5301,10 @@ export interface operations {
     update_5: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -5072,7 +5341,10 @@ export interface operations {
     status: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -5109,7 +5381,10 @@ export interface operations {
     delete_4: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 symbol: string;
             };
@@ -5140,7 +5415,10 @@ export interface operations {
     update_6: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 symbol: string;
             };
@@ -5177,7 +5455,10 @@ export interface operations {
     changeStatus: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 symbol: string;
             };
@@ -5247,7 +5528,10 @@ export interface operations {
     delete_5: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -5278,7 +5562,10 @@ export interface operations {
     update_7: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 id: number;
             };
@@ -5315,7 +5602,10 @@ export interface operations {
     order: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -5538,6 +5828,40 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["PollResponse"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    delete_6: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
+            path: {
+                pollId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {
@@ -5866,72 +6190,6 @@ export interface operations {
             };
         };
     };
-    profileQuery: {
-        parameters: {
-            query: {
-                nickname: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PublicProfile"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    profile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                nickname: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PublicProfile"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
     get_5: {
         parameters: {
             query?: never;
@@ -5965,10 +6223,13 @@ export interface operations {
             };
         };
     };
-    delete_6: {
+    delete_7: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 fileName: string;
             };
@@ -6732,41 +6993,6 @@ export interface operations {
             };
         };
     };
-    list_9: {
-        parameters: {
-            query?: {
-                size?: number;
-            };
-            header?: never;
-            path: {
-                symbol: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PostResponse"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
     room: {
         parameters: {
             query?: {
@@ -6837,6 +7063,33 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
+            };
+        };
+    };
+    listOpenPolls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 열린 투표 목록. 열린 투표가 없으면 빈 배열입니다. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollResponse"][];
+                };
+            };
+            /** @description 유효하지 않은 Authorization 헤더 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7245,7 +7498,10 @@ export interface operations {
     disconnect_1: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 쿠키 인증 변경 요청에서는 허용 Origin과 함께 필수. Bearer 전용 요청은 제외. */
+                "X-Hodlit-Request"?: components["parameters"]["CookieCsrfHeader"];
+            };
             path: {
                 walletId: number;
             };

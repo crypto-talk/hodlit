@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Search } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { isAdminMember } from "@/lib/api";
@@ -108,7 +109,14 @@ export default function Header() {
               </Link>
             ) : null}
             <WriteButton href={write} />
-            <Button type="button" onClick={logout}>
+            <Button
+              type="button"
+              onClick={() => {
+                void logout().catch(() =>
+                  toast.error("로그아웃하지 못했습니다. 다시 시도해 주세요."),
+                );
+              }}
+            >
               로그아웃
             </Button>
           </>

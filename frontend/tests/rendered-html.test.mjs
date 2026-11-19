@@ -47,7 +47,7 @@ test("server-renders the Hodlit application", async (t) => {
     assert.match(html, /지갑 연결/);
     assert.match(html, /투자 권유가 아니며/);
 
-    // 서버는 아직 세션을 모르므로 비로그인 상태를 확정하지 않는다.
+    // Cookie session restoration is pending on public SSR. Do not flash logged-out controls.
     assert.match(html, /로그인 확인 중/);
 
     // 폰트는 셀프호스팅이다(D-5). CDN 링크가 다시 들어오면 여기서 걸린다.

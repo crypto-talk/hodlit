@@ -1,37 +1,6 @@
-import type { components } from "@/lib/api-schema";
-import {
-  clearAccessToken,
-  getAccessToken,
-  getTokenRevision,
-  setAccessToken,
-} from "@/lib/auth-token";
 import { config } from "@/lib/config";
 
-/**
- * 백엔드 요청 래퍼 (C-4). 백엔드로 나가는 요청은 전부 여기를 지난다.
- *
- * 하는 일
- *   1. baseURL 을 붙이고, 문자열 본문에는 JSON Content-Type 을 세운다
- *   2. 액세스 토큰을 싣고, refresh 쿠키를 위해 `credentials: "include"` 를 건다
- *   3. 401 이면 토큰을 한 번 갱신하고 원래 요청을 딱 한 번 다시 보낸다.
- *      갱신이 실패하면 토큰을 지우고, 토큰을 실어 보냈었다면 토큰 없이 한 번 더 보낸다
- *      (만료된 토큰이 남은 탭에서 공개 API 가 실패하지 않게)
- *   4. 실패 응답을 `{ code, message }` 로 정규화한다
- *
- * 아직 하지 않는 것과 그 이유
- *   - 에러 `code` 로 분기하기: 백엔드와 코드 목록을 합의하기 전이다(C-5).
- *     지금은 서버가 code 를 주면 그대로 싣고, 없으면 `HTTP_401` 처럼 채운다.
- *     화면에서는 code 가 아니라 `ApiError.status` 로 분기한다.
- *   - 서버 컴포넌트에서 쿠키를 헤더로 넘기기: access 가 쿠키로 옮겨진 뒤에(B-3)
- *     붙는다. 그때까지 서버 컴포넌트는 로그인 상태가 필요 없는 공개 데이터만
- *     가져온다.
- *
- * 경로는 `/api/v1` 까지 포함해서 넘긴다. `lib/api-schema.ts` 의 키와 같은
- * 문자열이라, 나중에 경로로 응답 타입을 좁힐 때 그대로 쓸 수 있다.
- */
-
-type AuthResponse = components["schemas"]["AuthResponse"];
-
+/** Cookie authentication through the same-origin BFF. Server calls are public only. */
 const REFRESH_PATH = "/api/v1/auth/refresh";
 const AUTH_PREFIX = "/api/v1/auth/";
 const DEFAULT_MESSAGE = "요청을 처리하지 못했습니다.";
@@ -55,22 +24,28 @@ export class ApiError extends Error {
 }
 
 export async function http<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const revision = getTokenRevision();
-  const sentToken = getAccessToken() !== null;
+  const generation = refreshGeneration;
   const response = await send(path, init);
 
   if (response.status === 401 && canRefresh(path)) {
-    const refreshed = revision !== getTokenRevision() ? !!getAccessToken() : await refreshAccessToken();
-    // 만료된 토큰이 남아 공개 API도 401을 받으면 토큰 없이 한 번 더 요청한다.
-    if (refreshed || sentToken) {
+    if (await refreshAccessToken(generation)) {
       return unwrap<T>(await send(path, init));
+    }
+    // 갱신 만료 뒤에는 인증 쿠키 없이 공개 조회를 한 번 더 시도한다.
+    const method = init.method?.toUpperCase() ?? "GET";
+    if (method === "GET" || method === "HEAD") {
+      return unwrap<T>(await send(path, init, "omit"));
     }
   }
 
   return unwrap<T>(response);
 }
 
-async function send(path: string, init: RequestInit): Promise<Response> {
+async function send(
+  path: string,
+  init: RequestInit,
+  credentials: RequestCredentials = "include",
+): Promise<Response> {
   const headers = new Headers(init.headers);
 
   // FormData 본문은 브라우저가 boundary 를 붙인 Content-Type 을 직접 세운다.
@@ -79,12 +54,10 @@ async function send(path: string, init: RequestInit): Promise<Response> {
     headers.set("Content-Type", "application/json");
   }
 
-  const token = getAccessToken();
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  return fetch(`${config.apiUrl}${path}`, { ...init, headers, credentials: "include" });
+  headers.delete("Authorization");
+  if (typeof window !== "undefined") headers.set("X-Hodlit-Request", "1");
+  const base = typeof window === "undefined" ? config.apiUrl : "";
+  return fetch(`${base}${path}`, { ...init, headers, credentials, cache: "no-store" });
 }
 
 /**
@@ -102,35 +75,46 @@ function canRefresh(path: string): boolean {
  * 있게 한다.
  */
 let refreshing: Promise<boolean> | null = null;
+let refreshGeneration = 0;
 
-function refreshAccessToken(): Promise<boolean> {
-  refreshing ??= runRefresh().finally(() => {
+// Session restoration and API retries share the same refresh, including across tabs.
+export function refreshAccessToken(generation = refreshGeneration): Promise<boolean> {
+  if (generation !== refreshGeneration) return Promise.resolve(true);
+  refreshing ??= coordinatedRefresh().finally(() => {
     refreshing = null;
   });
   return refreshing;
 }
 
-async function runRefresh(): Promise<boolean> {
-  const revision = getTokenRevision();
-  // 세션 복원과 일반 API의 401은 같은 갱신을 공유한다.
-  const response = await fetch(`${config.apiUrl}${REFRESH_PATH}`, {
-    method: "POST",
-    credentials: "include",
-  });
+export async function withSessionLock<T>(run: () => Promise<T>): Promise<T> {
+  return typeof navigator !== "undefined" && navigator.locks
+    ? await navigator.locks.request("hodlit-session", run)
+    : run();
+}
 
-  // 갱신 도중 로그인·로그아웃한 경우 오래된 결과로 덮어쓰지 않는다.
-  if (revision !== getTokenRevision()) return !!getAccessToken();
+async function coordinatedRefresh(): Promise<boolean> {
+  const run = async () => {
+    // Another tab may have refreshed while this tab waited for the lock.
+    const probe = await send("/api/v1/me", {});
+    if (probe.ok) return true;
+    if (probe.status !== 401) return unwrap<boolean>(probe);
+    return runRefresh();
+  };
+  const result = await withSessionLock(
+    typeof navigator !== "undefined" && navigator.locks ? run : runRefresh,
+  );
+  if (result) refreshGeneration += 1;
+  return result;
+}
+
+async function runRefresh(): Promise<boolean> {
+  const response = await send(REFRESH_PATH, { method: "POST" });
   if (response.status === 401) {
-    clearAccessToken();
     window.dispatchEvent(new Event("hodlit-session-expired"));
     return false;
   }
-
-  // 네트워크·403·5xx 오류는 세션 만료가 아니다. 토큰을 보존하고 재시도를 허용한다.
-  const body = await unwrap<AuthResponse>(response);
-  if (revision !== getTokenRevision()) return !!getAccessToken();
-  if (!body?.accessToken) throw new Error("인증 갱신 응답에 access token이 없습니다.");
-  setAccessToken(body.accessToken);
+  // Network errors, 403 and 5xx keep their meaning; they are not a logged-out session.
+  await unwrap<unknown>(response);
   return true;
 }
 
