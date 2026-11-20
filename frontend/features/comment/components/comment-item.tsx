@@ -138,7 +138,7 @@ export default function CommentItem({
         <div className="mt-2">
           <textarea
             aria-label="댓글 수정"
-            className="min-h-[72px] w-full resize-y rounded-sm border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
+            className="min-h-[72px] w-full resize-y rounded-sm border border-border-field bg-surface px-3 py-2 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
             value={draft}
             maxLength={COMMENT_MAX + 100}
             onChange={(event) => {

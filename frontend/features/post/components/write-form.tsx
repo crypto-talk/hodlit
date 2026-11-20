@@ -31,7 +31,7 @@ type Props = {
 };
 
 const FIELD =
-  "w-full rounded-sm border border-border-subtle bg-canvas px-3 text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand";
+  "w-full rounded-sm border border-border-field bg-canvas px-3 text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand";
 
 /**
  * 글쓰기 — 방 선택 + 제목 + 본문(리치텍스트) + 이미지 + 유튜브 링크 + 발행.
@@ -268,11 +268,11 @@ function WriteFields({
 
   return (
     <form className="w-full max-w-180" onSubmit={submit} noValidate>
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1 className="text-h2 font-semibold">글쓰기</h1>
         <button
           type="button"
-          className="text-sm text-text-muted hover:text-text-primary"
+          className="text-sm whitespace-nowrap text-text-muted hover:text-text-primary"
           aria-expanded={listOpen}
           onClick={() => setListOpen((open) => !open)}
         >

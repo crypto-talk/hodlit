@@ -1,3 +1,18 @@
+/* Hallmark · checked: 2026-11-20 · genre: playful (inferred) · scope: app · surface: absolute
+ * floor: 0 FAIL · fixed: 25 (26a, 34, 40, 49a, 54, 63, 67) · also 26b, F16, F26 · structural: none printed
+ * built: the project · redesign: polish · v2.0.0 */
+/* Hallmark · waive 39b · Hodlit inline text buttons: 답글, 수정, 삭제 in the 댓글 row, the room tabs, the info tip · one row carries three actions, so a 44px box per button would overlap the next one and open up the row */
+/* Hallmark · waive 7b · white cards on the #f6f6f9 canvas are the brand palette the owner set in #102 (브랜드 색) · tinting the surface is a restyle, not this polish */
+/* Hallmark · waive 49b · the wrapping links are post titles (제목) in Hodlit feed cards, e.g. the ETH room · a title is content, not a control label, so it wraps to two lines at narrow widths */
+/* Hallmark · dismissed 41 · the wallet badge text is white on the brand fill, never on the surface */
+/* Hallmark · dismissed 28a · feed media sits below the home banner and the room header, so it is not the largest paint */
+/* Hallmark · dismissed 72 · the overflow is the body of a closed details element (card news, admin catalog), not visible text */
+/* Hallmark · dismissed 70 · the toast follows the real publish request, shown when the server says the room closed */
+/* Hallmark · dismissed kept · hqdefault.jpg is a YouTube thumbnail this sandbox cannot reach; the thumbnail markup is unchanged */
+/* Hallmark · answered F16 · ::selection is themed here; scrollbar colour is on hold by the owner */
+/* Hallmark · dropped "404" above the 404 heading · 54 names it */
+/* Hallmark · reworded "글 · 댓글 · 좋아요를" to "글, 댓글, 좋아요를" (room-stats) · 63 names it */
+/* Hallmark · reworded "제목 · 짧은 요약 · 출처 · 원문 링크만" to "제목, 짧은 요약, 출처, 원문 링크만" (news-manager) · 63 names it */
 @import "tailwindcss";
 @import "../styles/tokens.css";
 
@@ -18,6 +33,7 @@
 
   --color-border-subtle: var(--border-subtle);
   --color-border-strong: var(--border-strong);
+  --color-border-field: var(--border-field);
 
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
@@ -156,4 +172,23 @@ html,
 body {
   background: var(--canvas);
   color: var(--text-primary);
+  /* 넘친 칸이 가로 스크롤을 만들지 않게. hidden 은 sticky 를 깨서 clip 을 쓴다 */
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--brand-soft);
+  color: var(--text-primary);
+}
+
+/*
+ * 키보드 포커스의 기본 모양. 자기 링(focus-visible:ring)을 가진 컴포넌트는
+ * outline-none 유틸리티가 이 규칙을 이긴다 — 그래서 base 층에 둔다.
+ * 따로 정하지 않은 링크 · 텍스트 버튼 · 배지 버튼이 이 모양을 받는다.
+ */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
 }

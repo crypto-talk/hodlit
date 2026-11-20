@@ -28,7 +28,7 @@ export default function YoutubeField({
   return (
     <section aria-label="유튜브 링크" className="mt-4">
       <input
-        className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand aria-invalid:border-danger"
+        className="h-10 w-full rounded-sm border border-border-field bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand aria-invalid:border-danger"
         aria-label="유튜브 링크"
         aria-invalid={invalid}
         placeholder="유튜브 링크 (선택) — youtube.com/watch?v=… · youtu.be/… · Shorts"

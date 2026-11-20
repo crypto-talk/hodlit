@@ -96,7 +96,7 @@ export default function NewsManager({ room, page }: Props) {
           뉴스 관리
         </h2>
         <p className="mt-1 text-sm text-text-muted">
-          방 게시판의 뉴스 칸에 보일 기사를 직접 등록합니다. 제목 · 짧은 요약 · 출처 · 원문 링크만
+          방 게시판의 뉴스 칸에 보일 기사를 직접 등록합니다. 제목, 짧은 요약, 출처, 원문 링크만
           보이고, 원문은 바깥 링크로 열립니다.
         </p>
       </div>

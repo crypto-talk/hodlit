@@ -113,7 +113,7 @@ export default function RoomManager({ q, status, page }: Props) {
             maxLength={100}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="이름 · 심볼"
-            className="w-44 rounded-sm border border-border-subtle bg-surface px-3 py-2 text-sm outline-none focus:border-text-muted"
+            className="w-44 rounded-sm border border-border-field bg-surface px-3 py-2 text-sm outline-none focus:border-text-muted"
           />
           <Button type="submit">검색</Button>
         </form>

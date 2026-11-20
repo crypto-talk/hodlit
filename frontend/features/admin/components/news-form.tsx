@@ -19,7 +19,7 @@ type Props = {
 const EMPTY: NewsInput = { title: "", summary: "", sourceName: "", sourceUrl: "" };
 
 const TEXTAREA =
-  "min-h-24 w-full rounded-sm border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-subtle focus:border-text-muted aria-invalid:border-danger";
+  "min-h-24 w-full rounded-sm border border-border-field bg-surface px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-subtle focus:border-text-muted aria-invalid:border-danger";
 
 /**
  * 뉴스 등록 · 수정 폼. 제목 · 요약 · 출처 · 원문 링크 네 칸이고 전부 평문이다.

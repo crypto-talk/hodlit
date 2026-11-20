@@ -29,7 +29,7 @@ type Props = {
 };
 
 const FIELD =
-  "w-full rounded-sm border border-border-subtle bg-canvas px-3 text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand";
+  "w-full rounded-sm border border-border-field bg-canvas px-3 text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand";
 
 /** 에디터를 무엇으로 채워 시작했는지. 바꾸면 에디터를 새로 마운트한다. */
 type Start = "draft" | "post";

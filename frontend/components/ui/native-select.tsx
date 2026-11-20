@@ -11,7 +11,7 @@ function NativeSelect({ className, ...props }: React.ComponentProps<"select">) {
     <span data-slot="native-select-wrapper" className={cn("relative inline-flex", className)}>
       <select
         data-slot="native-select"
-        className="h-10 w-full min-w-0 cursor-pointer appearance-none rounded-sm border border-border-subtle bg-surface pr-8 pl-3 text-sm text-text-primary outline-none focus:border-text-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-default disabled:opacity-60"
+        className="h-10 w-full min-w-0 cursor-pointer appearance-none rounded-sm border border-border-field bg-surface pr-8 pl-3 text-sm text-text-primary outline-none focus:border-text-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-default disabled:opacity-60"
         {...props}
       />
       <ChevronDown

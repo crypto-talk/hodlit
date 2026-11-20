@@ -14,7 +14,7 @@ import { bannerImageProblem } from "../limits";
 import type { DrawPrizeInput } from "../types";
 
 const TEXTAREA =
-  "min-h-16 w-full rounded-sm border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-subtle focus:border-text-muted aria-invalid:border-danger";
+  "min-h-16 w-full rounded-sm border border-border-field bg-surface px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-subtle focus:border-text-muted aria-invalid:border-danger";
 const ICON_BUTTON = "size-9 px-0 py-0";
 const LABEL = "text-xs font-semibold text-text-muted";
 

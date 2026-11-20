@@ -90,7 +90,7 @@ export default function BodyEditor({ onChange, disabled, initialContent }: Props
   }, [editor, disabled]);
 
   return (
-    <div className="mt-2 rounded-sm border border-border-subtle bg-canvas focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-brand">
+    <div className="mt-2 rounded-sm border border-border-field bg-canvas focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-brand">
       {editor ? <Toolbar editor={editor} disabled={disabled} /> : <ToolbarPlaceholder />}
       <EditorContent editor={editor} />
       {editor ? <EditorYoutube editor={editor} /> : null}
@@ -240,7 +240,7 @@ function LinkInput({
     <div className="flex items-center gap-2 border-t border-border-subtle px-2 py-1.5">
       <input
         autoFocus
-        className="h-8 min-w-0 flex-1 rounded-sm border border-border-subtle bg-surface px-2 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
+        className="h-8 min-w-0 flex-1 rounded-sm border border-border-field bg-surface px-2 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
         aria-label="링크 주소"
         placeholder="https://… (비우면 링크 해제)"
         value={href}

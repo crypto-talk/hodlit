@@ -7,7 +7,6 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
-      <p className="text-sm font-bold tracking-widest text-text-subtle">404</p>
       <h1 className="text-xl font-bold text-text-primary">페이지를 찾을 수 없습니다</h1>
       <p className="text-sm text-text-muted">주소가 바뀌었거나 삭제된 글일 수 있습니다.</p>
       <Link

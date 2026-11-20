@@ -109,7 +109,9 @@ export default function PostDetailView({ postId, symbol }: Props) {
         ) : null}
       </div>
 
-      <h1 className="mt-4 text-h1 font-semibold break-words text-text-primary">{data.title}</h1>
+      <h1 className="mt-4 text-h1 font-semibold text-balance break-words text-text-primary">
+        {data.title}
+      </h1>
       {data.authorId !== null ? (
         <Link
           href={profileHref(data.authorId)}

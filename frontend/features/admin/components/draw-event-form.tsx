@@ -9,7 +9,7 @@ import type { DrawEventInput } from "../types";
 import Field from "./field";
 
 const TEXTAREA =
-  "min-h-24 w-full rounded-sm border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-subtle focus:border-text-muted aria-invalid:border-danger";
+  "min-h-24 w-full rounded-sm border border-border-field bg-surface px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-subtle focus:border-text-muted aria-invalid:border-danger";
 
 const EMPTY: DrawEventInput = { title: "", description: "", startsAt: "", endsAt: "" };
 

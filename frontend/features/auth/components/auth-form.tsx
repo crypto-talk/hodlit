@@ -90,7 +90,7 @@ export default function AuthForm({ mode, next }: Props) {
           <>
             <input
               ref={firstFieldRef}
-              className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
+              className="h-10 w-full rounded-sm border border-border-field bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
               name="nickname"
               aria-label="닉네임"
               aria-describedby="signup-nickname-hint"
@@ -108,7 +108,7 @@ export default function AuthForm({ mode, next }: Props) {
         {/* 백엔드 계약이 email → loginId 로 바뀌었다. type 도 text 다. */}
         <input
           ref={mode === "login" ? firstFieldRef : undefined}
-          className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
+          className="h-10 w-full rounded-sm border border-border-field bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
           name="loginId"
           type="text"
           aria-label="아이디"
@@ -117,7 +117,7 @@ export default function AuthForm({ mode, next }: Props) {
           required
         />
         <input
-          className="h-10 w-full rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
+          className="h-10 w-full rounded-sm border border-border-field bg-canvas px-3 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
           name="password"
           type="password"
           aria-label="비밀번호"

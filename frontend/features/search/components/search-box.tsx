@@ -37,7 +37,7 @@ export default function SearchBox({ initial, room }: Props) {
         <input
           type="search"
           aria-label={room ? `${roomCallName(room)} 방에서 검색` : "검색"}
-          className="h-10 min-w-0 flex-1 rounded-sm border border-border-subtle bg-surface px-3 text-body text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
+          className="h-10 min-w-0 flex-1 rounded-sm border border-border-field bg-surface px-3 text-body text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
           placeholder={room ? `${room} 방의 글 · 댓글 검색` : "글 · 댓글 · 방 · 닉네임 검색"}
           value={q}
           maxLength={SEARCH_MAX + 20}

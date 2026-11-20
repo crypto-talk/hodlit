@@ -41,7 +41,7 @@ export default function RoomStats({ symbol, verifiable }: { symbol: string; veri
         ))}
       </dl>
       <p className="mt-3 text-xs text-text-muted">
-        참여자는 로그인한 채 글 · 댓글 · 좋아요를 남기거나 글을 읽은 회원 수입니다.
+        참여자는 로그인한 채 글, 댓글, 좋아요를 남기거나 글을 읽은 회원 수입니다.
         {verifiable ? " 보유 인증률은 그중 지금 이 코인 보유가 인증된 회원의 비율입니다." : ""}
       </p>
     </section>

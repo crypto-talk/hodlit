@@ -99,7 +99,7 @@ export default function CommentForm({ postId, verifiable, replyTo, onClose }: Pr
       <textarea
         ref={textareaRef}
         aria-label={replyTo ? `${replyTo.nickname}에게 답글 입력` : "댓글 입력"}
-        className="min-h-[72px] w-full resize-y rounded-sm border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
+        className="min-h-[72px] w-full resize-y rounded-sm border border-border-field bg-surface px-3 py-2 text-sm text-text-primary focus:-outline-offset-1 focus:outline-2 focus:outline-brand"
         placeholder={replyTo ? "답글을 남겨보세요" : "댓글로 의견을 남겨보세요"}
         value={content}
         maxLength={COMMENT_MAX + 100}

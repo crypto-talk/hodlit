@@ -61,7 +61,7 @@ export default function Header() {
       </Link>
 
       <form role="search" onSubmit={search} className="flex h-9 min-w-0 flex-1">
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-sm border border-border-subtle bg-canvas px-3 text-sm text-text-muted focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-brand">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-sm border border-border-field bg-canvas px-3 text-sm text-text-muted focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-brand">
           <Search aria-hidden className="size-4 flex-none" strokeWidth={2} />
           <input
             type="search"
