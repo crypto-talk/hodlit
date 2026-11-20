@@ -49,7 +49,7 @@ export default function ImageAttachments({
     <section aria-label="이미지 첨부" className="mt-4">
       <div
         className={cn(
-          "rounded-sm border border-dashed border-border-subtle bg-surface p-4",
+          "rounded-sm border border-dashed border-border-field bg-surface p-4",
           dragging && "border-brand bg-brand-soft",
         )}
         onDragOver={(event) => {

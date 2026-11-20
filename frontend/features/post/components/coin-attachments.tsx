@@ -121,7 +121,7 @@ export default function CoinAttachments({ roomSymbol, rooms, value, onChange, di
             disabled={disabled || !rooms}
             aria-expanded={open}
             aria-controls="attach-options"
-            className={`${CHIP} border-dashed border-border-subtle text-text-muted hover:border-text-muted hover:text-text-primary disabled:opacity-60`}
+            className={`${CHIP} border-dashed border-border-field text-text-muted hover:border-text-muted hover:text-text-primary disabled:opacity-60`}
           >
             {open ? null : <Plus aria-hidden className="size-4" />}
             {open ? "목록 닫기" : "코인 추가"}

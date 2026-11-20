@@ -1,5 +1,6 @@
 /* Hallmark · checked: 2026-11-20 · genre: playful (inferred) · scope: app · surface: absolute
  * floor: 0 FAIL · fixed: 25 (26a, 34, 40, 49a, 54, 63, 67) · also 26b, F16, F26 · structural: none printed
+ * finish-review: subagent, 4 findings, 3 fixed (keep-all, dashed controls, search chip), 1 left to the owner (header search edge)
  * built: the project · redesign: polish · v2.0.0 */
 /* Hallmark · waive 39b · Hodlit inline text buttons: 답글, 수정, 삭제 in the 댓글 row, the room tabs, the info tip · one row carries three actions, so a 44px box per button would overlap the next one and open up the row */
 /* Hallmark · waive 7b · white cards on the #f6f6f9 canvas are the brand palette the owner set in #102 (브랜드 색) · tinting the surface is a restyle, not this polish */
@@ -10,7 +11,7 @@
 /* Hallmark · dismissed 70 · the toast follows the real publish request, shown when the server says the room closed */
 /* Hallmark · dismissed kept · hqdefault.jpg is a YouTube thumbnail this sandbox cannot reach; the thumbnail markup is unchanged */
 /* Hallmark · answered F16 · ::selection is themed here; scrollbar colour is on hold by the owner */
-/* Hallmark · dropped "404" above the 404 heading · 54 names it */
+/* Hallmark · dropped "404" above the 404 heading · a tracked eyebrow over a plain heading that already says the page is missing, 54 names it */
 /* Hallmark · reworded "글 · 댓글 · 좋아요를" to "글, 댓글, 좋아요를" (room-stats) · 63 names it */
 /* Hallmark · reworded "제목 · 짧은 요약 · 출처 · 원문 링크만" to "제목, 짧은 요약, 출처, 원문 링크만" (news-manager) · 63 names it */
 @import "tailwindcss";
@@ -174,6 +175,12 @@ body {
   color: var(--text-primary);
   /* 넘친 칸이 가로 스크롤을 만들지 않게. hidden 은 sticky 를 깨서 clip 을 쓴다 */
   overflow-x: clip;
+  /*
+   * 한글은 낱말 중간에서 끊지 않는다("됩니 / 다." 처럼 한 글자만 넘어가던 것).
+   * 띄어쓰기 없는 긴 주소는 break-word 가 칸 안에서 끊는다.
+   */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 ::selection {

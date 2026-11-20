@@ -5,6 +5,7 @@ import Link from "next/link";
 import PageLinks from "@/components/page-links";
 import { ApiError } from "@/lib/http";
 import { searchHref } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 import { loadSearch, loadSearchGroups } from "../api";
 import { CATEGORY_LABEL, categoriesFor } from "../categories";
 import { searchProblem } from "../limits";
@@ -27,8 +28,9 @@ const TAB_CLASS =
   "border-b-2 border-transparent py-2 text-body font-semibold text-text-muted hover:text-text-primary";
 const TAB_ACTIVE = "border-b-brand text-text-primary";
 const CHIP_CLASS =
-  "flex-none rounded-full border border-border-subtle px-3 py-1 text-sm font-semibold text-text-muted hover:text-text-primary";
-const CHIP_ACTIVE = "border-text-primary bg-text-primary text-surface hover:text-surface";
+  "flex-none rounded-full border border-border-field px-3 py-1 text-sm font-semibold text-text-muted hover:text-text-primary";
+const CHIP_ACTIVE =
+  "border-brand bg-brand text-text-inverse hover:bg-brand-hover hover:text-text-inverse";
 
 const noRetryOnClientError = (count: number, error: Error) =>
   !(error instanceof ApiError && error.status < 500) && count < 2;
@@ -78,7 +80,7 @@ export default function SearchView({ q, page, room, category }: Props) {
           <Link
             href={searchHref(q, { room })}
             aria-current={category ? undefined : "page"}
-            className={`${CHIP_CLASS} ${category ? "" : CHIP_ACTIVE}`}
+            className={cn(CHIP_CLASS, !category && CHIP_ACTIVE)}
           >
             전체
           </Link>
@@ -89,7 +91,7 @@ export default function SearchView({ q, page, room, category }: Props) {
                 key={each}
                 href={searchHref(q, { room, type: each })}
                 aria-current={category === each ? "page" : undefined}
-                className={`${CHIP_CLASS} ${category === each ? CHIP_ACTIVE : ""}`}
+                className={cn(CHIP_CLASS, category === each && CHIP_ACTIVE)}
               >
                 {CATEGORY_LABEL[each]}
                 {count === undefined ? null : (
